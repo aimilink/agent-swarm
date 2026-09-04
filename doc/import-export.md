@@ -115,29 +115,31 @@ hermes-agent-team-<timestamp>.zip
 
 ---
 
-## 4. 冲突策略（导入时）
+## 4. 导入替换与同名合并
 
-导入采用**整机替换**策略：导入前先清空 B 机当前所有 agents，再导入包内 agents。
+导入采用**控制台状态替换**策略：先清空 B 机当前 Agent 注册、团队工作区与运行
+历史，再注册包内 Agent。`shared` 模式下，现有 Hermes Profile 目录不会因为
+解除控制台关系而删除。
 
-清空规则：
+清理规则：
 
-1. 对 B 机现有每个 agent 走现有“解雇”逻辑：停止运行、删除 hermes profile、删除 MCP 记录、删除 `~/agent_team/<profile_name>/` workspace、从 RuntimeStore 移除。
-2. 同时清空运行历史表：`messages` / `events` / `user_tasks` / `delegations` / `assignments`，避免旧任务、消息、事件引用已删除 agent。
-3. 清空完成后，导入包内 `profile_name` 保持原样；`agent_id` 不使用包内旧值，而是按当前系统规则由 `profile_name` 重新生成（`agent_<profile_name>`）。
+1. 停止当前 Agent，删除 MCP/Skill 管理记录，清理其团队 workspace，并从
+   RuntimeStore 与 SQLite 移除。
+2. 清空 `messages` / `events` / `user_tasks` /
+   `delegations` / `assignments` 等运行历史。
+3. 不在导入包中的 Hermes Profile 继续保留，可在 CLI 单 Agent 模式使用，但不再
+   显示为控制台成员。
+4. 包内 `profile_name` 保持原样，`agent_id` 按
+   `agent_<profile_name>` 重新生成。
 
-因此正常导入不再提供单个 agent 级别的 rename / skip / overwrite 冲突选择；若清空阶段失败，则整次导入中止。
+目标机存在同名 Profile 时：
 
-保留原冲突策略作为未来增强（非当前版本）：
+- SOUL、包内 memories 和 skills 合并恢复到同一 Profile；同名文件以导入内容为准。
+- `config.yaml` 保留目标机已有模型/provider/API key，MCP 字典进行合并。
+- 不提供 rename / skip / overwrite 三选一。
 
-`profile_name` / `agent_id` 在 B 机已存在时：
-
-1. **rename**（默认）：自动追加后缀 `-imported-<n>`，生成新的 `agent_id` 与 `profile_name`，DB 与 hermes profile 同步改名。
-2. **skip**：跳过该 agent。
-3. **overwrite**：删除 B 机现有 profile 与 DB 行后覆盖（高危，前端二次确认）。
-
-MCP Server 名与 Skill slug 在同一 profile 下如有冲突走相同的三选一（profile 级覆盖时其下资源整体替换；rename 时仅冲突项追加后缀）。
-
-校验规则：`profile_name` 必须满足 `PROFILE_NAME_RE`。
+导入会删除控制台工作区与运行历史，且不会自动恢复旧数据库状态。操作前必须备份
+SQLite、Profile 和 workspace。`profile_name` 必须满足 `PROFILE_NAME_RE`。
 
 ---
 
@@ -186,8 +188,8 @@ def import_archive(zip_path: Path) -> dict
 
 **阶段 B：apply**
 1. 检查 `hermes` CLI 可用（复用 `profiles.check_hermes_ready()`）。
-2. 导入前清空 B 机现有状态：
-   1. 对当前所有 agents 逐个执行现有“解雇”逻辑，删除 hermes profile、MCP 记录、workspace、RuntimeStore 注册。
+2. 导入前清空 B 机现有控制台状态：
+   1. 对当前所有 agents 逐个停止运行，删除管理记录与 workspace，并解除 RuntimeStore 注册；共享 Hermes Profile 保留。
    2. 清空运行历史表：`messages` / `events` / `user_tasks` / `delegations` / `assignments`。
    3. 推送 SSE 事件通知前端列表与历史刷新。
 3. 对包内每个 agent（独立事务，单个失败不影响其他）：
@@ -207,8 +209,9 @@ def import_archive(zip_path: Path) -> dict
 
 - inspect 阶段失败 → 整包拒绝，无副作用。
 - 清空 B 机现有 agents 阶段失败 → 整次导入中止，不写入新 agents。
-- apply 阶段单 agent 失败 → 该 agent 已创建的 hermes profile 与 DB 行回滚（删除）；其他包内 agents 继续。
-- 全部失败时清理临时目录与残留 profile；B 机旧 agents 已按导入前确认删除，不做自动恢复。
+- apply 阶段单 Agent 失败 → 回滚该 Agent 的控制台 DB 行和 workspace；共享 Profile
+  按“数据不因编排关系删除”原则保留。
+- 全部失败时清理临时目录；B 机旧控制台注册与运行历史不自动恢复。
 
 ---
 
@@ -258,7 +261,8 @@ def import_archive(zip_path: Path) -> dict
    - `~/.hermes/profiles/<name>/` 存在并含 SOUL.md / config.yaml / skills/
    - DB 中 AgentRecord / SkillInstall / McpServer 行齐全且运行时字段为初始值
    - 通过 `profiles.list_hermes_profiles()` 可见
-4. **import_clears_existing_agents** — B 机已有 Leader / Worker → 导入前全部走解雇逻辑，profile / workspace / RuntimeStore 注册被删除。
+4. **import_clears_existing_agents** — B 机已有 Leader / Worker → 导入前清理
+   workspace / RuntimeStore / DB 注册，共享 Profile 保留。
 5. **import_clears_runtime_history** — 导入前清空 messages / events / user_tasks / delegations / assignments。
 6. **import_regenerates_agent_id** — 导入后保留 profile_name，agent_id 按 `agent_<profile_name>` 重新生成。
 7. **secret_redaction** — config.yaml 含明文 `api_key: sk-xxxx` → 导出包内为 `${OPENAI_API_KEY}`，`SECRETS.md` 列出该项。
@@ -282,7 +286,7 @@ def import_archive(zip_path: Path) -> dict
 - **M1（MVP，1 周）**
   - 单 agent 导出/导入
   - 按源拉取 skills（不内联）
-  - 整机替换导入：导入前清空 B 机所有 agents、workspace 与运行历史
+  - 控制台状态替换导入：清空 Agent 注册、workspace 与运行历史，保留共享 Profile
   - 后端单测覆盖核心路径
   - Web UI 导出 / 预检 / 导入
 - **M2（完整版，1 周）**
@@ -308,6 +312,6 @@ def import_archive(zip_path: Path) -> dict
 | Skill 源仓库私有/失效 | 导出时勾选内联 skills 文件，导入时优先使用包内目录 |
 | profile_name 含非法字符 | 走 `PROFILE_NAME_RE` 校验，rename 时也需通过 |
 | 大体积 zip 占内存 | 流式读写，导出/导入均不一次性加载到内存 |
-| 导入中断导致脏状态 | 清空旧 agents 后再导入；单 agent 事务化；中断后 cleanup 临时目录 + 残留 profile |
-| 整机替换误删 B 机 agents / workspace | 前端二次确认，inspect 阶段明确列出将删除数量；旧 agents 删除后不自动恢复 |
+| 导入中断导致脏状态 | 清空旧控制台状态后再导入；单 Agent 事务化；中断后清理临时目录 |
+| 状态替换误删 workspace / 运行历史 | 前端二次确认，inspect 阶段明确列出数量；导入前备份 SQLite 与 workspace |
 | Workspace 含敏感数据 | 默认不导；显式开关时弹二次确认 |

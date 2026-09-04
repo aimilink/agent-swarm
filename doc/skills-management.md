@@ -140,7 +140,10 @@ Skills 存放在 Hermes profile 目录：
 
 如果新 profile 是从源 profile 克隆来的，已有 skills 会被保留，并在列表中显示为 `source_type="local"`。
 
-删除 agent 时，Hermes profile 目录会随之删除；同时会清理该 profile 对应的 skill 安装记录。
+从控制台删除（解雇）Agent 或将其移出团队时，只清理团队编排关系和管理记录，
+不会删除 Hermes Profile 目录。Profile 下的 Skill、SOUL、记忆和经验继续保留，
+因此仍可在 Hermes CLI 单 Agent 模式使用。只有用户明确执行 Skill 卸载时，才会
+删除该 Profile 下对应的 `skills/<slug>` 目录。
 
 ## 8. 示例
 

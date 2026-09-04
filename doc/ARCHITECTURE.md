@@ -6,7 +6,9 @@
 
 - **后端**：Flask 应用挂载在 Starlette/Uvicorn ASGI 服务中。
 - **前端**：原生 HTML/JS，展示 Agent、消息、事件、Kanban 任务和终端输出。
-- **Agent**：每个 Agent 对应一个 Hermes profile，拥有独立 `config.yaml`、`SOUL.md`、skills、MCP 配置和工作区。
+- **Agent**：每个 Agent 对应一个 Hermes Profile。Profile 之间相互独立，但同一
+  Profile 在 CLI 单 Agent 与团队编排入口之间共享 `config.yaml`、`SOUL.md`、
+  skills、memories 和 MCP 配置。
 - **编排**：用户任务进入 Hermes Kanban，Leader 通过 MCP 创建可追踪的 Worker Kanban 子任务。
 - **运行**：Hermes Kanban dispatcher/gateway 或项目内置 dispatch worker 驱动任务执行。
 
@@ -16,7 +18,7 @@
 
 ## 核心概念
 
-### 1. Hermes Profile = 一个独立 Agent
+### 1. Hermes Profile = 一个持久 Agent 身份
 
 平台中的 Agent 是一个逻辑实体，对应本机 Hermes profile：
 
@@ -29,19 +31,21 @@
 └── memories/
 ```
 
-Agent 创建时会：
+Agent 接入时会：
 
-1. 调用 `hermes profile create <profile_name> --clone --no-alias`。
-2. 创建 Agent 工作区，默认位于 `~/agent_team/<profile_name>`。
-3. 写入 `team-meta.json`。
-4. 注册到本地 RuntimeStore 和 SQLite。
-5. 异步生成或更新 `SOUL.md`。
+1. 已有 Profile 原地接入，不克隆、不覆盖 SOUL、Skill、记忆或配置。
+2. 新名称才调用 `hermes profile create <profile_name> --clone --no-alias`。
+3. 创建或复用 Agent 工作区，默认位于 `~/agent_team/<profile_name>`。
+4. 写入 `team-meta.json`，注册到 RuntimeStore 和 SQLite。
+5. 新 Profile 异步生成 SOUL；已有 Profile 保留原人设。
 
-当前支持的角色只有：
+Agent 移出团队或从控制台解雇时，只解除编排关系，不删除 Hermes Profile 和工作区。
+
+当前支持两类角色：
 
 | 角色 | 含义 |
 |---|---|
-| `leader` | 接收用户复杂任务，拆解并调度 Worker。系统只允许一个 Leader。 |
+| `leader` | 接收用户复杂任务，拆解并调度 Worker。每个团队最多一个 Leader。 |
 | `worker` | 执行具体子任务。 |
 
 ### 2. MCP / ACP / Kanban 的分工
@@ -104,8 +108,8 @@ Flask 后端维护 Agent Registry。Leader 通过 MCP 工具读取可调度 Work
                   │                            │
                   ▼                            ▼
 ┌────────────────────────────┐      ┌────────────────────────┐
-│ Hermes Kanban CLI           │      │ Hermes profiles         │
-│ boards / tasks / logs/runs  │      │ leader / workers        │
+│ Hermes Kanban CLI           │      │ Shared Hermes profiles  │
+│ boards / tasks / logs/runs  │      │ CLI + team orchestration│
 └────────────────────────────┘      └────────────────────────┘
 ```
 
@@ -215,6 +219,7 @@ SQLite 表由 `app/db/models.py` 定义，启动时通过 `Base.metadata.create_
 
 主要表：
 
+- `teams`
 - `agents`
 - `user_tasks`
 - `delegations`
@@ -227,6 +232,9 @@ SQLite 表由 `app/db/models.py` 定义，启动时通过 `Base.metadata.create_
 - `agent_skill_installs`
 - `agent_mcp_servers`
 
+`agents`、`messages` 和 `user_tasks` 保存 `team_id`，用于隔离团队
+视图与任务路由；`team_id IS NULL` 保留旧版未分组兼容行为。
+
 运行时高频终端输出事件不会持久化。
 
 ---
@@ -235,11 +243,15 @@ SQLite 表由 `app/db/models.py` 定义，启动时通过 `Base.metadata.create_
 
 | 环境变量 | 默认值 | 说明 |
 |---|---|---|
+| `HERMES_CONTROL_MODE` | `shared` | `shared` 接管正常 Hermes Home；`isolated` 使用隔离目录。 |
+| `HERMES_CLI` | `hermes` | Hermes CLI 名称或绝对路径。 |
 | `HERMES_HOME` | `~/.hermes` | Hermes profiles 根目录。 |
 | `AGENT_TEAM_WORKSPACE_ROOT` | `~/agent_team` | Agent 工作区根目录。 |
 | `DATABASE_URL` | `sqlite:///data/hermes_agent_team.db` | 数据库连接串。 |
 | `HERMES_AGENTS_MCP_URL` | `http://127.0.0.1:5050/mcp/` | 写入 Leader profile 的团队 MCP 地址。 |
+| `HOST` | `127.0.0.1` | HTTP 监听地址。 |
 | `PORT` | `5050` | Web 服务端口。 |
+| `AGENT_TEAM_API_TOKEN` | 空 | 可选 Bearer Token，保护 Flask `/api/*`。 |
 | `FLASK_DEBUG` | `0` | 日志级别开关，不启用 reload。 |
 | `AUTO_START_AGENTS` | `1` | 启动项目时自动启动 ready Agent。 |
 | `KANBAN_BOARD` | `hermes-agents-team` | 使用的 Hermes Kanban board。 |
@@ -256,4 +268,6 @@ Hermes Kanban = 持久化任务队列 + 派工系统 + 日志系统
 Hermes Agents Team = 多 Agent 控制台 + Profile/Skill/MCP/模型管理 + Kanban 可视化层
 ```
 
-本项目侧重本地可信环境，不提供公网鉴权、租户隔离和企业级权限模型。
+本项目侧重本地可信环境，不提供租户隔离和企业级权限模型。可选
+`AGENT_TEAM_API_TOKEN` 只覆盖 Flask API 与 SSE；终端 WebSocket、MCP 和整站访问
+仍需由监听地址、防火墙、VPN 或反向代理保护。详见 [部署教程](deployment.md)。
