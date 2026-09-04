@@ -1,0 +1,65 @@
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.view-dock {
+  display: none;
+}
+
+.view-dock.is-visible {
+  display: flex;
+}
+
+#kanban-task-status:not(.hidden) {
+  display: block;
+}
+
+/* Legacy modal/drawer styles from styles.css work inside overlays */
+.modal[hidden],
+.terminal-drawer[hidden],
+.history-drawer[hidden],
+.soul-drawer[hidden],
+.skills-drawer[hidden] {
+  display: none !important;
+}
+
+/* Legacy overlays must sit above Tailwind shell (header z-50, sidebar z-40) */
+.modal:not([hidden]),
+.terminal-drawer:not([hidden]),
+.history-drawer:not([hidden]),
+.soul-drawer:not([hidden]),
+.skills-drawer:not([hidden]) {
+  z-index: 120;
+}
+
+#app-sidebar {
+  z-index: 40;
+}
+
+body > header {
+  z-index: 50;
+}
+
+#view-overview {
+  min-height: 0;
+}
+
+main > .view {
+  min-height: 0;
+}
+
+#view-overview .flex-1.overflow-y-auto {
+  min-height: 0;
+}
+
+#overview-team-health {
+  min-height: fit-content;
+}

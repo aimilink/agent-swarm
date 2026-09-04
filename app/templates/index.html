@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HERMES AGENTS · Team Management</title>
+<script src="{{ url_for('static', filename='ui/tailwind.js') }}"></script>
+
+
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed-dim": "#ffb95f",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "on-tertiary-fixed-variant": "#653e00",
+                      "surface-dim": "#cbdbf5",
+                      "primary-fixed": "#dbe1ff",
+                      "secondary-fixed-dim": "#4edea3",
+                      "primary-container": "#2563eb",
+                      "on-primary-container": "#eeefff",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "on-tertiary-container": "#ffeedd",
+                      "on-secondary-fixed-variant": "#005236",
+                      "tertiary": "#784b00",
+                      "inverse-on-surface": "#eaf1ff",
+                      "tertiary-container": "#996100",
+                      "inverse-primary": "#b4c5ff",
+                      "surface-variant": "#d3e4fe",
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#6ffbbe",
+                      "on-secondary-fixed": "#002113",
+                      "surface-container-highest": "#d3e4fe",
+                      "tertiary-fixed": "#ffddb8",
+                      "surface-container": "#e5eeff",
+                      "error-container": "#ffdad6",
+                      "inverse-surface": "#213145",
+                      "outline": "#737686",
+                      "on-surface": "#0b1c30",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-fixed": "#2a1700",
+                      "on-surface-variant": "#434655",
+                      "on-error-container": "#93000a",
+                      "surface-container-high": "#dce9ff",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-low": "#eff4ff",
+                      "on-primary-fixed": "#00174b",
+                      "surface-bright": "#f8f9ff",
+                      "secondary": "#006c49",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#f8f9ff",
+                      "on-primary": "#ffffff",
+                      "surface": "#f8f9ff",
+                      "on-secondary-container": "#00714d",
+                      "secondary-container": "#6cf8bb",
+                      "primary": "#004ac6",
+                      "outline-variant": "#c3c6d7",
+                      "surface-tint": "#0053db",
+                      "on-error": "#ffffff",
+                      "on-background": "#0b1c30"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sm": "8px",
+                      "md": "16px",
+                      "base": "4px",
+                      "xs": "4px",
+                      "margin-desktop": "32px",
+                      "gutter": "20px",
+                      "xl": "32px",
+                      "margin-mobile": "16px",
+                      "lg": "24px"
+              },
+              "fontFamily": {
+                      "label-md": [
+                              "\"Inter, PingFang SC\""
+                      ],
+                      "display-lg": [
+                              "\"Inter, PingFang SC\""
+                      ],
+                      "headline-md": [
+                              "\"Inter, PingFang SC\""
+                      ],
+                      "title-lg": [
+                              "\"Inter, PingFang SC\""
+                      ],
+                      "label-sm": [
+                              "\"Inter, PingFang SC\""
+                      ],
+                      "body-md": [
+                              "\"Inter, PingFang SC\""
+                      ],
+                      "body-lg": [
+                              "\"Inter, PingFang SC\""
+                      ],
+                      "headline-sm": [
+                              "\"Inter, PingFang SC\""
+                      ]
+              },
+              "fontSize": {
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg": [
+                              "36px",
+                              {
+                                      "lineHeight": "44px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "title-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "26px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "11px",
+                              {
+                                      "lineHeight": "14px",
+                                      "letterSpacing": "0.03em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+.msr-removed { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal;
+       display: inline-block; line-height: 1; letter-spacing: normal; text-transform: none;
+       white-space: nowrap; word-wrap: normal; direction: ltr;
+       font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+       -webkit-font-smoothing: antialiased; }
+</style><link href="{{ url_for('static', filename='ui/fonts/material-symbols.css') }}" rel="stylesheet"/></head>
+<body class="bg-background text-on-background font-body-md h-screen flex flex-col overflow-hidden">
+<!-- Top Navigation (JSON) -->
+<header class="bg-surface/70 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-white/20 shadow-sm flex justify-between items-center px-margin-desktop py-4 h-16">
+<div class="flex items-center gap-4">
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">HERMES AGENTS · Team Management</h1>
+</div>
+<div class="flex items-center gap-4">
+<button id="open-create-agent" type="button" class="bg-primary-container text-on-primary-container px-4 py-2 rounded-lg font-label-md hover:opacity-90 transition-opacity">+ 新员工</button>
+<div class="flex gap-2 text-primary">
+<button id="sidebar-toggle" type="button" class="md:hidden p-2 hover:bg-surface-container-high/50 rounded-full transition-colors"><span class="material-symbols-outlined msr" aria-hidden="true">menu</span></button>
+<button id="open-teams-page" type="button" class="p-2 hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95 transition-transform" aria-label="团队管理" title="团队管理"><span class="material-symbols-outlined msr" aria-hidden="true">groups</span></button>
+<button id="open-team-settings" type="button" class="p-2 hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95 transition-transform" aria-label="团队配置" title="团队配置"><span class="material-symbols-outlined msr" aria-hidden="true">settings</span></button><span class="material-symbols-outlined msr" aria-hidden="true"></span></button>
+</div>
+<img class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A highly detailed close-up of a professional corporate headshot of a smiling professional in a modern, light-filled office. The lighting is soft and bright, emphasizing a clean, modern aesthetic with a primary blue tie or accent. High quality, photorealistic." src="{{ url_for('static', filename='ui/img/img_0.png') }}"/>
+</div>
+</header>
+<!-- Side Navigation (JSON) -->
+<nav id="app-sidebar" class="bg-surface/70 backdrop-blur-xl fixed left-0 top-0 h-full w-[260px] z-40 border-r border-white/20 shadow-none flex flex-col pt-24 p-md transition-transform duration-300 md:translate-x-0 -translate-x-full">
+<div class="mb-8">
+<div class="flex items-center gap-3 px-4 py-2">
+<div class="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center font-bold">H</div>
+<div>
+<h2 class="font-title-lg text-title-lg font-black text-primary">HERMES AGENTS</h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant">POWERED BY HERMES</p>
+</div>
+</div>
+</div>
+<ul class="flex flex-col gap-1 flex-1 font-body-md text-body-md">
+<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="overview" onclick="switchView('overview', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>团队概览</a></li>
+<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="board" onclick="switchView('board', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>任务板</a></li>
+<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="members" onclick="switchView('members', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>成员列表</a></li>
+<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="stats" onclick="switchView('stats', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>效能统计</a></li>
+<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="settings" onclick="switchView('settings', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>设置</a></li>
+</ul>
+<div class="mt-auto pt-4 border-t border-outline-variant/30 flex flex-col gap-2">
+<button class="w-full bg-surface-container text-primary font-label-md py-2 rounded-lg hover:bg-surface-container-high transition-colors">升级方案</button>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-on-surface text-sm" href="#"><span class="material-symbols-outlined text-[20px]" aria-hidden="true"></span>帮助中心</a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-on-surface text-sm" href="#"><span class="material-symbols-outlined text-[20px]" aria-hidden="true"></span>退出登录</a>
+</div>
+</nav>
+<!-- Main Workspace -->
+
+
+<main class="ml-[260px] pt-16 flex-1 flex flex-col h-full overflow-hidden bg-background">
+<!-- ========== VIEW: 团队概览 ========== -->
+<section id="view-overview" class="view flex-1 flex flex-col overflow-hidden">
+<div class="p-md pb-0 shrink-0">
+<div class="flex items-center justify-between mb-4">
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">团队概览</h2>
+<p class="font-label-md text-on-surface-variant mt-1">HERMES AGENTS 多 Agent 协作系统运行总览</p>
+</div>
+<button id="btn-create-task-overview" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-xl font-label-md shadow-sm hover:bg-primary/90 flex items-center gap-2"><span class="material-symbols-outlined msr text-[18px]" aria-hidden="true"></span>创建任务</button>
+</div>
+<div class="grid grid-cols-4 gap-md">
+<div id="overview-stats-grid" class="contents"></div></div>
+</div>
+<div class="flex-1 min-h-0 overflow-y-auto p-md grid grid-cols-5 gap-md">
+<div class="col-span-3 flex flex-col gap-md">
+<div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm">
+<div class="p-4 border-b border-outline-variant/30 flex justify-between items-center">
+<h3 class="font-title-lg text-title-lg text-on-surface">团队健康度</h3>
+<span class="font-label-sm text-secondary flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>全部运行中</span>
+</div>
+<div id="overview-team-health" class="p-4 grid grid-cols-3 gap-3"></div></div>
+<div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+<div class="p-4 border-b border-outline-variant/30 flex justify-between items-center">
+<h3 class="font-title-lg text-title-lg text-on-surface">最新动态</h3>
+<button class="font-label-sm text-primary flex items-center gap-1">查看全部 </button>
+</div>
+<div class="px-4 divide-y divide-outline-variant/10">
+<div id="overview-activity-feed" class="px-4 divide-y divide-outline-variant/10"></div></div>
+</div>
+</div>
+<div class="col-span-2 flex flex-col gap-md">
+<div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+<div class="p-4 border-b border-outline-variant/30">
+<h3 class="font-title-lg text-title-lg text-on-surface">今日任务状态</h3>
+</div>
+<div class="p-4 flex flex-col gap-3">
+<div id="overview-task-status" class="p-4 flex flex-col gap-3"></div></div>
+</div>
+<div class="bg-gradient-to-br from-primary-container/15 to-surface rounded-xl border border-outline-variant/30 p-4 shadow-sm">
+<div class="flex items-center gap-2 mb-2"><span class="material-symbols-outlined msr text-primary" aria-hidden="true"></span>
+<h3 class="font-title-lg text-[15px] font-bold text-on-surface">运行模式</h3></div>
+<p class="text-[13px] text-on-surface-variant leading-relaxed mb-3">任务自动拆解 → 自动派发 → 多轮 Review → 结果归档，Leader 负责验收，阻塞任务人工介入。</p>
+<div class="flex flex-wrap gap-1.5">
+<span class="px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px]">自动派发 ✓</span>
+<span class="px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px]">多轮复盘 ✓</span>
+<span class="px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px]">Kanban 看板 ✓</span>
+<span class="px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px]">幂等保护 ✓</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ========== VIEW: 任务板 ========== -->
+<section id="view-board" class="view hidden flex-1 flex flex-col overflow-hidden">
+<div class="flex-1 flex flex-col p-md gap-md">
+<div class="flex items-center justify-between shrink-0">
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">团队任务</h2>
+<p class="font-label-md text-on-surface-variant mt-1">AGENTS TEAM TASKS · 各团队独立看板，Leader 负责验收</p>
+</div>
+<div class="flex items-center gap-3">
+<select id="board-team-select" class="bg-surface border border-outline-variant/50 rounded-lg px-3 py-2 text-on-surface font-label-md outline-none focus:border-primary"><option value="">全部团队</option><option>销售团队</option><option>技术团队</option><option>市场团队</option></select>
+<button id="btn-create-task-board" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-xl font-label-md shadow-sm hover:bg-primary/90">+ 新建任务</button>
+</div>
+</div>
+<div class="flex-1 overflow-x-auto flex gap-4 pb-2">
+<div id="board-kanban-columns" class="contents flex gap-4"></div></div>
+</div>
+</section>
+
+<!-- ========== VIEW: 成员列表 ========== -->
+<section id="view-members" class="view hidden flex-1 flex flex-col overflow-hidden">
+<div class="p-md pb-0 shrink-0">
+<div class="flex items-center justify-between mb-4">
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">成员列表</h2>
+<p class="font-label-md text-on-surface-variant mt-1"><span id="members-subtitle">加载中…</span></p>
+</div>
+<button id="btn-create-agent-members" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-xl font-label-md shadow-sm hover:bg-primary/90 flex items-center gap-2"><span class="material-symbols-outlined msr text-[18px]" aria-hidden="true"></span>新员工</button>
+</div>
+<div class="flex items-center gap-2 mb-4">
+<div id="members-filter-bar" class="flex gap-1 bg-surface-container rounded-xl p-1"></div></div>
+<div class="flex-1"></div>
+<div class="relative">
+<span class="material-symbols-outlined msr absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-[18px]" aria-hidden="true"></span>
+<input id="member-search" class="w-56 pl-9 pr-3 py-2 bg-surface border border-outline-variant/50 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none font-body-md" placeholder="搜索成员…" type="text"/>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-md">
+<div class="grid grid-cols-2 xl:grid-cols-3 gap-3">
+<div id="members-grid" class="contents"></div></div>
+</div>
+</section>
+
+<!-- ========== VIEW: 效能统计 ========== -->
+<section id="view-stats" class="view hidden flex-1 flex flex-col overflow-hidden">
+<div class="p-md pb-0 shrink-0">
+<div class="flex items-center justify-between mb-4">
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">效能统计</h2>
+<p class="font-label-md text-on-surface-variant mt-1"><span id="stats-subtitle">加载中…</span></p>
+</div>
+<div class="flex items-center gap-2 bg-surface-container rounded-xl p-1">
+<button type="button" data-stats-range="1" class="px-3 py-1.5 rounded-lg font-label-md text-on-surface-variant">24h</button>
+<button type="button" data-stats-range="7" class="px-3 py-1.5 rounded-lg bg-surface shadow-sm font-label-md text-on-surface">7d</button>
+<button type="button" data-stats-range="30" class="px-3 py-1.5 rounded-lg font-label-md text-on-surface-variant">30d</button>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-md grid grid-cols-2 gap-md">
+<div id="stats-content" class="contents col-span-2 grid grid-cols-2 gap-md"></div></div>
+</section>
+
+<!-- ========== VIEW: 设置 ========== -->
+<section id="view-settings" class="view hidden flex-1 flex flex-col overflow-hidden">
+<div class="p-md pb-0 shrink-0">
+<div class="mb-4">
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">系统设置</h2>
+<p class="font-label-md text-on-surface-variant mt-1">团队协作 · 模型 · 任务编排配置</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-md max-w-4xl">
+<div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden mb-4">
+<div class="p-4 border-b border-outline-variant/30"><h3 class="font-title-lg text-title-lg text-on-surface">协作编排</h3></div>
+<div class="divide-y divide-outline-variant/10">
+<div class="p-4 flex items-center justify-between gap-6">
+<div><div class="font-label-md text-on-surface font-bold mb-0.5">自动派发</div><div class="text-[13px] text-on-surface-variant">新任务自动拆解并派发给团队 Worker，无需人工分配</div></div>
+<label class="relative inline-block w-11 mr-2 align-middle select-none"><input id="settings-auto-dispatch" checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-secondary transition-transform duration-200 ease-in-out translate-x-5 z-10" type="checkbox"/><span class="toggle-label block overflow-hidden h-6 rounded-full bg-secondary cursor-pointer"></span></label>
+</div>
+<div class="p-4 flex items-center justify-between gap-6">
+<div><div class="font-label-md text-on-surface font-bold mb-0.5">多轮 Review 复盘</div><div class="text-[13px] text-on-surface-variant">Worker 完成后 Leader 多轮 review，不合格自动打回重做</div></div>
+<label class="relative inline-block w-11 mr-2 align-middle select-none"><input id="settings-multi-review" checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-secondary transition-transform duration-200 ease-in-out translate-x-5 z-10" type="checkbox"/><span class="toggle-label block overflow-hidden h-6 rounded-full bg-secondary cursor-pointer"></span></label>
+</div>
+<div class="p-4 flex items-center justify-between gap-6">
+<div><div class="font-label-md text-on-surface font-bold mb-0.5">阻塞人工介入</div><div class="text-[13px] text-on-surface-variant">任务阻塞时通知用户并等待人工输入，不无限重试</div></div>
+<label class="relative inline-block w-11 mr-2 align-middle select-none"><input id="settings-block-human" checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-secondary transition-transform duration-200 ease-in-out translate-x-5 z-10" type="checkbox"/><span class="toggle-label block overflow-hidden h-6 rounded-full bg-secondary cursor-pointer"></span></label>
+</div>
+<div class="p-4 flex items-center justify-between gap-6">
+<div><div class="font-label-md text-on-surface font-bold mb-0.5">幂等保护</div><div class="text-[13px] text-on-surface-variant">重复提交的任务自动去重，避免 Agent 重复执行</div></div>
+<label class="relative inline-block w-11 mr-2 align-middle select-none"><input id="settings-idempotent" checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-secondary transition-transform duration-200 ease-in-out translate-x-5 z-10" type="checkbox"/><span class="toggle-label block overflow-hidden h-6 rounded-full bg-secondary cursor-pointer"></span></label>
+</div>
+</div>
+</div>
+<div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden mb-4">
+<div class="p-4 border-b border-outline-variant/30"><h3 class="font-title-lg text-title-lg text-on-surface">模型配置</h3></div>
+<div id="settings-model-list" class="p-4 flex flex-col gap-3"></div>
+</div>
+<div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden mb-4">
+<div class="p-4 border-b border-outline-variant/30"><h3 class="font-title-lg text-title-lg text-on-surface">团队导入/导出</h3></div>
+<div class="p-4 flex flex-wrap gap-3">
+<button type="button" id="settings-export-team" class="px-4 py-2 rounded-xl bg-primary-container/20 text-primary font-label-md hover:bg-primary-container/30 transition-colors">导出团队</button>
+<button type="button" id="settings-import-team" class="px-4 py-2 rounded-xl bg-surface-container text-on-surface font-label-md hover:bg-surface-container-high transition-colors">导入团队</button>
+</div>
+</div>
+<div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+<div class="p-4 border-b border-outline-variant/30"><h3 class="font-title-lg text-title-lg text-on-surface">危险区</h3></div>
+<div class="p-4 flex items-center justify-between">
+<div><div class="font-label-md text-error font-bold mb-0.5">删除全部任务记录</div><div id="settings-done-count" class="text-[13px] text-on-surface-variant">清空已完成任务与 deliverables 目录</div></div>
+<button type="button" id="settings-clear-done-tasks" data-kanban-clear-column="done" data-kanban-column-title="已完成" class="px-4 py-2 rounded-xl bg-error-container/30 text-error font-label-md hover:bg-error-container/50">清空数据</button>
+</div>
+</div>
+</div>
+</section>
+
+<!-- bottom task dock (board only) -->
+<form id="kanban-task-form" data-ui-dock="task-dock" class="view-dock bg-surface border-t border-outline-variant/30 p-4 shrink-0 flex items-center gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<div class="flex-1 relative">
+<span class="material-symbols-outlined msr absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant" aria-hidden="true"></span>
+<input id="kanban-task-input" class="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant/50 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none font-body-md" placeholder="发消息或输入任务，例如：让销售团队跟进客户A的报价需求…" type="text" rows="1"/>
+</div>
+<div class="flex items-center gap-2 border-l border-outline-variant/30 pl-4">
+<span class="font-label-md text-on-surface-variant">发送给:</span>
+<select id="kanban-team-select" class="bg-surface border border-outline-variant/50 rounded-lg px-3 py-2 text-on-surface font-label-md outline-none focus:border-primary"><option value="">全部团队</option><option>销售团队</option><option>技术团队</option><option>市场团队</option></select>
+</div>
+<div class="flex items-center gap-4">
+<label class="flex items-center gap-2 cursor-pointer">
+<span class="font-label-md text-on-surface-variant">自动派发</span>
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input id="kanban-auto-dispatch" type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-secondary transition-transform duration-200 ease-in-out z-10" aria-pressed="false"/>
+<span class="toggle-label block overflow-hidden h-5 rounded-full bg-secondary cursor-pointer"></span>
+</div>
+</label>
+<button id="kanban-dispatch" type="button" class="bg-surface-container text-primary px-4 py-2 rounded-xl font-label-md shadow-sm hover:bg-surface-container-high mr-2">派发</button>
+<button type="submit" class="bg-primary text-on-primary px-6 py-2.5 rounded-xl font-title-lg text-sm font-bold shadow-sm hover:bg-primary/90 transition-colors flex items-center gap-2">创建任务<span class="material-symbols-outlined msr text-sm" aria-hidden="true"></span></button>
+</div>
+<p id="kanban-task-status" class="font-label-sm text-secondary hidden" role="status" aria-live="polite"></p>
+</form>
+</main>
+
+
+
+
+<!-- Hidden compatibility layer for app.js -->
+<div class="sr-only" aria-hidden="true">
+  <div id="agent-list"></div>
+  <div id="kanban-task-list"></div>
+  <div id="sidebar-stats"></div>
+  <p id="agent-empty" hidden></p>
+  <div id="kanban-team-picker" hidden><select id="kanban-team-select-hidden"></select></div>
+  <button id="kanban-refresh" type="button" hidden></button>
+  <button id="kanban-panels-toggle" type="button" hidden></button>
+  <div id="kanban-team-ornament" hidden></div>
+  <button id="kanban-assignee-trigger" type="button" hidden><span>Leader</span></button>
+  <button id="open-history-drawer" type="button" hidden></button>
+</div>
+<div class="terminal-drawer" id="terminal-drawer" hidden>
+      <div class="terminal-drawer__backdrop" data-close-terminal></div>
+      <aside
+        class="terminal-drawer__panel panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="terminal-drawer-title"
+      >
+        <div class="terminal-drawer__head">
+          <div>
+            <h2 id="terminal-drawer-title">实时消息</h2>
+            <p>Hermes Terminal</p>
+          </div>
+          <button class="modal__close" type="button" data-close-terminal aria-label="close">×</button>
+        </div>
+        <div
+          class="terminal-shell terminal-shell--drawer"
+          id="terminal-shell"
+          data-selected-agent="{{ message_target.agent_id if message_target else '' }}"
+        >
+          <div class="terminal-toolbar">
+            <span class="terminal-dot"></span>
+            <span id="terminal-title">Agent Terminal</span>
+          </div>
+          <div class="terminal-viewport" id="terminal-viewport"></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="history-drawer" id="history-drawer" hidden>
+      <div class="history-drawer__backdrop" data-close-history></div>
+      <aside
+        class="history-drawer__panel panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="history-drawer-title"
+      >
+        <div class="history-drawer__head">
+          <div>
+            <h2 id="history-drawer-title">历史记录</h2>
+            <p id="history-drawer-agent">尚未选择 Agent</p>
+          </div>
+          <button class="modal__close" type="button" data-close-history aria-label="close">×</button>
+        </div>
+        <div class="interaction-list" id="interaction-list"></div>
+        <p class="empty-hint history-drawer__empty" id="history-empty" hidden>暂无历史记录。</p>
+      </aside>
+    </div>
+
+    <div class="soul-drawer" id="soul-drawer" hidden>
+      <div class="soul-drawer__backdrop" data-close-soul></div>
+      <aside
+        class="soul-drawer__panel panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="soul-drawer-title"
+      >
+        <div class="soul-drawer__head">
+          <div>
+            <h2 id="soul-drawer-title">SOUL.md</h2>
+            <p id="soul-drawer-agent">尚未选择 Agent</p>
+            <code id="soul-drawer-path">—</code>
+          </div>
+          <button class="modal__close" type="button" data-close-soul aria-label="close">×</button>
+        </div>
+        <p class="soul-status" id="soul-status" hidden></p>
+        <div class="soul-editor-grid">
+          <label class="soul-editor">
+            <span>Markdown 编辑</span>
+            <textarea id="soul-editor" spellcheck="false"></textarea>
+          </label>
+          <section class="soul-preview" aria-label="SOUL markdown preview">
+            <div class="soul-preview__label">预览</div>
+            <div class="soul-preview__body" id="soul-preview"></div>
+          </section>
+        </div>
+        <div class="soul-drawer__actions">
+          <span id="soul-dirty-hint" class="soul-dirty-hint" hidden>有未保存修改</span>
+          <button class="filter-chip" type="button" id="regenerate-soul">重新生成</button>
+          <button class="filter-chip" type="button" data-close-soul>关闭</button>
+          <button class="primary-button primary-button--sm" type="button" id="save-soul">保存</button>
+        </div>
+      </aside>
+    </div>
+
+    <div class="skills-drawer" id="skills-drawer" hidden>
+      <div class="skills-drawer__backdrop" data-close-skills></div>
+      <aside
+        class="skills-drawer__panel panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="skills-drawer-title"
+      >
+        <div class="skills-drawer__head">
+          <div>
+            <h2 id="skills-drawer-title">Skills</h2>
+            <p id="skills-drawer-agent">尚未选择 Agent</p>
+          </div>
+          <button class="modal__close" type="button" data-close-skills aria-label="close">×</button>
+        </div>
+        <p class="soul-status" id="skills-status" hidden></p>
+        <div class="skills-layout">
+          <section class="skills-list-panel">
+            <div class="skills-list-head">
+              <strong>已安装</strong>
+              <div class="skills-list-actions">
+                <button class="primary-button primary-button--sm" type="button" id="open-skills-install">+技能</button>
+                <button class="filter-chip" type="button" id="skills-refresh">刷新</button>
+              </div>
+            </div>
+            <div class="skills-alpha-nav" id="skills-alpha-nav"></div>
+            <div class="skills-list" id="skills-list"></div>
+            <p class="empty-hint" id="skills-empty" hidden>还没有安装 skill。</p>
+          </section>
+          <section class="skills-detail-panel">
+            <div class="skills-detail-head">
+              <div>
+                <strong id="skills-detail-title">选择一个 skill</strong>
+                <p id="skills-detail-meta">—</p>
+              </div>
+              <div class="skills-detail-actions">
+                <button class="filter-chip" type="button" id="skills-reinstall" disabled>重装</button>
+                <button class="filter-chip" type="button" id="skills-uninstall" disabled>卸载</button>
+              </div>
+            </div>
+            <code id="skills-detail-path">—</code>
+            <div class="soul-preview__body skills-preview" id="skills-preview"></div>
+          </section>
+        </div>
+      </aside>
+    </div>
+
+    <div class="modal" id="skills-install-modal" hidden>
+      <div class="modal__backdrop" data-close-skills-install></div>
+      <div class="modal__panel panel">
+        <div class="modal__head">
+          <h2>安装技能</h2>
+          <button class="modal__close" type="button" data-close-skills-install aria-label="close">×</button>
+        </div>
+        <form class="modal__form" id="skills-install-form">
+          <label>
+            <span>Git 仓库</span>
+            <input name="repo_url" type="url" placeholder="https://github.com/org/repo.git" required>
+          </label>
+          <label>
+            <span>分支/标签</span>
+            <input name="ref" placeholder="默认远端默认分支">
+          </label>
+          <label>
+            <span>子目录</span>
+            <input name="subdir" placeholder="可选">
+          </label>
+          <label>
+            <span>Slug</span>
+            <input name="slug" placeholder="可选">
+          </label>
+          <div class="modal__actions">
+            <button type="button" class="filter-chip" data-close-skills-install>取消</button>
+            <button class="primary-button" type="submit">安装</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="skills-drawer mcp-drawer" id="mcp-drawer" hidden>
+      <div class="skills-drawer__backdrop" data-close-mcp></div>
+      <aside class="skills-drawer__panel panel" role="dialog" aria-modal="true" aria-labelledby="mcp-drawer-title">
+        <div class="skills-drawer__head">
+          <div>
+            <h2 id="mcp-drawer-title">MCP Servers</h2>
+            <p id="mcp-drawer-agent">尚未选择 Agent</p>
+          </div>
+          <button class="modal__close" type="button" data-close-mcp aria-label="close">×</button>
+        </div>
+        <p class="soul-status" id="mcp-status" hidden></p>
+        <div class="mcp-toolbar">
+          <button class="primary-button primary-button--sm" type="button" id="open-mcp-edit">+ 新增 MCP</button>
+          <button class="filter-chip" type="button" id="mcp-refresh">刷新</button>
+        </div>
+        <div class="mcp-list" id="mcp-list"></div>
+        <p class="empty-hint" id="mcp-empty" hidden>还没有安装 MCP。</p>
+      </aside>
+    </div>
+
+    <div class="skills-drawer mcp-drawer" id="agent-model-drawer" hidden>
+      <div class="skills-drawer__backdrop" data-close-agent-model></div>
+      <aside class="skills-drawer__panel panel" role="dialog" aria-modal="true" aria-labelledby="agent-model-drawer-title">
+        <div class="skills-drawer__head">
+          <div>
+            <h2 id="agent-model-drawer-title">模型配置</h2>
+            <p id="agent-model-drawer-agent">尚未选择 Agent</p>
+          </div>
+          <button class="modal__close" type="button" data-close-agent-model aria-label="close">×</button>
+        </div>
+        <p class="soul-status" id="agent-model-status" hidden></p>
+        <div class="agent-model-current" id="agent-model-current">当前模型：—</div>
+        <form class="modal__form agent-model-form" id="agent-model-form">
+          <label>
+            <span>选择配置</span>
+            <select name="model_config_id" id="agent-model-select" required></select>
+          </label>
+          <p class="form-hint">保存会写入该 Agent 的 Hermes profile config.yaml。运行中的 Agent 需要重启后生效。</p>
+          <div class="modal__actions">
+            <button type="button" class="filter-chip" data-close-agent-model>取消</button>
+            <button type="submit" class="primary-button" id="save-agent-model">保存</button>
+          </div>
+        </form>
+      </aside>
+    </div>
+
+    <div class="modal" id="mcp-edit-modal" hidden>
+      <div class="modal__backdrop" data-close-mcp-edit></div>
+      <div class="modal__panel panel">
+        <div class="modal__head">
+          <h2 id="mcp-edit-title">新增 MCP</h2>
+          <button class="modal__close" type="button" data-close-mcp-edit aria-label="close">×</button>
+        </div>
+        <form class="modal__form" id="mcp-edit-form">
+          <input type="hidden" name="original_name">
+          <label>
+            <span>类型</span>
+            <select name="transport">
+              <option value="http">HTTP/SSE</option>
+              <option value="streamable_http">Streamable HTTP</option>
+              <option value="stdio">stdio</option>
+            </select>
+          </label>
+          <label>
+            <span>名称</span>
+            <input name="name" required pattern="[a-z0-9][a-z0-9_\-]{0,40}" placeholder="figma">
+          </label>
+          <label class="mcp-http-field">
+            <span>URL</span>
+            <input name="url" type="url" placeholder="https://mcp.example.com/sse">
+          </label>
+          <label class="mcp-http-field">
+            <span>Headers</span>
+            <textarea name="headers" rows="3" placeholder="Authorization: Bearer xxx"></textarea>
+          </label>
+          <label class="mcp-stdio-field" hidden>
+            <span>Command</span>
+            <input name="command" placeholder="npx">
+          </label>
+          <label class="mcp-stdio-field" hidden>
+            <span>Args</span>
+            <textarea name="args" rows="3" placeholder="-y&#10;@playwright/mcp@latest"></textarea>
+          </label>
+          <label class="mcp-stdio-field" hidden>
+            <span>Env</span>
+            <textarea name="env" rows="3" placeholder="PWDEBUG=1"></textarea>
+          </label>
+          <label>
+            <span>描述</span>
+            <textarea name="description" rows="2" placeholder="用于 Leader 派发时识别能力"></textarea>
+          </label>
+          <p class="form-hint">Headers / Env 每行一个 `key: value` 或 `key=value`。Secret 留空表示清空，保留 `****` 表示不变。</p>
+          <div class="modal__actions">
+            <button type="button" class="filter-chip" data-close-mcp-edit>取消</button>
+            <button class="filter-chip" type="button" id="mcp-save-test">测试后保存</button>
+            <button class="primary-button" type="submit">直接保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+
+    <div class="modal" id="teams-manage-modal" hidden>
+      <div class="modal__backdrop" data-close-teams-manage></div>
+      <div class="modal__panel panel teams-manage__panel">
+        <div class="modal__head">
+          <h2>团队管理</h2>
+          <button class="modal__close" type="button" data-close-teams-manage aria-label="close">×</button>
+        </div>
+        <div class="teams-manage__layout">
+          <div class="teams-manage__left">
+            <form id="create-team-form" class="teams-manage__create">
+              <label>
+                <span>团队标识（slug）</span>
+                <input name="slug" required placeholder="小写字母数字与-，如 sales" pattern="[a-z][a-z0-9-]{1,40}[a-z0-9]">
+              </label>
+              <label>
+                <span>团队名称</span>
+                <input name="name" required placeholder="如：销售团队">
+              </label>
+              <label>
+                <span>描述（可选）</span>
+                <input name="description" placeholder="团队职责一句话">
+              </label>
+              <p class="form-error" id="create-team-error" hidden></p>
+              <button type="submit" class="primary-button primary-button--sm">创建团队</button>
+            </form>
+            <div class="teams-manage__list" id="teams-manage-list"></div>
+          </div>
+          <div class="teams-manage__right" id="teams-manage-detail">
+            <p class="form-hint">从左侧选择一个团队查看成员。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="create-agent-modal" hidden>
+      <div class="modal__backdrop" data-close-modal></div>
+      <div class="modal__panel panel">
+        <div class="modal__head">
+          <h2>新员工入职</h2>
+          <button class="modal__close" type="button" data-close-modal aria-label="close">×</button>
+        </div>
+        <form id="create-agent-form" class="modal__form">
+          <label>
+            <span>中文姓名</span>
+            <input name="name" required placeholder="姓名或职务，例如：林克">
+          </label>
+          <label>
+            <span>英文名称</span>
+            <input name="profile_name" required placeholder="全部小写，不能有空格" pattern="[a-z0-9][a-z0-9_\-]*">
+          </label>
+          <div class="modal__form-row">
+            <span>角色</span>
+            <div class="role-radio-group" role="radiogroup" aria-label="角色">
+              <label class="role-radio">
+                <input type="radio" name="role" value="leader">
+                <span>leader</span>
+              </label>
+              <label class="role-radio">
+                <input type="radio" name="role" value="worker" checked>
+                <span>worker</span>
+              </label>
+            </div>
+          </div>
+          <p class="form-hint form-hint--role">注意：系统内只能存在一个 leader。</p>
+          <label>
+            <span>模型配置</span>
+            <select name="model_config_id" id="create-agent-model-config">
+              <option value="">继承当前 Hermes active profile 配置</option>
+            </select>
+          </label>
+          <label>
+            <span>描述</span>
+            <textarea name="description" rows="2" placeholder="描述岗位职责"></textarea>
+          </label>
+          <p class="form-error" id="create-agent-error" hidden></p>
+          <div class="modal__actions">
+            <button type="button" class="filter-chip" data-close-modal>取消</button>
+            <button type="submit" class="primary-button">入职</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal" id="team-transfer-modal" hidden>
+      <div class="modal__backdrop" data-close-transfer></div>
+      <div class="modal__panel panel transfer-modal__panel">
+        <div class="modal__head">
+          <h2>团队配置</h2>
+          <button class="modal__close" type="button" data-close-transfer aria-label="close">×</button>
+        </div>
+        <div class="transfer-tabs" role="tablist">
+          <button class="filter-chip" type="button" data-transfer-tab="runtime">一键操作</button>
+          <button class="filter-chip is-active" type="button" data-transfer-tab="export">导出</button>
+          <button class="filter-chip" type="button" data-transfer-tab="import">导入</button>
+          <button class="filter-chip" type="button" data-transfer-tab="models">模型配置</button>
+        </div>
+        <section class="transfer-pane" data-transfer-pane="runtime" hidden>
+          <p class="form-hint">批量管理当前团队所有 Agent 的运行状态。</p>
+          <div class="team-runtime-panel">
+            <button class="primary-button primary-button--sm" type="button" data-team-runtime-action="start">全部启动</button>
+            <button class="primary-button primary-button--sm" type="button" data-team-runtime-action="restart">全部重启</button>
+            <button class="filter-chip team-runtime-panel__stop" type="button" data-team-runtime-action="stop">全部关闭</button>
+            <button class="filter-chip team-runtime-panel__init" type="button" id="team-initialize-agents">初始化 Agents</button>
+          </div>
+          <p class="form-hint">初始化会重建 Kanban board、清空 workspace 与历史任务，然后自动启动就绪 Agent；保留人设、模型、技能和 MCP 配置。</p>
+          <p class="form-error" id="team-runtime-status" hidden></p>
+        </section>
+        <section class="transfer-pane" data-transfer-pane="export">
+          <p class="form-hint">选择要打包的 Agent，导出为 `hermes-agent-team-时间.zip`。</p>
+          <div class="transfer-agent-list" id="transfer-agent-list"></div>
+          <label class="transfer-check"><span>内联 skills 文件</span><input type="checkbox" id="transfer-inline-skills" checked></label>
+          <details class="transfer-advanced">
+            <summary>高级选项</summary>
+            <label class="transfer-check"><span>包含 workspace</span><input type="checkbox" id="transfer-include-workspace"></label>
+          </details>
+          <p class="form-error" id="transfer-export-status" hidden></p>
+          <div class="modal__actions">
+            <button type="button" class="filter-chip" data-close-transfer>取消</button>
+            <button type="button" class="primary-button" id="transfer-export-submit">导出</button>
+          </div>
+        </section>
+        <section class="transfer-pane" data-transfer-pane="import" hidden>
+          <p class="form-hint">上传 zip 后先预检；确认导入会解雇并删除本机所有 agents、workspace 与运行历史。</p>
+          <label class="transfer-file-picker" for="transfer-import-file">
+            <input type="file" id="transfer-import-file" accept=".zip,application/zip">
+            <span class="transfer-file-picker__icon">ZIP</span>
+            <span class="transfer-file-picker__body">
+              <strong id="transfer-file-name">选择 hermes-agent-team-时间.zip 文件</strong>
+              <small>点击选择导出包，预检通过后再确认导入</small>
+            </span>
+          </label>
+          <div class="transfer-preview" id="transfer-import-preview" hidden></div>
+          <p class="form-error" id="transfer-import-status" hidden></p>
+          <div class="modal__actions">
+            <button type="button" class="filter-chip" id="transfer-inspect-submit">预检</button>
+            <button type="button" class="primary-button danger-button" id="transfer-import-submit" disabled>确认导入</button>
+          </div>
+        </section>
+        <section class="transfer-pane" data-transfer-pane="models" hidden>
+          <div class="model-config-toolbar">
+            <p class="form-hint">维护可复用的大模型配置。</p>
+            <button class="primary-button primary-button--sm" type="button" id="open-model-config-edit">+ 模型配置</button>
+          </div>
+          <div class="model-config-list" id="model-config-list"></div>
+          <p class="empty-hint" id="model-config-empty" hidden>还没有模型配置。</p>
+          <p class="form-error" id="model-config-status" hidden></p>
+        </section>
+      </div>
+    </div>
+
+    <div class="modal" id="model-config-edit-modal" hidden>
+      <div class="modal__backdrop" data-close-model-config-edit></div>
+      <div class="modal__panel panel">
+        <div class="modal__head">
+          <h2 id="model-config-edit-title">新增模型配置</h2>
+          <button class="modal__close" type="button" data-close-model-config-edit aria-label="close">×</button>
+        </div>
+        <form class="modal__form" id="model-config-edit-form">
+          <input type="hidden" name="id">
+          <label>
+            <span>配置名</span>
+            <input name="name" required placeholder="公司网关">
+          </label>
+          <label>
+            <span>模型名</span>
+            <input name="model" required placeholder="gpt-5.4">
+          </label>
+          <label>
+            <span>Base URL</span>
+            <input name="base_url" type="url" required placeholder="https://example.com/v1">
+          </label>
+          <label>
+            <span>API Key</span>
+            <input name="api_key" type="password" required autocomplete="new-password" placeholder="sk-xxx 或 ${OPENAI_API_KEY}">
+          </label>
+          <p class="form-hint">Provider 固定写入 custom；连通性测试会请求 Base URL 下的 /models。</p>
+          <div class="modal__actions">
+            <button type="button" class="filter-chip" data-close-model-config-edit>取消</button>
+            <button class="filter-chip" type="button" id="model-config-save-test">测试后保存</button>
+            <button class="primary-button" type="submit">直接保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    
+    <script>
+      window.__BOOTSTRAP__ = {{ {"agents": agents, "teams": teams or [], "events": events, "kanban_task_links": kanban_task_links, "stats": stats}|tojson }};
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version('app.js') }}"></script>
+    <script src="{{ url_for('static', filename='ui-app.js') }}?v={{ asset_version('ui-app.js') }}"></script>
+  </body></html>

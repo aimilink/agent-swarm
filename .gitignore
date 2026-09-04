@@ -1,0 +1,17 @@
+.claude/
+*.pyc
+*.cpython-310.pyc
+__pycache__/
+.venv/
+.DS_Store
+.pytest_cache/
+*.pdf
+.env
+
+# Isolated Hermes runtime (profiles, kanban boards, logs, caches)
+hermes-home/*
+!hermes-home/.gitkeep
+
+# Agent workspace outputs (created at runtime by tasks)
+workspace/*
+!workspace/.gitkeep
