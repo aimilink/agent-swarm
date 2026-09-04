@@ -66,8 +66,7 @@ def create_agent(
         raise ValueError("only one leader can exist")
 
     workspace_path = registry.ensure_workspace(profile_name)
-
-    profiles.create_hermes_profile(profile_name)
+    created_profile = profiles.create_hermes_profile(profile_name)
     registry.skills_dir_for(profile_name).mkdir(parents=True, exist_ok=True)
 
     if role == "leader":
@@ -75,7 +74,6 @@ def create_agent(
             profile_name, name="agent_bus", url=MCP_BUS_URL
         )
         mcp_installer.upsert_builtin_agent_bus(profile_name)
-        profiles.disable_conflicting_toolsets(profile_name)
 
     created_at = now_iso()
     meta = {
@@ -85,6 +83,8 @@ def create_agent(
         "is_leader": role == "leader",
         "created_at": created_at,
         "workspace_path": workspace_path,
+        "team_id": team_id,
+        "profile_origin": "created" if created_profile else "existing",
     }
     registry.write_team_meta(profile_name, meta)
 
@@ -103,28 +103,51 @@ def create_agent(
         "last_output": "",
         "last_output_at": "",
         "readiness_status": "preparing",
-        "readiness_message": "正在生成 SOUL.md",
+        "readiness_message": "正在准备 Agent",
         "last_active_at": created_at,
         "team_id": team_id,
         **meta,
     }
     store.register_agent(agent)
+    existing_soul = registry.soul_path_for(profile_name)
+    has_existing_soul = (
+        not created_profile
+        and existing_soul.exists()
+        and bool(existing_soul.read_text(encoding="utf-8").strip())
+    )
+    if has_existing_soul:
+        store.update_agent(
+            agent["agent_id"],
+            readiness_status="ready",
+            readiness_message="沿用现有 Hermes SOUL.md",
+            current_task="空闲",
+        )
+        agent = store.find_agent(agent["agent_id"]) or agent
+
     store.push_event(
         "agent.created",
         agent["agent_id"],
         None,
-        {"text": f"Agent {name} 已创建（profile={profile_name}），开始生成 SOUL.md…"},
+        {
+            "text": (
+                f"Agent {name} 已接入团队（profile={profile_name}）；"
+                + ("沿用原 Profile 数据" if not created_profile else "已创建可独立使用的 Profile")
+            )
+        },
     )
     store.push_agents_changed()
 
-    soul.spawn_generate(
-        store,
-        agent_id=agent["agent_id"],
-        name=name,
-        role=role,
-        description=description,
-        profile_name=profile_name,
-    )
+    if has_existing_soul:
+        acp.pool.start(agent)
+    else:
+        soul.spawn_generate(
+            store,
+            agent_id=agent["agent_id"],
+            name=name,
+            role=role,
+            description=description,
+            profile_name=profile_name,
+        )
     return agent
 
 
@@ -143,15 +166,19 @@ def delete_agent(store: RuntimeStore, agent_id: str) -> dict:
     workspace_path = agent.get("workspace_path") or str(registry.workspace_path_for(profile_name))
     _safe_workspace_delete_path(workspace_path)
     acp.pool.stop(agent_id)
-    profiles.delete_hermes_profile(profile_name)
-    registry.delete_team_meta(profile_name)  # no-op if the profile dir was already gone
-    mcp_installer.delete_records_for_profile(profile_name)
-    _delete_workspace(workspace_path)
+    # Dismiss means detach from orchestration only. The Hermes profile,
+    # workspace, skills, memories and experience deliberately remain intact.
+    registry.delete_team_meta(profile_name)
     store.remove_agent(agent_id)
     store.push_event(
         "agent.deleted",
         agent_id,
         None,
-        {"text": f"Agent {agent['name']} 已解雇（profile={profile_name}）"},
+        {
+            "text": (
+                f"Agent {agent['name']} 已退出团队（profile={profile_name}）；"
+                "Profile、Skill、记忆和工作区均已保留"
+            )
+        },
     )
     return agent

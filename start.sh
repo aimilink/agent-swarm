@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# Hermes Agents Team - 隔离部署启动脚本
-# 完全隔离于真实 /root/.hermes，使用独立 HERMES_HOME / workspace / DB / 端口
+# Hermes Agents Team - shared mode directly orchestrates the normal Hermes home.
+# Set HERMES_CONTROL_MODE=isolated to preserve the historical isolated deployment.
 set -euo pipefail
 
 APP=/opt/hermes-agent-team
-export HERMES_HOME="$APP/hermes-home"
+export HERMES_CONTROL_MODE="${HERMES_CONTROL_MODE:-shared}"
+if [[ "$HERMES_CONTROL_MODE" == "shared" ]]; then
+  export HERMES_HOME="${HERMES_HOME_OVERRIDE:-$HOME/.hermes}"
+else
+  export HERMES_HOME="${HERMES_HOME_OVERRIDE:-$APP/hermes-home}"
+fi
 export AGENT_TEAM_WORKSPACE_ROOT="$APP/workspace"
 export DATABASE_URL="sqlite:////opt/hermes-agent-team/data/hermes_agent_team.db"
 export HERMES_AGENTS_MCP_URL="http://127.0.0.1:5050/mcp/"

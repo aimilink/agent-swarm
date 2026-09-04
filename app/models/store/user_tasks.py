@@ -34,6 +34,7 @@ class UserTasksMixin:
             task = {
                 "user_task_id": f"ut_{next(self._user_task_ids):04d}",
                 "leader_agent_id": leader_agent_id,
+                "team_id": leader.get("team_id"),
                 "content": (content or "").strip(),
                 "delegation_ids": [],
                 "status": "running",

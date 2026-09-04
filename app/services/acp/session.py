@@ -7,7 +7,6 @@ pending-interaction state machine. Detection / ANSI helpers live in
 """
 from __future__ import annotations
 
-import os
 import queue
 import re
 import threading
@@ -20,7 +19,9 @@ from uuid import uuid4
 import pexpect
 import pyte
 
+from ...config import HERMES_CLI
 from ...models.store import store
+from ..profiles import hermes_command_env
 from .helpers import (
     APPROVAL_PATTERNS,
     INPUT_PATTERNS,
@@ -96,14 +97,14 @@ class HermesSession:
         self._last_terminal_warning_at = 0.0
 
         self.proc = pexpect.spawn(
-            "hermes",
+            HERMES_CLI,
             ["-p", profile_name],
             cwd=workspace_path,
             encoding="utf-8",
             echo=False,
             timeout=None,
             dimensions=(TERMINAL_LINES, TERMINAL_COLUMNS),
-            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            env=hermes_command_env({"PYTHONUNBUFFERED": "1"}),
         )
         threading.Thread(target=self._reader_loop, daemon=True).start()
 

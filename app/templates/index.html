@@ -176,7 +176,10 @@
        white-space: nowrap; word-wrap: normal; direction: ltr;
        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
        -webkit-font-smoothing: antialiased; }
-</style><link href="{{ url_for('static', filename='ui/fonts/material-symbols.css') }}" rel="stylesheet"/></head>
+</style>
+<link href="{{ url_for('static', filename='ui/fonts/material-symbols.css') }}" rel="stylesheet"/>
+<link href="{{ url_for('static', filename='styles.css') }}?v={{ asset_version('styles.css') }}" rel="stylesheet"/>
+</head>
 <body class="bg-background text-on-background font-body-md h-screen flex flex-col overflow-hidden">
 <!-- Top Navigation (JSON) -->
 <header class="bg-surface/70 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-white/20 shadow-sm flex justify-between items-center px-margin-desktop py-4 h-16">
@@ -186,9 +189,9 @@
 <div class="flex items-center gap-4">
 <button id="open-create-agent" type="button" class="bg-primary-container text-on-primary-container px-4 py-2 rounded-lg font-label-md hover:opacity-90 transition-opacity">+ 新员工</button>
 <div class="flex gap-2 text-primary">
-<button id="sidebar-toggle" type="button" class="md:hidden p-2 hover:bg-surface-container-high/50 rounded-full transition-colors"><span class="material-symbols-outlined msr" aria-hidden="true">menu</span></button>
+<button id="sidebar-toggle" type="button" class="md:hidden p-2 hover:bg-surface-container-high/50 rounded-full transition-colors" aria-controls="app-sidebar" aria-expanded="false" aria-label="打开导航"><span class="material-symbols-outlined msr" aria-hidden="true">menu</span></button>
 <button id="open-teams-page" type="button" class="p-2 hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95 transition-transform" aria-label="团队管理" title="团队管理"><span class="material-symbols-outlined msr" aria-hidden="true">groups</span></button>
-<button id="open-team-settings" type="button" class="p-2 hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95 transition-transform" aria-label="团队配置" title="团队配置"><span class="material-symbols-outlined msr" aria-hidden="true">settings</span></button><span class="material-symbols-outlined msr" aria-hidden="true"></span></button>
+<button id="open-team-settings" type="button" class="p-2 hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95 transition-transform" aria-label="团队配置" title="团队配置"><span class="material-symbols-outlined msr" aria-hidden="true">settings</span></button>
 </div>
 <img class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A highly detailed close-up of a professional corporate headshot of a smiling professional in a modern, light-filled office. The lighting is soft and bright, emphasizing a clean, modern aesthetic with a primary blue tie or accent. High quality, photorealistic." src="{{ url_for('static', filename='ui/img/img_0.png') }}"/>
 </div>
@@ -217,6 +220,7 @@
 <a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-on-surface text-sm" href="#"><span class="material-symbols-outlined text-[20px]" aria-hidden="true"></span>退出登录</a>
 </div>
 </nav>
+<button id="sidebar-backdrop" class="mobile-sidebar-backdrop" type="button" aria-label="关闭导航" hidden></button>
 <!-- Main Workspace -->
 
 
@@ -741,8 +745,10 @@
             <input name="name" required placeholder="姓名或职务，例如：林克">
           </label>
           <label>
-            <span>英文名称</span>
-            <input name="profile_name" required placeholder="全部小写，不能有空格" pattern="[a-z0-9][a-z0-9_\-]*">
+            <span>Hermes Profile</span>
+            <input name="profile_name" list="hermes-profile-options" required placeholder="选择已有 Profile，或输入新名称" pattern="[a-z0-9][a-z0-9_\-]*">
+            <datalist id="hermes-profile-options"></datalist>
+            <small class="form-hint">选择已有 Profile 会原地接入；Skill、记忆和经验与单 Agent 模式共用。</small>
           </label>
           <div class="modal__form-row">
             <span>角色</span>
@@ -761,7 +767,7 @@
           <label>
             <span>模型配置</span>
             <select name="model_config_id" id="create-agent-model-config">
-              <option value="">继承当前 Hermes active profile 配置</option>
+              <option value="">沿用已有 Profile 配置；新建时继承 active profile</option>
             </select>
           </label>
           <label>

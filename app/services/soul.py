@@ -3,9 +3,9 @@ from __future__ import annotations
 import subprocess
 import threading
 
-from ..config import HERMES_HOME
+from ..config import HERMES_CLI, HERMES_HOME
 from ..models.store import RuntimeStore
-from .profiles import ProfileError
+from .profiles import ProfileError, hermes_command_env
 
 
 ROLE_HINTS = {
@@ -62,15 +62,25 @@ def _strip_code_fence(text: str) -> str:
     return "\n".join(lines).strip()
 
 
-def generate_soul_md(name: str, role: str, description: str) -> str:
+def generate_soul_md(
+    name: str,
+    role: str,
+    description: str,
+    profile_name: str = "",
+) -> str:
     """Call `hermes chat` to generate a SOUL.md body. Raises ProfileError on failure."""
     prompt = _soul_prompt(name, role, description)
     try:
+        command = [HERMES_CLI]
+        if profile_name:
+            command.extend(["-p", profile_name])
+        command.extend(["chat", "-Q", "-q", prompt])
         result = subprocess.run(
-            ["hermes", "chat", "-Q", "-q", prompt],
+            command,
             capture_output=True,
             text=True,
             timeout=180,
+            env=hermes_command_env(),
         )
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
         raise ProfileError(f"hermes chat failed: {exc}") from exc
@@ -110,7 +120,7 @@ def generate_and_publish(
     """Run SOUL.md generation and file write, publishing SSE events for each stage."""
     soul_path = HERMES_HOME / "profiles" / profile_name / "SOUL.md"
     try:
-        text = generate_soul_md(name, role, description)
+        text = generate_soul_md(name, role, description, profile_name)
         source = "llm"
     except ProfileError as exc:
         store.push_event(

@@ -119,6 +119,7 @@ class SQLitePersistence:
                 record = UserTaskRecord(user_task_id=task["user_task_id"])
                 session.add(record)
             record.leader_agent_id = task["leader_agent_id"]
+            record.team_id = task.get("team_id")
             record.content = task.get("content") or ""
             record.delegation_ids_json = _json_dumps(task.get("delegation_ids") or [])
             record.status = task.get("status") or "running"
@@ -197,6 +198,7 @@ class SQLitePersistence:
             session.add(
                 MessageRecord(
                     message_id=message["message_id"],
+                    team_id=message.get("team_id"),
                     from_agent_id=message.get("from_agent_id"),
                     from_name=message.get("from_name") or "",
                     to_agent_id=message.get("to_agent_id") or "",
@@ -353,6 +355,7 @@ class SQLitePersistence:
             "readiness_message": record.readiness_message or "",
             "created_at": record.created_at or "",
             "last_active_at": record.last_active_at or record.created_at or "",
+            "team_id": record.team_id,
         }
         return agent
 
@@ -367,6 +370,7 @@ class SQLitePersistence:
         return {
             "user_task_id": record.user_task_id,
             "leader_agent_id": record.leader_agent_id,
+            "team_id": record.team_id,
             "content": record.content,
             "delegation_ids": _json_loads(record.delegation_ids_json, []),
             "status": status,
@@ -428,6 +432,7 @@ class SQLitePersistence:
     def _message_to_dict(self, record: MessageRecord) -> dict:
         return {
             "message_id": record.message_id,
+            "team_id": record.team_id,
             "from_agent_id": record.from_agent_id,
             "from_name": record.from_name,
             "to_agent_id": record.to_agent_id,

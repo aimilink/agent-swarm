@@ -16,6 +16,18 @@
 
 ## 功能
 
+### Hermes 共享接管模式
+
+默认使用 shared 模式，控制台直接接入用户正常使用的 ~/.hermes。一个 Profile
+就是同一个 Agent：既可以从 Hermes CLI 单独运行，也可以加入一个团队参与多
+Agent 协作。两种入口共用 SOUL、Skill、记忆、经验、模型配置和 MCP 配置。
+
+- 接入已有 Profile 时不克隆、不覆盖已有 SOUL，团队只增加编排元数据。
+- 新建 Profile 同样写入 ~/.hermes，可立即脱离控制台独立使用。
+- Agent 退出团队时只解除编排关系，不删除 Profile、Skill、记忆或工作区。
+- 团队任务、消息和成员关系带 team_id 持久化，支持多团队并行与跨团队委派。
+- 如需旧版完全隔离部署，可设置 HERMES_CONTROL_MODE=isolated。
+
 - Leader / Specialist 两层 Agent 角色，自动任务拆解、执行、审查与汇总
 - Web UI 实时观察多 Agent 对话、终端输出、工具调用与子任务流转
 - Hermes Kanban 看板任务、自动派发、状态同步与任务归档
@@ -60,6 +72,8 @@ pip install -r requirements.txt
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
+| HERMES_CONTROL_MODE | shared | shared 共用正常 Hermes 数据；isolated 使用项目隔离目录 |
+| HERMES_CLI | hermes | Hermes CLI 可执行文件名或路径 |
 | `HERMES_HOME` | `~/.hermes` | Hermes profiles 根目录 |
 | `AGENT_TEAM_WORKSPACE_ROOT` | `~/agent_team` | Agent 工作区根目录 |
 | `DATABASE_URL` | `sqlite:///data/hermes_agent_team.db` | 数据库连接串 |

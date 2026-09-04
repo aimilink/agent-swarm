@@ -11,6 +11,7 @@
   const els = {
     sidebar: document.getElementById("app-sidebar"),
     sidebarToggle: document.getElementById("sidebar-toggle"),
+    sidebarBackdrop: document.getElementById("sidebar-backdrop"),
     dock: document.querySelector("[data-ui-dock='task-dock']"),
     overviewStats: document.getElementById("overview-stats-grid"),
     overviewHealth: document.getElementById("overview-team-health"),
@@ -87,7 +88,7 @@
     if (name === "stats") void renderStatsView();
     if (name === "settings") void renderSettingsView();
     if (window.innerWidth < 768 && els.sidebar) {
-      els.sidebar.classList.add("-translate-x-full");
+      setMobileSidebar(false);
     }
   }
 
@@ -706,13 +707,38 @@
     }
   }
 
+  function setMobileSidebar(open) {
+    if (!els.sidebar) return;
+    els.sidebar.classList.toggle("-translate-x-full", !open);
+    if (els.sidebarBackdrop) els.sidebarBackdrop.hidden = !open;
+    els.sidebarToggle?.setAttribute("aria-expanded", open ? "true" : "false");
+    els.sidebarToggle?.setAttribute("aria-label", open ? "关闭导航" : "打开导航");
+  }
+
   function wireEvents() {
     document.querySelectorAll(".nav-link[data-view]").forEach((link) => {
       link.addEventListener("click", (event) => switchView(link.dataset.view || "overview", event));
     });
 
     els.sidebarToggle?.addEventListener("click", () => {
-      els.sidebar?.classList.toggle("-translate-x-full");
+      setMobileSidebar(els.sidebar?.classList.contains("-translate-x-full"));
+    });
+    els.sidebarBackdrop?.addEventListener("click", () => setMobileSidebar(false));
+    document.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Escape"
+        && window.innerWidth < 768
+        && els.sidebar
+        && !els.sidebar.classList.contains("-translate-x-full")
+      ) {
+        setMobileSidebar(false);
+      }
+    });
+    window.addEventListener("resize", () => {
+      if (window.innerWidth >= 768 && els.sidebarBackdrop) {
+        els.sidebarBackdrop.hidden = true;
+        els.sidebarToggle?.setAttribute("aria-expanded", "false");
+      }
     });
 
     document.getElementById("btn-create-task-overview")?.addEventListener("click", focusTaskInput);
