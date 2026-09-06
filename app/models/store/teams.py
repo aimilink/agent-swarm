@@ -92,7 +92,7 @@ class TeamsMixin:
     def team_agents(self, team_id: str) -> list[dict]:
         return [dict(a) for a in self.agents if a.get("team_id") == team_id]
 
-    def has_team_lead(self, team_id: str) -> bool:
+    def has_team_lead(self, team_id: str | None) -> bool:
         return any(
             a.get("team_id") == team_id and a.get("role") == "leader"
             for a in self.agents
@@ -109,24 +109,27 @@ class TeamsMixin:
         for lead in leads:
             if is_agent_dispatchable(lead):
                 return lead["agent_id"]
-        return leads[0]["agent_id"] if leads else None
+        return None
 
     def assign_agent_team(self, agent_id: str, team_id: str | None) -> dict:
-        agent = self.find_agent(agent_id)
-        if agent is None:
-            raise ValueError("agent not found")
-        if team_id is not None and self.find_team(team_id) is None:
-            raise ValueError("team not found")
         with self._lock:
+            agent = next((a for a in self.agents if a["agent_id"] == agent_id), None)
+            if agent is None:
+                raise ValueError("agent not found")
+            if team_id is not None and not any(t["team_id"] == team_id for t in self.teams):
+                raise ValueError("team not found")
             if (
-                team_id is not None
-                and agent.get("role") == "leader"
+                agent.get("role") == "leader"
                 and any(
                     a.get("team_id") == team_id and a.get("role") == "leader" and a.get("agent_id") != agent_id
                     for a in self.agents
                 )
             ):
                 raise ValueError("target team already has a leader")
-        self.update_agent(agent_id, team_id=team_id)
+            agent["team_id"] = team_id
+            agent["last_active_at"] = now_iso()
+            snapshot = dict(agent)
+            self._persist("upsert_agent", snapshot)
+        self.push_agents_changed()
         self.push_event("agent.team_assigned", agent_id, None, {"team_id": team_id})
-        return self.find_agent(agent_id) or agent
+        return snapshot

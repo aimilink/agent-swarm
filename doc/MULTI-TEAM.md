@@ -85,3 +85,19 @@ Leader。当前内置规则覆盖 sales、tech、market；无命中时使用团�
 - 单实例使用一个 SQLite 数据库，不支持多租户权限隔离。
 - 组织路由规则目前由代码中的关键词表定义。
 - 跨团队任务由目标团队 Leader 接管，不直接绕过 Leader 派给目标 Worker。
+
+
+## 团队隔离与派发规则
+
+- 不指定接收 Agent 的 `/api/messages` 只查找未分组 Leader；团队任务使用团队入口或显式指定 Agent，避免按注册顺序落到其他团队。
+- 直接指派 Worker 时，用户任务归属该 Worker 所在团队的可调度 Leader；该团队没有可调度 Leader 时拒绝创建，不回退到其他团队。
+- 停止或未就绪的 Leader 保留成员身份和 Leader 名额，但不能接收团队派发。
+- MCP Worker 子任务只允许派给同团队 Worker；跨团队工作通过 `delegate_to_team` 交给目标 Leader。
+- 显式用户任务必须属于发起 Leader，且历史任务团队必须与该 Leader 当前团队一致；不允许调队后继续用原任务向新团队派发。
+- 移动成员时，Leader 名额校验与成员更新在同一个锁内执行；未分组成员也最多保留一个 Leader。
+
+## 本轮项目梳理
+
+调用链为 HTTP/MCP → services 编排 → RuntimeStore → SQLite；Hermes Profile 保存 Agent 身份，ACP 管理运行会话，Kanban 承载任务执行与同步。前端位于 `app/static`，控制器位于 `app/controllers`。
+
+本轮修复聚焦任务归属和派发边界，并由 `tests/test_team_isolation.py` 覆盖。一个 Agent 仍只属于一个团队。运行中成员迁移的完整生命周期、数据库级并发约束以及跨团队父子任务的权限校验仍需进一步设计；当前隔离检查不构成多租户鉴权。
