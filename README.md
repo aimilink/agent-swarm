@@ -12,7 +12,7 @@
 - **存储**：SQLite
 - **前端**：原生 HTML/JS，实时展示多 Agent 对话、终端输出与任务流转
 
-先看 [功能地图](doc/FEATURE-MAP.md) 了解当前版本边界；安装上线见 [部署与安装教程](doc/deployment.md)。更多设计细节见 [架构说明](doc/ARCHITECTURE.md)。
+先看 [功能地图](doc/FEATURE-MAP.md) 了解当前版本边界；安装上线见 [部署与安装教程](doc/deployment.md)。从接入已有 Agent 到派发团队任务，见 [使用指南](doc/USER-GUIDE.md)。更多设计细节见 [架构说明](doc/ARCHITECTURE.md)。
 
 ## 功能
 
@@ -26,6 +26,8 @@ Agent 协作。两种入口共用 SOUL、Skill、记忆、经验、模型配置�
 - 新建 Profile 同样写入 ~/.hermes，可立即脱离控制台独立使用。
 - Agent 退出团队时只解除编排关系，不删除 Profile、Skill、记忆或工作区。
 - 团队任务、消息和成员关系带 team_id 持久化，支持多团队并行与跨团队委派。
+- 接入的是 Profile 身份与持久配置，不会接管已有终端对话或迁移其上下文。
+- 每团队最多一个 Leader、多个 Worker；一个 Agent 同时最多属于一个团队。
 - 如需与日常 Hermes 数据完全隔离，可设置 `HERMES_CONTROL_MODE=isolated`。
 
 - Leader / Specialist 两层 Agent 角色，自动任务拆解、执行、审查与汇总
@@ -148,12 +150,27 @@ python run.py
 python -m pytest -q
 ```
 
+浏览器交互回归使用 `node tests/team_ux.browser.cjs`，依赖配置与验证边界见
+[UX 检查记录](doc/UX-REVIEW.md)。浏览器回归使用模拟 API，不等同于真实 Hermes 联调。
+
+### 8. 接入并组建团队
+
+1. 在“团队管理”创建团队，例如 `tech`。
+2. 点击“新员工”，选择已有 Hermes Profile，设置角色与所属团队；先接入一个 Leader，再接入 Worker。
+3. 在成员页面确认相关 Agent 已就绪并运行；已有注册成员可从“查看成员”加入或移出团队。
+4. 在任务栏选择团队范围和具体接收 Agent，输入任务并点击“创建任务”；需要拆解协作时选择 Leader。
+5. 在看板跟踪执行、阻塞和结果，查看 Leader 的复盘与交付。“全部团队”是查看/选择范围，不会向全部团队广播任务。
+
+任务发送失败会显示原因并保留输入。删除团队前必须先移出成员；Agent Profile、技能和记忆保留。完整操作与排障见 [使用指南](doc/USER-GUIDE.md)。
+
 ## 文档
 
+- [使用指南](doc/USER-GUIDE.md)
 - [架构设计](doc/ARCHITECTURE.md)
 - [当前版本功能地图](doc/FEATURE-MAP.md)
 - [部署与安装教程](doc/deployment.md)
 - [多团队说明](doc/MULTI-TEAM.md)
+- [UX 检查与浏览器回归](doc/UX-REVIEW.md)
 - [详细设计](doc/design.md)
 - [MCP 管理](doc/mcp-management.md)
 - [Skill 管理](doc/skills-management.md)

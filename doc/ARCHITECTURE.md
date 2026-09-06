@@ -33,11 +33,13 @@
 
 Agent 接入时会：
 
-1. 已有 Profile 原地接入，不克隆、不覆盖 SOUL、Skill、记忆或配置。
+1. 已有 Profile 原地接入，不克隆，保留 SOUL、Skill 和记忆；Leader 接入会配置团队 MCP，显式应用模型配置会更新该 Profile。
 2. 新名称才调用 `hermes profile create <profile_name> --clone --no-alias`。
 3. 创建或复用 Agent 工作区，默认位于 `~/agent_team/<profile_name>`。
 4. 写入 `team-meta.json`，注册到 RuntimeStore 和 SQLite。
 5. 新 Profile 异步生成 SOUL；已有 Profile 保留原人设。
+
+接入只复用 Profile 身份与持久数据，不附着到其他终端中已经运行的 Hermes 对话，也不迁移其上下文。
 
 Agent 移出团队或从控制台解雇时，只解除编排关系，不删除 Hermes Profile 和工作区。
 
@@ -63,10 +65,11 @@ Agent 移出团队或从控制台解雇时，只解除编排关系，不删除 H
 
 Flask 后端维护 Agent Registry。Leader 通过 MCP 工具读取可调度 Worker。
 
-`list_workers()` 只返回满足调度条件的 `worker`，并排除 Leader 自身。返回字段包含：
+`list_workers(team="")` 只返回已就绪且运行中的 `worker`，并排除 Leader 自身。传入团队 slug 时限制到该团队；省略时可见组织内全部可调度 Worker，但创建子任务仍要求与发起 Leader 同团队。返回字段包含：
 
 - `agent_id`
 - `profile_name`
+- `team_id`
 - `name`
 - `role`
 - `description`
@@ -139,7 +142,9 @@ Web UI
   -> dispatch_worker.trigger_async()
 ```
 
-如果用户直接选择某个 Worker，系统会创建直派 Worker Kanban 任务；否则任务默认交给可调度 Leader。
+如果用户直接选择 Worker，系统创建该 Worker 团队 board 上的直派任务，用户任务绑定同团队可调度 Leader。显式选择 Leader 时定向派给该 Leader；省略接收 Agent 时只查找未分组 Leader，没有可调度 Leader 则拒绝创建。
+
+Web 任务栏发送显式 `to_agent_id`；“全部团队”只是筛选范围。团队 API `/api/teams/<slug>/messages` 定向该团队 Leader；组织 API `/api/org/dispatch` 才执行关键词路由。
 
 ### Leader 拆解任务
 
@@ -179,10 +184,19 @@ Leader review 可以：
 
 | 工具 | 说明 |
 |---|---|
-| `list_workers()` | 返回当前可调度的 Worker 列表及其 MCP 摘要。 |
+| `list_workers(team="")` | 返回可调度 Worker 及 MCP 摘要，可按团队 slug 筛选。 |
 | `create_kanban_worker_tasks(assignments, from_agent_id, parent_task_id="", user_task_id="", summary_instruction="")` | Leader 创建一批 Worker Kanban 子任务。 |
 | `dispatch_parallel(assignments, from_agent_id, summary_instruction="")` | 兼容入口，内部调用 `create_kanban_worker_tasks`。 |
 | `request_human_input(question, from_agent_id, context="", options=None, parent_task_id="", user_task_id="")` | Agent 需要用户补充信息时创建人工处理 Kanban 任务。 |
+
+跨团队工具：
+
+| 工具 | 说明 |
+|---|---|
+| `delegate_to_team(task_title, content, from_agent_id, to_team, parent_task_id="", user_task_id="", expected_deliverable="")` | 向另一团队 board 创建由目标 Leader 接收的任务。 |
+| `list_team_delegations(from_agent_id, team="")` | 查询跨团队任务状态、结果与阻塞原因。 |
+
+`create_kanban_worker_tasks` 在创建批次之前校验 Worker 角色、同团队关系以及用户任务归属；该校验也在返回幂等派发结果之前执行。成员迁移入口在同一锁内检查 Leader 冲突与更新归属，但尚不具备完整的运行中迁移协议或数据库级唯一性保障。
 
 已废弃的早期概念如 `list_agents`、`delegate_task`、`send_to_agent` 不再是当前 MCP 接口。
 
@@ -194,7 +208,13 @@ Leader review 可以：
 |---|---|
 | `GET /api/dashboard` | 获取前端 dashboard 快照。 |
 | `POST /api/messages` | 提交用户任务，创建 Kanban 任务。 |
-| `POST /api/agents` | 创建 Agent。 |
+| `POST /api/agents` | 接入或新建 Agent，可传团队 slug 字段 `team`。 |
+| `GET/POST /api/teams` | 列出/创建团队。 |
+| `GET/PATCH/DELETE /api/teams/<slug>` | 查看/更新/删除空团队。 |
+| `POST /api/teams/<slug>/members` | 加入或移动成员。 |
+| `DELETE /api/teams/<slug>/members/<agent_id>` | 移出成员，保留 Profile。 |
+| `POST /api/teams/<slug>/messages` | 向该团队 Leader 下发任务。 |
+| `POST /api/org/dispatch` | 按关键词匹配团队并派发。 |
 | `DELETE /api/agents/<agent_id>` | 删除 Agent。 |
 | `POST /api/agents/<agent_id>/start` | 启动 Agent 运行时。 |
 | `POST /api/agents/<agent_id>/stop` | 停止 Agent 运行时。 |

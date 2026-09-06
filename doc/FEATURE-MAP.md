@@ -20,7 +20,7 @@ Hermes CLI 单 Agent ─┐
 团队 / 多 Agent ─────┘    SOUL + Skill + Memory + Config + MCP
 ```
 
-加入团队不会复制 Profile；退出团队不会删除 Profile。
+加入团队不会复制 Profile；退出团队不会删除 Profile。接入 Profile 不会接管另一个终端中已运行的会话，也不迁移该会话的上下文。
 
 ## 2. 运行模式
 
@@ -44,10 +44,10 @@ Hermes CLI 单 Agent ─┐
 | Skill | 列表、详情、Git 安装、重装、卸载；团队和单 Agent 共用 | Skill 抽屉 |
 | MCP | HTTP、Streamable HTTP、stdio；增删改查、连通测试、敏感字段脱敏 | MCP 管理 |
 | 模型配置 | 配置 CRUD、连通测试、应用到指定 Profile | 模型配置页/Agent 抽屉 |
-| 团队 | 多团队 CRUD、成员加入/移出、每团队一个 Leader、多个 Worker | 团队管理、`/api/teams` |
+| 团队 | 多团队 CRUD、成员加入/移出、每团队最多一个 Leader、多个 Worker，空团队可先创建 | 团队管理、`/api/teams` |
 | 团队任务入口 | 将任务定向给某团队 Leader | `POST /api/teams/<slug>/messages` |
 | 组织路由 | 按关键词把组织级任务路由到匹配团队 | `POST /api/org/dispatch` |
-| 团队内协作 | Leader 发现本团队 Worker，并行创建 Kanban 子任务 | MCP `list_workers`、`create_kanban_worker_tasks` |
+| 团队内协作 | Worker 可按团队发现；子任务仅允许同团队 Worker，跨团队经目标 Leader 委派 | MCP `list_workers`、`create_kanban_worker_tasks` |
 | 跨团队协作 | Leader 向另一团队 Leader 委派并查询回执 | MCP `delegate_to_team`、`list_team_delegations` |
 | Kanban | 任务列表、详情、运行记录、日志、派发、解阻、回答人工问题、删除与归档 | 看板页、`/api/kanban/*` |
 | 人工介入 | Agent 创建需要用户回答的任务，用户从页面响应 | MCP `request_human_input` |
@@ -69,7 +69,9 @@ Hermes CLI 单 Agent ─┐
 | 多团队协作 | 每个 Agent 仍有自己的 Profile | 委派带来源/目标团队和看板信息 | 是 |
 
 一个 Agent 同一时刻最多属于一个团队。每个团队最多一个 Leader；不同团队可以各有
-自己的 Leader。未分组 Agent 保留旧版兼容行为。
+自己的 Leader。未分组 Agent 独立约束为最多一个 Leader。
+
+省略接收 Agent 的 `/api/messages` 只查找未分组 Leader；显式直派 Worker 时，用户任务归属该 Worker 的团队 Leader，不能回退到其他团队。Leader 必须同时已就绪且运行中。
 
 ## 5. 数据地图
 
@@ -95,7 +97,8 @@ Hermes CLI 单 Agent ─┐
 - `teams`：团队、slug、独立 board、设置。
 - `agents`：Profile 与运行时映射、`team_id`。
 - `messages`、`user_tasks`：团队消息和用户任务。
-- `delegations`、`assignments`：拆解、派工和跨团队关系。
+- `delegations`、`assignments`：团队内拆解批次与 Worker 分工。
+- 跨团队委派来源、目标与结果关联保存于 `kanban_task_links.metadata`。
 - `kanban_task_links`：本地实体与 Hermes Kanban 任务映射。
 - `events`、`settings`：事件与控制台设置。
 - `model_configs`、Skill/MCP 安装记录：管理元数据。
@@ -173,8 +176,18 @@ RuntimeStore、终端订阅、进程句柄和高频终端事件只在进程内�
 - 导入会替换控制台注册、工作区和运行历史；共享 Hermes Profile 不因普通成员移除
   而删除，但执行导入前仍应完成数据库、Profile 和工作区备份。
 
-## 9. 相关文档
+## 9. 交互与验证
 
+团队管理复用同一弹窗处理创建、编辑与成员操作；编辑不能修改 slug，删除团队要求先移出所有成员。新员工表单可直接选择所属团队。看板按 board 筛选，实时刷新保留选择；成员筛选按 team_id 区分同名团队。
+
+任务栏显式显示接收 Agent。“全部团队”不表示群发或自动语义路由。提交防重复、失败保留输入，成功不会清除提交期间的新草稿；任务卡支持 Enter/空格打开。
+
+最近验证包括 Python 回归与 Edge 模拟 API 浏览器回归。真实 Hermes 进程、模型和跨团队执行回流仍需在部署环境联调；详见 [UX 检查记录](UX-REVIEW.md)。
+
+## 10. 相关文档
+
+- [使用指南](USER-GUIDE.md)
+- [UX 检查与浏览器回归](UX-REVIEW.md)
 - [部署与安装教程](deployment.md)
 - [架构说明](ARCHITECTURE.md)
 - [多团队改造说明](MULTI-TEAM.md)

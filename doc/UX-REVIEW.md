@@ -1,5 +1,7 @@
 # 多团队 UX 检查记录
 
+操作步骤见 [使用指南](USER-GUIDE.md)，团队规则见 [多团队说明](MULTI-TEAM.md)。
+
 ## 已修复
 
 - 团队表单重复 DOM ID、双重提交监听，以及编辑后新建残留状态。团队编辑按原始 slug 保存，slug 只读。
@@ -19,6 +21,30 @@ Python 回归：`python -m pytest -q`。
 浏览器回归：`node tests/team_ux.browser.cjs`。需要 Playwright Node 包、Flask Python 环境和 Edge；可用 `NODE_PATH` 指定包目录、`PYTHON` 指定 Python 可执行文件、`BROWSER_CHANNEL` 指定浏览器 channel（默认 msedge）。`UX_SCREENSHOT` 可指定截图输出路径。
 
 浏览器测试实际渲染项目模板和前端脚本，拦截 API 使用模拟数据，不启动 Hermes，也不修改真实团队和 Profile。覆盖编辑/新建、重复提交、成员控件、同名团队过滤、实时筛选保留、失败重试、草稿保留、Agent 团队传参、DOM ID 唯一性、页面运行错误与 390px 布局。
+
+### 最近一次验证记录
+
+2026-09-06，UX 修复提交 `9080570`：Python 回归 158 通过、1 跳过；Edge 浏览器模拟 API 回归通过，JavaScript 语法检查和 Git 差异检查通过。此记录针对该提交，不代表之后所有修改都已验证。
+
+### 运行环境示例
+
+在仓库根目录运行。Playwright 是浏览器测试依赖，不包含在 Python requirements.txt 中；若安装在仓库外，设置 NODE_PATH 到包含 playwright 包的 node_modules 目录。测试默认使用已安装的 Edge，选择其他已安装浏览器可设置 BROWSER_CHANNEL。
+
+PowerShell：
+
+```powershell
+$env:PYTHON = (Resolve-Path .venv/Scripts/python.exe).Path
+$env:BROWSER_CHANNEL = "msedge"
+node tests/team_ux.browser.cjs
+```
+
+Linux/macOS（虚拟环境与 Edge 已安装时）：
+
+```bash
+PYTHON="$PWD/.venv/bin/python" BROWSER_CHANNEL=msedge node tests/team_ux.browser.cjs
+```
+
+可选 UX_SCREENSHOT 为最终移动端团队弹窗截图文件路径，其父目录应已存在。测试完全拦截页面 HTTP 请求，不访问真实业务 API。
 
 ## 验证边界
 

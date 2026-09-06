@@ -7,7 +7,7 @@
 
 单实例、单 SQLite 数据库下可以创建多个团队。每个团队具有：
 
-- 一个 Leader，唯一性按团队约束，不再全局唯一。
+- 最多一个 Leader；团队可以先创建，再接入负责人和 Worker。
 - 多个 Worker。
 - 独立 Kanban board，默认名称为 `team-<slug>`。
 - 独立任务入口和用量统计。
@@ -38,12 +38,18 @@ SOUL、Skill、记忆、经验、模型与 MCP。
 | POST | `/api/teams` | 创建团队 |
 | GET | `/api/teams/<slug>` | 团队详情 |
 | PATCH | `/api/teams/<slug>` | 更新名称、说明、board、设置 |
-| DELETE | `/api/teams/<slug>` | 删除团队关系 |
+| DELETE | `/api/teams/<slug>` | 删除空团队；有成员时拒绝 |
 | POST | `/api/teams/<slug>/members` | 把已有 Agent 加入团队 |
 | DELETE | `/api/teams/<slug>/members/<agent_id>` | 移出成员，不删除 Profile |
 | POST | `/api/teams/<slug>/messages` | 将任务发送给该团队 Leader |
 | GET | `/api/teams/<slug>/usage?days=7` | 聚合团队 Token 用量 |
 | POST | `/api/org/dispatch` | 组织级关键词路由 |
+
+## Web 操作
+
+具体步骤见 [使用指南](USER-GUIDE.md)。新员工接入时选择角色与所属团队；已注册 Agent 从团队卡片“查看成员”中加入或移出。加入另一个团队是移动归属，不会复制 Agent。
+
+团队卡片“编辑”可修改名称与描述，slug 只读；board 和 settings 由 API 更新。看板顶部团队筛选与任务栏团队范围同步，接收 Agent 单独显示。选择“全部团队”不会广播，也不会根据输入内容自动调用组织路由。
 
 ## MCP 协作工具
 
@@ -52,7 +58,7 @@ SOUL、Skill、记忆、经验、模型与 MCP。
 - `list_workers(team="")`：可按团队 slug 筛选可调度 Worker；省略时可见
   组织内全部可调度 Worker。
 - `create_kanban_worker_tasks(...)`：Leader 在当前团队 board 上创建 Worker
-  子任务。
+  子任务；目标必须是同团队 Worker，指定用户任务必须属于该 Leader，且任务团队与 Leader 当前团队一致。
 - `dispatch_parallel(...)`：兼容入口，内部使用 Kanban 子任务。
 - `request_human_input(...)`：创建等待用户处理的 Kanban 任务。
 
@@ -96,8 +102,8 @@ Leader。当前内置规则覆盖 sales、tech、market；无命中时使用团�
 - 显式用户任务必须属于发起 Leader，且历史任务团队必须与该 Leader 当前团队一致；不允许调队后继续用原任务向新团队派发。
 - 移动成员时，Leader 名额校验与成员更新在同一个锁内执行；未分组成员也最多保留一个 Leader。
 
-## 本轮项目梳理
+## 实现位置与验证
 
 调用链为 HTTP/MCP → services 编排 → RuntimeStore → SQLite；Hermes Profile 保存 Agent 身份，ACP 管理运行会话，Kanban 承载任务执行与同步。前端位于 `app/static`，控制器位于 `app/controllers`。
 
-本轮修复聚焦任务归属和派发边界，并由 `tests/test_team_isolation.py` 覆盖。一个 Agent 仍只属于一个团队。运行中成员迁移的完整生命周期、数据库级并发约束以及跨团队父子任务的权限校验仍需进一步设计；当前隔离检查不构成多租户鉴权。
+任务归属和派发边界由 `tests/test_team_isolation.py` 覆盖；前端交互由 `tests/team_ux.browser.cjs` 使用模拟 API 验证，执行方法见 [UX 检查记录](UX-REVIEW.md)。一个 Agent 仍只属于一个团队。运行中成员迁移的完整生命周期、数据库级并发约束以及跨团队父子任务的权限校验仍需进一步设计；当前隔离检查不构成多租户鉴权。
