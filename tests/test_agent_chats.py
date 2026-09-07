@@ -72,3 +72,20 @@ def test_interrupted_chat_recovery(client):
     data = client.get(f'/api/agents/a/chats/{chat_id}').json['chat']
     assert not data['busy']
     assert data['messages'][-1]['role'] == 'error'
+
+
+@pytest.mark.parametrize("readiness", ["failed", "preparing", None, ""])
+def test_direct_chat_does_not_require_team_readiness(client, monkeypatch, readiness):
+    agent = {"profile_name": "a", "readiness_status": readiness,
+             "readiness_message": "SOUL.md 缺失或为空", "runtime_status": "stopped"}
+    monkeypatch.setattr(controller, "store", SimpleNamespace(find_agent=lambda _: agent))
+    calls = []
+    monkeypatch.setattr(controller, "_run_hermes_chat",
+                        lambda profile, prompt: calls.append(profile) or "正常回复")
+    chat_id = create(client)
+    response = client.post(f"/api/agents/a/chats/{chat_id}/messages", json={"content": "你好"})
+    assert response.status_code == 200
+    assert calls == ["a"]
+    assert response.json["chat"]["messages"][-1]["content"] == "正常回复"
+    assert response.json["chat"]["busy"] is False
+    assert agent["readiness_status"] == readiness

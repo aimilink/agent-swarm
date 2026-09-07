@@ -1,0 +1,58 @@
+/* Density and typography are separate: compact spacing, readable text at 100% zoom. */
+:root { --ui-header-height: 52px; --ui-sidebar-width: 216px; }
+body { font-size: 14px; line-height: 1.5; }
+body > header { height: var(--ui-header-height); padding-block: 8px; }
+#app-sidebar { width: var(--ui-sidebar-width); padding-top: 72px; }
+body > main[class] { padding-top: var(--ui-header-height); }
+@media (min-width: 768px) { body > main[class] { margin-left: var(--ui-sidebar-width); } }
+#sidebar-backdrop { top: var(--ui-header-height); }
+body .text-display-lg { font-size: 29px; line-height: 36px; }
+body .text-headline-md { font-size: 20px; line-height: 28px; }
+body .text-headline-sm { font-size: 17px; line-height: 24px; }
+body .text-title-lg { font-size: 16px; line-height: 23px; }
+body .text-body-lg { font-size: 14px; line-height: 21px; }
+body .text-body-md { font-size: 14px; line-height: 20px; }
+body .font-label-md { font-size: 13px; line-height: 19px; }
+body .font-label-sm, body .text-label-sm, body .text-label-md,
+body .text-xs, body [class~="text-[10px]"], body [class~="text-[11px]"],
+.team-member-row__sub, .chat-history small, .chat-message small {
+  font-size: 12px; line-height: 18px;
+}
+body .material-symbols-outlined { font-size: 20px; line-height: 1; }
+#app-sidebar .nav-link { min-height: 36px; padding: 8px 10px; font-size: 13px; }
+#app-sidebar h2 { font-size: 15px; white-space: nowrap; }
+.modal__panel { padding: 20px; gap: 16px; }
+.modal__form { gap: 12px; }
+body :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]), select) {
+  min-height: 34px; padding: 6px 10px; font-size: 14px; line-height: 20px;
+}
+body textarea { font-size: 14px; line-height: 21px; padding: 8px 10px; }
+body .primary-button, body .filter-chip { padding: 7px 12px; font-size: 13px; line-height: 20px; }
+body .form-hint, body .form-error { font-size: 12px; line-height: 18px; }
+#kanban-task-form textarea { min-height: 42px; }
+.chat-layout { gap: 16px; padding: 18px; }
+.chat-sidebar { width: 216px; gap: 10px; }
+.chat-main h2 { padding: 13px 16px; font-size: 16px; }
+.chat-messages { padding: 16px; }
+.chat-message { padding: 10px 13px; margin-bottom: 12px; font-size: 14px; line-height: 1.6; }
+.chat-compose { padding: 12px; gap: 8px; }
+.chat-sidebar > button, .chat-compose button { padding: 7px 12px; font-size: 13px; }
+.chat-history button { padding: 9px 10px; }
+@media (max-width: 767px) {
+  :root { --ui-header-height: 56px; --ui-sidebar-width: 240px; }
+  body > main[class] { margin-left: 0; }
+  #app-sidebar .nav-link, body > header button { min-height: 40px; }
+  body :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]), select, textarea) { font-size: 16px; }
+  .chat-layout { padding: 12px; }
+  .chat-sidebar { width: 100%; }
+  .chat-compose button, .chat-sidebar > button { min-height: 40px; }
+}
+
+/* Use a real font stack; the generated theme quotes multiple fonts as one name. */
+body, body :is(.font-body-md, .font-body-lg, .font-label-md, .font-label-sm,
+.font-title-lg, .font-headline-md, .font-headline-sm, .font-display-lg) {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+#app-sidebar > div:first-child .w-10 { flex-shrink: 0; }
+#app-sidebar > div:first-child .flex { gap: 8px; padding-inline: 6px; }
+#app-sidebar > div:first-child p { font-size: 12px; letter-spacing: 0; }

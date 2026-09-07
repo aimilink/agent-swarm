@@ -75,8 +75,8 @@ def send(agent_id, chat_id):
     agent = store.find_agent(agent_id)
     if agent is None:
         return jsonify(ok=False, error="Agent 不存在"), 404
-    if agent.get("readiness_status", "ready") != "ready":
-        return jsonify(ok=False, error="Agent 尚未就绪"), 409
+    # Team readiness tracks SOUL initialization, not whether the CLI can chat.
+    # Let Hermes validate its own Profile/model configuration for direct chats.
     with SessionLocal() as db:
         row = db.get(AgentChatRecord, chat_id)
         if row is None or row.agent_id != agent_id:
