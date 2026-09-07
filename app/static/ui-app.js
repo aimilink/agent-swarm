@@ -2,7 +2,7 @@
   const app = () => window.__HERMES_APP__ || {};
   const boot = () => window.__BOOTSTRAP__ || {};
 
-  const VIEWS = ["overview", "board", "members", "stats", "settings", "teams"];
+  const VIEWS = ["overview", "board", "members", "stats", "settings", "teams", "chat"];
   let currentView = "overview";
   let memberFilter = "全部";
   let memberSearch = "";
@@ -375,6 +375,7 @@
             <span class="font-label-sm text-on-surface-variant">任务 ${agent.queue_depth || 0}</span>
             <div class="flex gap-2">
               <button type="button" class="text-[11px] px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high" data-agent-config data-agent-id="${esc(agent.agent_id)}">配置</button>
+              <button type="button" class="text-[11px] px-2 py-1 rounded-lg bg-primary-container/20 text-primary" data-agent-chat data-agent-id="${esc(agent.agent_id)}">聊天</button>
               <button type="button" class="text-[11px] px-2 py-1 rounded-lg ${actionClass}" data-session-action="${isRunning ? "stop" : "start"}" data-agent-id="${esc(agent.agent_id)}">${actionLabel}</button>
             </div>
           </div>

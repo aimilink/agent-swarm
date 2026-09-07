@@ -209,3 +209,14 @@ class AgentMcpServerRecord(TimestampMixin, Base):
     last_test_status: Mapped[str] = mapped_column(String(16), default="")
     last_test_at: Mapped[str] = mapped_column(String(40), default="")
     last_error: Mapped[str] = mapped_column(Text, default="")
+
+
+class AgentChatRecord(Base):
+    __tablename__ = "agent_chats"
+
+    chat_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(String(120), index=True)
+    title: Mapped[str] = mapped_column(String(200), default="新聊天")
+    messages_json: Mapped[str] = mapped_column(Text, default="[]")
+    busy: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[str] = mapped_column(String(40))

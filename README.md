@@ -39,6 +39,7 @@ Agent 协作。两种入口共用 SOUL、Skill、记忆、经验、模型配置�
 - MCP Server 安装管理，支持 `http` / `streamable_http` / `stdio`
 - Skill 安装管理，支持从 frontmatter 解析元信息
 - SOUL.md 人设编辑
+- 单 Agent 聊天：新建会话、查看历史、携带当前会话上下文继续聊天
 
 ## 目录结构
 
@@ -163,9 +164,14 @@ python -m pytest -q
 
 任务发送失败会显示原因并保留输入。删除团队前必须先移出成员；Agent Profile、技能和记忆保留。完整操作与排障见 [使用指南](doc/USER-GUIDE.md)。
 
+### 9. 单 Agent 聊天
+
+从侧栏“单 Agent 聊天”或成员卡片“聊天”进入，选择 Agent 后新建会话。聊天记录保存在数据库，可从历史列表继续；Enter 发送、Shift+Enter 换行。此入口直接调用 Hermes CLI，不自动创建看板任务。升级后重启服务以创建聊天表，详细接口与边界见 [单 Agent 聊天](doc/AGENT-CHAT.md)。
+
 ## 文档
 
 - [使用指南](doc/USER-GUIDE.md)
+- [单 Agent 聊天与接口](doc/AGENT-CHAT.md)
 - [架构设计](doc/ARCHITECTURE.md)
 - [当前版本功能地图](doc/FEATURE-MAP.md)
 - [部署与安装教程](doc/deployment.md)

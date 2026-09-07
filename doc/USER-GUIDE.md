@@ -31,6 +31,12 @@
 
 Leader 的父任务显示完成，可能只表示本轮拆解或复盘结束；应结合 Worker 结果和 Leader 最终答复确认用户目标是否完成。
 
+### 3.1 单 Agent 聊天
+
+一对一交流可从侧栏“单 Agent 聊天”或成员卡片“聊天”进入。选择 Agent，点击“新建聊天”，输入消息后按 Enter 发送；Shift+Enter 换行。左侧历史列表可打开已有会话继续聊天，切换 Agent 会切换其历史列表。
+
+聊天记录保存在控制台数据库；新会话不带入其他 Web 会话记录，同一 Profile 的持久记忆仍然共享。聊天直接调用 Hermes CLI，要求 Agent 已就绪，无需启动 ACP 终端，控制台不会自动创建看板任务。使用限制、异常恢复和 API 见 [单 Agent 聊天](AGENT-CHAT.md)。
+
 ## 4. 跨团队协作
 
 来源 Leader 使用 `delegate_to_team` 将工作交给目标团队 Leader；目标 Leader 在自己的 board 上组织执行，来源 Leader 使用 `list_team_delegations` 查询状态与结果。团队内创建 Worker 子任务不允许直接指派其他团队 Worker。

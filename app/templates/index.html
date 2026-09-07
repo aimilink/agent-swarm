@@ -180,6 +180,7 @@
 <link href="{{ url_for('static', filename='ui/fonts/material-symbols.css') }}" rel="stylesheet"/>
 <link href="{{ url_for('static', filename='styles.css') }}?v={{ asset_version('styles.css') }}" rel="stylesheet"/>
 <link href="{{ url_for('static', filename='ui/ui-overrides.css') }}?v={{ asset_version('ui/ui-overrides.css') }}" rel="stylesheet"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='agent-chat.css') }}?v={{ asset_version('agent-chat.css') }}">
 </head>
 <body class="bg-background text-on-background font-body-md h-screen flex flex-col overflow-hidden">
 <!-- Top Navigation (JSON) -->
@@ -211,6 +212,7 @@
 <ul class="flex flex-col gap-1 flex-1 font-body-md text-body-md">
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="overview" onclick="switchView('overview', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>团队概览</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="board" onclick="switchView('board', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>任务板</a></li>
+<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="chat" onclick="event.preventDefault(); openAgentChat()"><span class="material-symbols-outlined" aria-hidden="true">chat</span>单 Agent 聊天</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="members" onclick="switchView('members', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>成员列表</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="stats" onclick="switchView('stats', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>效能统计</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="teams" onclick="switchView('teams', event)"><span class="material-symbols-outlined msr" aria-hidden="true">groups</span>团队管理</a></li>
@@ -430,6 +432,11 @@
 </div>
 <p id="kanban-task-status" class="font-label-sm text-secondary hidden" role="status" aria-live="polite"></p>
 </form>
+<section id="view-chat" class="view hidden flex-1 flex flex-col overflow-hidden">
+<div class="chat-layout">
+<aside class="chat-sidebar"><label for="chat-agent">聊天对象</label><select id="chat-agent"></select><button id="chat-new" type="button">＋ 新建聊天</button><h2>历史聊天</h2><div id="chat-history" class="chat-history"></div></aside>
+<div class="chat-main"><h2 id="chat-title">单 Agent 聊天</h2><div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div><p id="chat-status" role="alert"></p><form id="chat-form" class="chat-compose"><textarea id="chat-input" aria-label="聊天消息" placeholder="输入消息，Enter 发送，Shift+Enter 换行" rows="3" maxlength="20000" disabled></textarea><button id="chat-send" type="submit" disabled>发送</button></form></div>
+</div></section>
 </main>
 
 
@@ -921,4 +928,5 @@
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
     <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version('app.js') }}"></script>
     <script src="{{ url_for('static', filename='ui-app.js') }}?v={{ asset_version('ui-app.js') }}"></script>
+    <script src="{{ url_for('static', filename='agent-chat.js') }}?v={{ asset_version('agent-chat.js') }}"></script>
   </body></html>
