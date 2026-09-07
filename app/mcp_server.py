@@ -308,6 +308,18 @@ def create_kanban_worker_tasks(
     resolved_user_task_id = _resolve_user_task_id(sender_agent_id, user_task_id)
     parent_task_id = (parent_task_id or "").strip()
     user_task = store.find_user_task(resolved_user_task_id) if resolved_user_task_id else None
+    if resolved_user_task_id and (
+        user_task is None or user_task.get("leader_agent_id") != sender_agent_id
+    ):
+        raise ValueError("user task must belong to the requesting leader")
+    if user_task and user_task.get("team_id") != sender.get("team_id"):
+        raise ValueError("user task team no longer matches the requesting leader")
+    for assignment in assignments:
+        worker = store.find_agent((assignment.get("to_agent_id") or "").strip())
+        if worker is None or worker.get("role") != "worker":
+            raise ValueError("assignment target must be a worker agent")
+        if worker.get("team_id") != sender.get("team_id"):
+            raise ValueError("worker must belong to the same team; use delegate_to_team for cross-team work")
     current_round = int((user_task or {}).get("current_round") or 1)
     max_rounds = int((user_task or {}).get("max_rounds") or DEFAULT_MAX_TASK_ROUNDS)
     continuation = bool(user_task and (user_task.get("status") in {"ready_to_review", "reviewing"}))

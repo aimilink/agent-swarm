@@ -2,7 +2,7 @@
   const app = () => window.__HERMES_APP__ || {};
   const boot = () => window.__BOOTSTRAP__ || {};
 
-  const VIEWS = ["overview", "board", "members", "stats", "settings", "teams"];
+  const VIEWS = ["overview", "board", "members", "stats", "settings", "teams", "chat"];
   let currentView = "overview";
   let memberFilter = "全部";
   let memberSearch = "";
@@ -36,7 +36,7 @@
 
   function teamNameForAgent(agent, teams) {
     const team = teams.find((t) => t.team_id === agent.team_id);
-    return team ? team.name : "主团队";
+    return team ? team.name : "未分组";
   }
 
   function teamSlugForAgent(agent, teams) {
@@ -108,7 +108,7 @@
       { label: "在职员工", value: String(agents.length), icon: "groups", tone: "primary" },
       { label: "当前任务", value: String(activeTasks), icon: "assignment", tone: "primary" },
       { label: "已完成任务", value: String(doneTasks), icon: "task_alt", tone: "secondary" },
-      { label: "团队数", value: String(teams.length || 1), icon: "hub", tone: "tertiary" },
+      { label: "团队数", value: String(teams.length), icon: "hub", tone: "tertiary" },
     ];
     if (stats?.length) {
       cards[0].value = stats[0]?.value?.replace(/^0+/, "") || cards[0].value;
@@ -157,7 +157,7 @@
         })
       : [
           `<div class="rounded-xl border border-outline-variant/30 p-4 bg-surface-container-lowest col-span-3">
-            <div class="font-label-sm text-on-surface-variant">尚未创建子团队，所有 Agent 归属主团队。</div>
+            <div class="font-label-sm text-on-surface-variant">尚未创建团队，可在团队管理中创建并添加已有 Agent。</div>
           </div>`,
         ];
     els.overviewHealth.innerHTML = teamCards.join("");
@@ -218,7 +218,7 @@
 
   function renderBoardColumns(kanbanState) {
     if (!els.boardColumns) return;
-    const links = [...(kanbanState?.links || [])].sort((a, b) =>
+    const links = [...(kanbanState?.links || [])].filter((link) => app().kanbanLinkMatchesTeam?.(link) ?? true).sort((a, b) =>
       String(b.updated_at || b.created_at || "").localeCompare(String(a.updated_at || a.created_at || "")),
     );
     const columns = [
@@ -252,7 +252,7 @@
                 const taskTitle = link.metadata?.task_title || roleLabel(link.kanban_role);
                 const badge = roleLabel(link.kanban_role);
                 return `
-                <div class="bg-surface rounded-xl p-4 shadow-sm border border-outline-variant/50 hover:border-primary/50 transition-colors cursor-pointer kanban-ui-card" data-task-id="${esc(link.kanban_task_id || "")}">
+                <div class="bg-surface rounded-xl p-4 shadow-sm border border-outline-variant/50 hover:border-primary/50 transition-colors cursor-pointer kanban-ui-card" role="button" tabindex="0" data-task-id="${esc(link.kanban_task_id || "")}">
                   <div class="flex justify-between items-start mb-2">
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-container/10 text-primary border border-primary/20">${esc(badge)}</span>
                     <span class="material-symbols-outlined msr text-secondary text-sm" aria-hidden="true">task_alt</span>
@@ -286,6 +286,9 @@
       .join("");
 
     els.boardColumns.querySelectorAll(".kanban-ui-card").forEach((card) => {
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); card.click(); }
+      });
       card.addEventListener("click", () => {
         const taskId = card.dataset.taskId;
         const link = links.find((item) => item.kanban_task_id === taskId);
@@ -297,19 +300,20 @@
   function renderMemberFilters(agents, teams) {
     if (!els.membersFilterBar) return;
     const mainCount = agents.filter((a) => !a.team_id).length;
-    const filters = [{ label: "全部", count: agents.length }];
-    if (mainCount) filters.push({ label: "主团队", count: mainCount });
+    const filters = [{ key: "全部", label: "全部", count: agents.length }];
+    if (mainCount) filters.push({ key: "__ungrouped__", label: "未分组", count: mainCount });
     teams.forEach((team) => {
       const count = agents.filter((a) => a.team_id === team.team_id).length;
-      if (count) filters.push({ label: team.name, count });
+      if (count) filters.push({ key: team.team_id, label: team.name, count });
     });
+    if (!filters.some(filter => filter.key === memberFilter)) memberFilter = "全部";
     els.membersFilterBar.innerHTML = filters
       .map((filter) => {
-        const active = memberFilter === filter.label;
+        const active = memberFilter === filter.key;
         const cls = active
           ? "filter-btn px-3 py-1.5 rounded-lg font-label-md bg-surface shadow-sm text-on-surface"
           : "filter-btn px-3 py-1.5 rounded-lg font-label-md text-on-surface-variant";
-        return `<button type="button" data-filter="${esc(filter.label)}" class="${cls}">${esc(filter.label)} ${filter.count}</button>`;
+        return `<button type="button" data-filter="${esc(filter.key)}" class="${cls}">${esc(filter.label)} ${filter.count}</button>`;
       })
       .join("");
     els.membersFilterBar.querySelectorAll(".filter-btn").forEach((btn) => {
@@ -326,8 +330,8 @@
     const displayStatus = app().getAgentDisplayStatus || (() => ({ label: "未知", className: "idle" }));
     const filtered = agents.filter((agent) => {
       const teamLabel = teamNameForAgent(agent, teams);
-      const matchesTeam = memberFilter === "全部" || teamLabel === memberFilter;
-      const matchesSearch = !memberSearch || String(agent.name || "").includes(memberSearch);
+      const matchesTeam = memberFilter === "全部" || (memberFilter === "__ungrouped__" ? !agent.team_id : agent.team_id === memberFilter);
+      const matchesSearch = !memberSearch || [agent.name, agent.profile_name, agent.role].join(" ").toLowerCase().includes(memberSearch.toLowerCase());
       return matchesTeam && matchesSearch;
     });
     if (els.membersSubtitle) {
@@ -356,7 +360,7 @@
               <div class="font-title-lg text-[15px] font-bold text-on-surface truncate">${esc(agent.name)}</div>
               <div class="font-label-sm text-on-surface-variant truncate">${esc(agent.role)} · ${esc(agent.profile_name)}</div>
             </div>
-            <button type="button" class="text-on-surface-variant hover:text-primary p-1 rounded-full" data-member-menu="${esc(agent.agent_id)}" aria-label="更多操作">
+            <button type="button" class="text-on-surface-variant hover:text-primary p-1 rounded-full" data-agent-config data-agent-id="${esc(agent.agent_id)}" aria-label="配置 Agent">
               <span class="material-symbols-outlined msr" aria-hidden="true">more_vert</span>
             </button>
           </div>
@@ -371,6 +375,7 @@
             <span class="font-label-sm text-on-surface-variant">任务 ${agent.queue_depth || 0}</span>
             <div class="flex gap-2">
               <button type="button" class="text-[11px] px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high" data-agent-config data-agent-id="${esc(agent.agent_id)}">配置</button>
+              <button type="button" class="text-[11px] px-2 py-1 rounded-lg bg-primary-container/20 text-primary" data-agent-chat data-agent-id="${esc(agent.agent_id)}">聊天</button>
               <button type="button" class="text-[11px] px-2 py-1 rounded-lg ${actionClass}" data-session-action="${isRunning ? "stop" : "start"}" data-agent-id="${esc(agent.agent_id)}">${actionLabel}</button>
             </div>
           </div>
@@ -697,7 +702,11 @@
     const options = [`<option value="">全部团队</option>`]
       .concat(teams.map((t) => `<option value="${esc(t.slug)}">${esc(t.name)}</option>`))
       .join("");
-    if (els.boardTeamSelect) els.boardTeamSelect.innerHTML = options;
+    if (els.boardTeamSelect) {
+      const selected = els.kanbanTeamSelect?.value || els.boardTeamSelect.value;
+      els.boardTeamSelect.innerHTML = options;
+      els.boardTeamSelect.value = teams.some((team) => team.slug === selected) ? selected : "";
+    }
     if (els.kanbanTeamSelect && !els.kanbanTeamSelect.options.length) els.kanbanTeamSelect.innerHTML = options;
   }
 
@@ -712,6 +721,7 @@
       }
 
       const teams = Array.isArray(data.teams) ? data.teams : [];
+      app().setTeams?.(teams);
       const agents = boot().agents || [];
       const links = boot().kanban_task_links || [];
 
@@ -763,7 +773,7 @@
                   </span>
                   <span class="flex items-center gap-1">
                     <span class="material-symbols-outlined msr text-[14px]">assessment</span>
-                    <span class="font-label-sm text-on-surface-variant">${stats.completion_rate}% 验收通过</span>
+                    <span class="font-label-sm text-on-surface-variant">${stats.completion_rate}% 任务完成</span>
                   </span>
                   <span class="flex items-center gap-1">
                     <span class="material-symbols-outlined msr text-[14px]">schedule</span>
@@ -824,9 +834,15 @@
       els.teamsContent.querySelectorAll("[data-delete-team]").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const teamId = btn.dataset.deleteTeam;
-          if (!confirm("确定要删除此团队吗？团队内所有成员将被移出团队。")) return;
           const team = teams.find((t) => t.team_id === teamId);
-          if (!team) return;
+          if (!team || btn.disabled) return;
+          if (team.member_count) {
+            alert("请先移出所有成员，再删除团队。Agent Profile 不会被删除。");
+            openTeamViewModal(team.slug);
+            return;
+          }
+          if (!confirm(`确定删除空团队「${team.name}」？`)) return;
+          btn.disabled = true;
           try {
             const resp = await fetch(`/api/teams/${encodeURIComponent(team.slug)}`, { method: "DELETE" });
             const result = await resp.json().catch(() => ({}));
@@ -838,6 +854,8 @@
           } catch (err) {
             console.error("[hermes-ui] Failed to delete team:", err);
             alert("删除团队失败");
+          } finally {
+            btn.disabled = false;
           }
         });
       });
@@ -847,168 +865,9 @@
     }
   }
 
-  function openTeamCreateModal() {
-    const modal = document.getElementById("teams-manage-modal");
-    if (!modal) return;
-    modal.hidden = false;
-    modal.classList.add('is-open');
-    // Reset form
-    const form = document.getElementById("create-team-form");
-    if (form) {
-      form.reset();
-      const errorEl = document.getElementById("create-team-error");
-      if (errorEl) errorEl.hidden = true;
-    }
-    // Clear list and detail
-    const listEl = document.getElementById("teams-manage-list");
-    if (listEl) listEl.innerHTML = "";
-    const detailEl = document.getElementById("teams-manage-detail");
-    if (detailEl) detailEl.innerHTML = '<p class="form-hint">从左侧选择一个团队查看成员。</p>';
-  }
-
-  function openTeamEditModal(teamSlug) {
-    const modal = document.getElementById("teams-manage-modal");
-    if (!modal) return;
-    modal.hidden = false;
-    modal.classList.add('is-open');
-    // Load team details and populate edit form
-    fetch(`/api/teams/${encodeURIComponent(teamSlug)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.ok || !data.team) throw new Error("Team not found");
-        const team = data.team;
-        const form = document.getElementById("create-team-form");
-        if (form) {
-          form.slug.value = team.slug || "";
-          form.name.value = team.name || "";
-          form.description.value = team.description || "";
-          // Change submit button to update
-          const submitBtn = form.querySelector('button[type="submit"]');
-          if (submitBtn) {
-            submitBtn.textContent = "保存更改";
-            submitBtn.dataset.teamSlug = team.slug;
-          }
-        }
-        // Show members in detail panel
-        renderTeamMembersDetail(team);
-      })
-      .catch((err) => {
-        console.error("[hermes-ui] Failed to load team:", err);
-        alert("加载团队信息失败");
-      });
-  }
-
-  function openTeamViewModal(teamSlug) {
-    const modal = document.getElementById("teams-manage-modal");
-    if (!modal) return;
-    modal.hidden = false;
-    modal.classList.add('is-open');
-    fetch(`/api/teams/${encodeURIComponent(teamSlug)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.ok || !data.team) throw new Error("Team not found");
-        renderTeamMembersDetail(data.team);
-      })
-      .catch((err) => {
-        console.error("[hermes-ui] Failed to load team:", err);
-      });
-  }
-
-  function renderTeamMembersDetail(team) {
-    const detailEl = document.getElementById("teams-manage-detail");
-    if (!detailEl) return;
-    const members = team.members || [];
-    const membersHtml = members.length
-      ? members
-          .map(
-            (m) => `
-            <div class="flex items-center gap-3 py-2 border-b border-outline-variant/20 last:border-0">
-              <div class="w-8 h-8 rounded-full bg-primary-container/20 text-primary flex items-center justify-center font-bold text-xs">
-                ${esc(m.name?.slice(0, 1) || "?")}
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="font-label-md text-on-surface font-bold">${esc(m.name)}</div>
-                <div class="font-label-sm text-on-surface-variant">${esc(m.profile_name)} · ${esc(m.role)}</div>
-              </div>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                m.runtime_status === "running"
-                  ? "bg-secondary-container/20 text-secondary"
-                  : "bg-surface-container text-on-surface-variant"
-              }">${m.runtime_status === "running" ? "运行中" : "已停止"}</span>
-            </div>
-          `
-          )
-          .join("")
-      : '<p class="font-label-sm text-on-surface-variant">暂无成员</p>';
-
-    detailEl.innerHTML = `
-      <div class="mb-4">
-        <h3 class="font-title-lg text-title-lg font-bold text-on-surface mb-1">${esc(team.name)}</h3>
-        <p class="font-label-sm text-on-surface-variant">${esc(team.description || "暂无描述")}</p>
-        <p class="font-label-sm text-on-surface-variant mt-1">成员：${team.member_count || 0} 人</p>
-      </div>
-      <div class="border-t border-outline-variant/30 pt-3">
-        <h4 class="font-label-md text-on-surface font-bold mb-2">团队成员</h4>
-        ${membersHtml}
-      </div>
-    `;
-  }
-
-  // Handle create/update team form submission
-  document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("create-team-form");
-    if (!form) return;
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const errorEl = document.getElementById("create-team-error");
-      if (errorEl) errorEl.hidden = true;
-
-      const formData = new FormData(form);
-      const payload = {
-        slug: formData.get("slug")?.trim() || "",
-        name: formData.get("name")?.trim() || "",
-        description: formData.get("description")?.trim() || "",
-      };
-
-      if (!payload.slug || !payload.name) {
-        if (errorEl) {
-          errorEl.textContent = "请填写团队标识和名称";
-          errorEl.hidden = false;
-        }
-        return;
-      }
-
-      const isEdit = form.querySelector('button[type="submit"]')?.dataset?.teamSlug;
-      const url = isEdit ? `/api/teams/${encodeURIComponent(payload.slug)}` : "/api/teams";
-      const method = isEdit ? "PATCH" : "POST";
-
-      try {
-        const resp = await fetch(url, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const result = await resp.json().catch(() => ({}));
-        if (!resp.ok || !result.ok) {
-          if (errorEl) {
-            errorEl.textContent = result.error || "操作失败";
-            errorEl.hidden = false;
-          }
-          return;
-        }
-        // Close modal and refresh
-        const modal = document.getElementById("teams-manage-modal");
-        if (modal) { modal.hidden = true; modal.classList.remove('is-open'); }
-        void renderTeamsView();
-      } catch (err) {
-        console.error("[hermes-ui] Failed to save team:", err);
-        if (errorEl) {
-          errorEl.textContent = "网络错误，请重试";
-          errorEl.hidden = false;
-        }
-      }
-    });
-  });
+  function openTeamCreateModal() { void app().teamManagement?.open(); }
+  function openTeamEditModal(slug) { void app().teamManagement?.open(slug, true); }
+  function openTeamViewModal(slug) { void app().teamManagement?.open(slug); }
 
   function focusTaskInput() {
     const input = document.getElementById("kanban-task-input");
@@ -1150,21 +1009,15 @@
         const action = sessionBtn.dataset.sessionAction;
         sessionBtn.disabled = true;
         fetch(`/api/agents/${agentId}/${action}`, { method: "POST" })
-          .catch(() => {})
+          .then(async (response) => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.ok) throw new Error(data.error || "Agent 操作失败");
+          })
+          .catch((error) => { alert(error.message || "网络异常，请重试"); })
           .finally(() => { sessionBtn.disabled = false; });
       }
     });
 
-    // Close teams-manage modal
-    document.querySelectorAll('[data-close-teams-manage]').forEach((el) => {
-      el.addEventListener("click", () => {
-        const modal = document.getElementById("teams-manage-modal");
-        if (modal) {
-          modal.hidden = true;
-          modal.classList.remove("is-open");
-        }
-      });
-    });
   }
 
   function hydrateFromBootstrap() {
@@ -1187,6 +1040,8 @@
   }
 
   window.__HERMES_UI__ = {
+    refreshTeams: renderTeamsView,
+    onTeamsUpdate() { syncTeamSelects(); hydrateFromBootstrap(); },
     onAgentsUpdate(agents, stats) {
       if (window.__BOOTSTRAP__) {
         window.__BOOTSTRAP__.agents = agents;

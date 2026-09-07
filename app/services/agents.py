@@ -61,8 +61,8 @@ def create_agent(
         team_id = team_record["team_id"]
         if role == "leader" and store.has_team_lead(team_id):
             raise ValueError(f"team '{team.strip()}' already has a leader")
-    elif role == "leader" and store.has_leader():
-        # 未指定团队的 leader 保持旧行为：全局唯一（兼容存量单团队部署）
+    elif role == "leader" and store.has_team_lead(None):
+        # 未分组 Leader 的唯一性仅限未分组成员。
         raise ValueError("only one leader can exist")
 
     workspace_path = registry.ensure_workspace(profile_name)

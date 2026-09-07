@@ -3,6 +3,7 @@ from __future__ import annotations
 from flask import Flask
 
 from .agents import bp as agents_bp
+from .agent_chats import bp as agent_chats_bp
 from .agent_mcps import bp as agent_mcps_bp
 from .events import bp as events_bp
 from .kanban import bp as kanban_bp
@@ -17,6 +18,7 @@ from .web import bp as web_bp
 def register_blueprints(app: Flask) -> None:
     app.register_blueprint(web_bp)
     app.register_blueprint(agents_bp)
+    app.register_blueprint(agent_chats_bp)
     app.register_blueprint(agent_mcps_bp)
     app.register_blueprint(kanban_bp)
     app.register_blueprint(messages_bp)
