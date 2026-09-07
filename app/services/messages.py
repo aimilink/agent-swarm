@@ -25,12 +25,13 @@ HUMAN_INPUT_RULE = (
 )
 
 
-def find_leader_agent_id(runtime_store: RuntimeStore) -> str:
+def find_leader_agent_id(runtime_store: RuntimeStore, team_id: str | None = None) -> str:
     leader = next(
         (
             agent
             for agent in runtime_store.snapshot()["agents"]
             if agent.get("role") == "leader"
+            and agent.get("team_id") == team_id
             and is_agent_dispatchable(agent)
         ),
         None,
@@ -128,7 +129,9 @@ def send_user_task(store: RuntimeStore, *, content: str, to_agent_id: str = "") 
     if not content:
         raise ValueError("content is required")
     target = _find_ready_agent(store, to_agent_id) if (to_agent_id or "").strip() else None
-    leader_id = target["agent_id"] if target and target.get("role") == "leader" else find_leader_agent_id(store)
+    leader_id = target["agent_id"] if target and target.get("role") == "leader" else find_leader_agent_id(
+        store, target.get("team_id") if target else None
+    )
     if target and target.get("role") == "worker":
         return _send_direct_worker_task(store, content=content, leader_id=leader_id, worker=target)
     if target and target.get("role") != "leader":

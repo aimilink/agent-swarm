@@ -18,7 +18,7 @@
   display: flex;
 }
 
-#kanban-task-status:not(.hidden) {
+#kanban-task-status:not([hidden]):not(.hidden) {
   display: block;
 }
 
@@ -63,3 +63,36 @@ main > .view {
 #overview-team-health {
   min-height: fit-content;
 }
+
+
+/* Keep team forms and the task composer usable on narrow viewports. */
+.teams-manage__create[hidden] { display: none; }
+.kanban-ui-card:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+#kanban-task-form > div { min-width: 0; }
+@media (max-width: 767px) {
+  #overview-team-health { grid-template-columns: 1fr; }
+  #overview-team-health > div { grid-column: auto; }
+  .teams-manage__layout { grid-template-columns: minmax(0, 1fr); }
+  .teams-manage__right { border-left: 0; padding-left: 0; }
+  .teams-manage__list { max-height: 140px; }
+  #kanban-task-form { flex-wrap: wrap; gap: 10px; padding: 12px; }
+  #kanban-task-form > div:first-child { flex-basis: 100%; }
+  #kanban-task-form > div:nth-child(2) { border-left: 0; padding-left: 0; flex-wrap: wrap; }
+  #kanban-task-form > div:nth-child(3) { flex-wrap: wrap; gap: 8px; }
+  #kanban-team-select { max-width: 190px; }
+  #teams-content [data-team-id] > div:last-child { flex-wrap: wrap; gap: 8px; }
+  #teams-content [data-team-id] > div:last-child > div { flex-wrap: wrap; }
+}
+
+#kanban-task-status { flex-basis: 100%; }
+#kanban-task-status[hidden] { display: none !important; }
+#kanban-task-status[data-kind="error"] { color: #b91c1c; }
+#kanban-task-form { flex-wrap: wrap; }
+
+.teams-manage__create label { display: grid; gap: 6px; min-width: 0; }
+.teams-manage__create input {
+  width: 100%; min-width: 0; box-sizing: border-box;
+  padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 8px;
+  background: #fff; color: #172033;
+}
+.teams-manage__create input:read-only { background: #f1f5f9; color: #64748b; }

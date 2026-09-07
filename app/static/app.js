@@ -487,10 +487,12 @@ function setKanbanStatus(message, kind = "muted") {
   }
   kanbanTaskStatus.textContent = message || "";
   kanbanTaskStatus.hidden = !message;
+  kanbanTaskStatus.classList.toggle("hidden", !message);
   kanbanTaskStatus.dataset.kind = kind;
   if (message && kind !== "muted") {
     kanbanStatusTimer = window.setTimeout(() => {
       kanbanTaskStatus.hidden = true;
+      kanbanTaskStatus.classList.add("hidden");
       kanbanStatusTimer = 0;
     }, kind === "error" ? 5200 : 3200);
   }
@@ -882,10 +884,12 @@ function kanbanTaskCanAnswer(link) {
 function renderKanbanTeamOptions() {
   if (!kanbanTeamSelect || !kanbanTeamPicker) return;
   const teams = window.__BOOTSTRAP__?.teams || [];
+  if (!teams.some((team) => team.slug === selectedKanbanTeam)) selectedKanbanTeam = "";
   const hasTeams = teams.length > 0;
   kanbanTeamPicker.hidden = !hasTeams;
   if (!hasTeams) {
     selectedKanbanTeam = "";
+    kanbanTeamSelect.innerHTML = '<option value="">全部团队</option>';
     return;
   }
   const options = [`<option value="">全部</option>`]
@@ -895,6 +899,9 @@ function renderKanbanTeamOptions() {
 
 kanbanTeamSelect?.addEventListener("change", () => {
   selectedKanbanTeam = kanbanTeamSelect.value;
+  const boardSelect = document.getElementById("board-team-select");
+  if (boardSelect) boardSelect.value = selectedKanbanTeam;
+  renderKanbanTasks();
   renderKanbanAssigneeOptions(window.__BOOTSTRAP__?.agents || []);
   refreshKanbanTasks({ silent: true });
 });
@@ -1356,6 +1363,11 @@ async function submitKanbanTask(event) {
     return;
   }
   const submitBtn = kanbanTaskForm.querySelector('button[type="submit"]');
+  if (submitBtn?.disabled) return;
+  if (!selectedKanbanAssigneeId) {
+    setKanbanStatus("当前范围没有可接收任务的 Agent，请先启动团队 Leader。", "error");
+    return;
+  }
   if (submitBtn) submitBtn.disabled = true;
   const pendingId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const pendingEntry = { id: pendingId, title: content.slice(0, 80) };
@@ -1375,7 +1387,7 @@ async function submitKanbanTask(event) {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.ok) throw new Error(data.error || "任务创建失败");
-    kanbanTaskInput.value = "";
+    if (kanbanTaskInput.value.trim() === content) kanbanTaskInput.value = "";
     const message = data.message || {};
     setKanbanStatus(`已创建：${message.kanban_task_id || message.user_task_id || "Kanban 任务"}`, "success");
     created = true;
@@ -4062,6 +4074,12 @@ function openModal(returnTarget = null) {
     createAgentError.hidden = true;
     createAgentError.textContent = "";
   }
+  const teamSelect = document.getElementById("create-agent-team");
+  if (teamSelect) {
+    teamSelect.innerHTML = '<option value="">未分组</option>' + (window.__BOOTSTRAP__?.teams || [])
+      .map(team => `<option value="${escapeHtml(team.slug)}">${escapeHtml(team.name)}</option>`).join("");
+    teamSelect.value = selectedKanbanTeam || "";
+  }
   openAnimatedLayer(modal, createAgentForm?.querySelector('input[name="name"]'), returnTarget);
 }
 
@@ -4281,19 +4299,18 @@ if (modal) {
   });
 }
 
+const teamManagement = {};
+
 if (createAgentForm) {
 
 // ===== 多团队：团队管理弹窗 =====
 let teamsManageSelected = "";
 
 async function fetchTeamsList() {
-  try {
-    const response = await fetch("/api/teams");
-    const data = await response.json().catch(() => ({}));
-    return Array.isArray(data?.teams) ? data.teams : [];
-  } catch {
-    return [];
-  }
+  const response = await fetch("/api/teams");
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) throw new Error(data.error || "团队加载失败，请重试");
+  return Array.isArray(data.teams) ? data.teams : [];
 }
 
 function renderTeamsManageList(teams) {
@@ -4324,6 +4341,7 @@ let teamsCache = [];
 
 async function refreshTeamsManage() {
   teamsCache = await fetchTeamsList();
+  window.__HERMES_APP__?.setTeams(teamsCache);
   renderTeamsManageList(teamsCache);
   const current = teamsCache.find((t) => t.slug === teamsManageSelected);
   if (current) renderTeamDetail(current);
@@ -4337,7 +4355,8 @@ function renderTeamDetail(team) {
   const members = Array.isArray(team?.members) ? team.members : [];
   const memberIds = new Set(members.map((m) => m.agent_id));
   const allAgents = window.__BOOTSTRAP__?.agents || [];
-  const joinable = allAgents.filter((a) => !memberIds.has(a.agent_id));
+  const hasLeader = members.some((member) => member.role === "leader");
+  const joinable = allAgents.filter((a) => !memberIds.has(a.agent_id) && !(hasLeader && a.role === "leader"));
 
   const memberRows = members.length
     ? members
@@ -4378,13 +4397,22 @@ function renderTeamDetail(team) {
       </select>
       <button type="submit" class="primary-button primary-button--sm">拉入团队</button>
     </form>
-    <p class="form-error" id="team-detail-error" hidden></p>`;
+    <p class="form-hint">加入已有成员会移动其团队归属；移出成员保留 Profile、技能和记忆。</p>
+    <p class="form-error" id="team-detail-error" role="alert" hidden></p>`;
 
+  let memberOperationPending = false;
+  function setMemberBusy(busy) {
+    memberOperationPending = busy;
+    teamsManageDetail.querySelectorAll("button, select").forEach(control => { control.disabled = busy; });
+  }
   const joinForm = teamsManageDetail.querySelector("#team-join-form");
   joinForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (memberOperationPending) return;
     const agentId = new FormData(joinForm).get("agent_id");
     const errEl = teamsManageDetail.querySelector("#team-detail-error");
+    if (errEl) errEl.hidden = true;
+    setMemberBusy(true);
     try {
       const response = await fetch(`/api/teams/${encodeURIComponent(team.slug)}/members`, {
         method: "POST",
@@ -4396,12 +4424,16 @@ function renderTeamDetail(team) {
       await refreshTeamsManage();
     } catch (e) {
       if (errEl) { errEl.textContent = e.message; errEl.hidden = false; }
+    } finally {
+      setMemberBusy(false);
     }
   });
 
   teamsManageDetail.querySelectorAll("[data-team-remove]").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      if (memberOperationPending) return;
       const agentId = btn.dataset.teamRemove;
+      setMemberBusy(true);
       try {
         const response = await fetch(`/api/teams/${encodeURIComponent(team.slug)}/members/${encodeURIComponent(agentId)}`, {
           method: "DELETE",
@@ -4412,12 +4444,22 @@ function renderTeamDetail(team) {
       } catch (e) {
         const errEl = teamsManageDetail.querySelector("#team-detail-error");
         if (errEl) { errEl.textContent = e.message; errEl.hidden = false; }
+      } finally {
+        setMemberBusy(false);
       }
     });
   });
 
   teamsManageDetail.querySelector("#team-delete-btn")?.addEventListener("click", async () => {
-    if (!confirm(`确定解散团队「${team.name}」？成员不会被删除，仅解除归属。`)) return;
+    if (memberOperationPending) return;
+    if (members.length) {
+      const error = teamsManageDetail.querySelector("#team-detail-error");
+      error.textContent = "请先移出所有成员，再删除团队。Agent Profile 不会被删除。";
+      error.hidden = false;
+      return;
+    }
+    if (!confirm(`确定删除空团队「${team.name}」？此操作不会删除 Agent Profile。`)) return;
+    setMemberBusy(true);
     try {
       const response = await fetch(`/api/teams/${encodeURIComponent(team.slug)}`, { method: "DELETE" });
       const data = await response.json().catch(() => ({}));
@@ -4428,14 +4470,60 @@ function renderTeamDetail(team) {
     } catch (e) {
       const errEl = teamsManageDetail.querySelector("#team-detail-error");
       if (errEl) { errEl.textContent = e.message; errEl.hidden = false; }
+    } finally {
+      setMemberBusy(false);
     }
   });
 }
 
-openTeamsPage?.addEventListener("click", () => {
-  if (!teamsManageModal) return;
-  refreshTeamsManage();
-  openAnimatedLayer(teamsManageModal, createTeamForm?.querySelector('input[name="slug"]'));
+let teamModalRequest = 0;
+function resetTeamForm() {
+  createTeamForm.reset();
+  delete createTeamForm.dataset.editSlug;
+  createTeamForm.elements.namedItem("slug").readOnly = false;
+  createTeamForm.querySelector('button[type="submit"]').textContent = "创建团队";
+  createTeamError.hidden = true;
+}
+async function openTeamManager(slug = "", edit = false) {
+  const requestId = ++teamModalRequest;
+  resetTeamForm();
+  teamsManageSelected = slug;
+  createTeamForm.hidden = !!slug && !edit;
+  const submitBtn = createTeamForm.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  teamsManageDetail.innerHTML = '<p class="form-hint" role="status">正在加载团队…</p>';
+  openAnimatedLayer(teamsManageModal, teamsManageModal.querySelector('[data-close-teams-manage]'));
+  try {
+    const teams = await fetchTeamsList();
+    if (requestId !== teamModalRequest || teamsManageModal.hidden) return;
+    teamsCache = teams;
+    window.__HERMES_APP__?.setTeams(teams);
+    renderTeamsManageList(teams);
+    const team = teams.find((item) => item.slug === slug);
+    if (slug && !team) throw new Error("团队不存在或已被删除，请关闭后重试");
+    if (team) renderTeamDetail(team);
+    else teamsManageDetail.innerHTML = '<p class="form-hint">创建团队后可添加已有 Agent。</p>';
+    if (edit && team) {
+      createTeamForm.dataset.editSlug = team.slug;
+      for (const key of ["slug", "name", "description"]) {
+        createTeamForm.elements.namedItem(key).value = team[key] || "";
+      }
+      createTeamForm.elements.namedItem("slug").readOnly = true;
+      submitBtn.textContent = "保存更改";
+    }
+    submitBtn.disabled = false;
+    if (!createTeamForm.hidden) createTeamForm.elements.namedItem(edit ? "name" : "slug").focus();
+  } catch (error) {
+    if (requestId !== teamModalRequest) return;
+    teamsManageDetail.innerHTML = `<p class="form-error" role="alert">${escapeHtml(error.message)}</p><button type="button" class="filter-chip" id="team-load-retry">重试</button>`;
+    teamsManageDetail.querySelector("#team-load-retry").addEventListener("click", () => { void openTeamManager(slug, edit); });
+  }
+}
+teamManagement.open = openTeamManager;
+openTeamsPage?.addEventListener("click", () => { void openTeamManager(); });
+document.getElementById("open-teams-manage-modal")?.addEventListener("click", () => {
+  closeAnimatedLayer(transferModal);
+  void openTeamManager();
 });
 
 document.querySelectorAll("[data-close-teams-manage]").forEach((el) => {
@@ -4444,12 +4532,14 @@ document.querySelectorAll("[data-close-teams-manage]").forEach((el) => {
 
 createTeamForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const formData = new FormData(createTeamForm);
   const submitBtn = createTeamForm.querySelector('button[type="submit"]');
+  if (submitBtn?.disabled) return;
+  const formData = new FormData(createTeamForm);
+  const editSlug = createTeamForm.dataset.editSlug;
   if (submitBtn) submitBtn.disabled = true;
   try {
-    const response = await fetch("/api/teams", {
-      method: "POST",
+    const response = await fetch(editSlug ? `/api/teams/${encodeURIComponent(editSlug)}` : "/api/teams", {
+      method: editSlug ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         slug: formData.get("slug"),
@@ -4460,9 +4550,10 @@ createTeamForm?.addEventListener("submit", async (event) => {
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.ok) throw new Error(data.error || "创建失败");
     createTeamError.hidden = true;
-    createTeamForm.reset();
+    resetTeamForm();
     teamsManageSelected = data.team?.slug || teamsManageSelected;
     await refreshTeamsManage();
+    window.__HERMES_UI__?.refreshTeams?.();
   } catch (e) {
     if (createTeamError) { createTeamError.textContent = e.message; createTeamError.hidden = false; }
   } finally {
@@ -4476,11 +4567,13 @@ createTeamForm?.addEventListener("submit", async (event) => {
     const payload = {
       name: formData.get("name"),
       profile_name: formData.get("profile_name"),
+      team: formData.get("team") || "",
       role: formData.get("role"),
       description: formData.get("description"),
     };
     const modelConfigId = String(formData.get("model_config_id") || "");
     const submitBtn = createAgentForm.querySelector('button[type="submit"]');
+    if (submitBtn?.disabled) return;
     const originalSubmitText = submitBtn?.textContent || "入职";
     if (createAgentError) {
       createAgentError.hidden = true;
@@ -4577,6 +4670,18 @@ if (eventList?.dataset.selectedAgent) {
 }
 
 window.__HERMES_APP__ = {
+  teamManagement,
+  kanbanLinkMatchesTeam,
+  setTeams(teams) {
+    window.__BOOTSTRAP__.teams = teams;
+    const memberships = new Map(teams.flatMap(team => (team.members || []).map(member => [member.agent_id, team.team_id])));
+    if (teams.every(team => Array.isArray(team.members))) {
+      window.__BOOTSTRAP__.agents = (window.__BOOTSTRAP__.agents || []).map(agent => ({...agent, team_id: memberships.get(agent.agent_id) || null}));
+    }
+    renderKanbanAssigneeOptions();
+    renderKanbanTasks();
+    window.__HERMES_UI__?.onTeamsUpdate?.();
+  },
   openKanbanTask,
   kanbanRoleLabel,
   kanbanStatusLabel,
