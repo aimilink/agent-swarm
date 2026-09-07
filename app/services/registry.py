@@ -3,17 +3,27 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..config import AGENT_TEAM_WORKSPACE_ROOT, HERMES_HOME, PROFILE_NAME_RE, now_iso
+from ..config import (
+    AGENT_TEAM_WORKSPACE_ROOT,
+    HERMES_HOME,
+    HERMES_MANAGED_BY,
+    PROFILE_NAME_RE,
+    now_iso,
+)
 
 
 META_FILENAME = "team-meta.json"
 META_FIELDS = (
+    "schema_version",
+    "managed_by",
     "name",
     "role",
     "description",
     "is_leader",
     "created_at",
     "workspace_path",
+    "team_id",
+    "profile_origin",
 )
 
 
@@ -57,6 +67,8 @@ def write_team_meta(profile_name: str, meta: dict) -> None:
     path = _meta_path(profile_name)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {k: meta.get(k) for k in META_FIELDS}
+    payload["schema_version"] = payload.get("schema_version") or 2
+    payload["managed_by"] = payload.get("managed_by") or HERMES_MANAGED_BY
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -106,6 +118,8 @@ def _hydrate(profile_name: str, meta: dict) -> dict:
         "readiness_message": readiness_message,
         "created_at": created_at,
         "last_active_at": created_at,
+        "team_id": meta.get("team_id"),
+        "profile_origin": meta.get("profile_origin") or "existing",
     }
 
 
@@ -157,6 +171,8 @@ def bootstrap(store) -> None:
                 workspace_path=agent["workspace_path"],
                 readiness_status=agent["readiness_status"],
                 readiness_message=agent["readiness_message"],
+                team_id=agent.get("team_id"),
+                profile_origin=agent.get("profile_origin"),
             )
             continue
         store.register_agent(agent)

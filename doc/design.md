@@ -8,7 +8,8 @@ Hermes Agents Team 是一个本地 Web 控制台，用于创建、管理、观�
 
 当前实现具备：
 
-- 创建 / 删除 Leader 与 Worker Agent。
+- 接入已有或创建新的 Leader / Worker Agent；解除控制台关系时保留 Profile。
+- 创建多个团队并管理成员，每个团队拥有独立 Leader 和 Kanban board。
 - 启动、停止、重启单个或全部 Agent。
 - 用户向团队或指定 Worker 提交任务。
 - 使用 Hermes Kanban 持久化任务、子任务、依赖和运行结果。
@@ -41,6 +42,7 @@ Hermes Agents Team 是一个本地 Web 控制台，用于创建、管理、观�
 | `name` | 展示名称。 |
 | `role` | `leader` 或 `worker`。 |
 | `description` | 职责描述。 |
+| `team_id` | 当前所属团队；NULL 表示未分组。 |
 | `is_leader` | 是否为 Leader。 |
 | `workspace_path` | Agent 工作区路径。 |
 | `status` | 业务状态，如 `idle`、`busy`、`waiting`。 |
@@ -51,7 +53,7 @@ Hermes Agents Team 是一个本地 Web 控制台，用于创建、管理、观�
 | `readiness_status` | `ready`、`preparing`、`failed` 等就绪状态。 |
 | `model_summary` | 快照中动态读取的模型摘要。 |
 
-当前只允许一个 Leader。
+每个团队最多允许一个 Leader；不同团队可以各有自己的 Leader。
 
 ### 2.2 Hermes Profile
 
@@ -64,7 +66,9 @@ Hermes Agents Team 是一个本地 Web 控制台，用于创建、管理、观�
 - `memories/`
 - MCP server 配置
 
-创建 Agent 时会 clone 当前 Hermes profile，使新 Agent 继承基础模型与配置。
+接入已有 Profile 时原地复用，不覆盖既有数据；只有新名称才会 clone 当前 Hermes
+active Profile，使新 Agent 继承基础模型与配置。同一 Profile 在 CLI 单 Agent 与
+团队模式下共享这些文件。
 
 ### 2.3 UserTask / Delegation / Assignment
 
@@ -206,7 +210,7 @@ app/
 | `GET` | `/api/profiles` | 列出 Hermes profiles。 |
 | `GET` | `/api/hermes/status` | 检查 Hermes CLI。 |
 | `POST` | `/api/agents` | 创建 Agent。 |
-| `DELETE` | `/api/agents/<agent_id>` | 删除 Agent。 |
+| `DELETE` | `/api/agents/<agent_id>` | 解除控制台注册；保留 Hermes Profile。 |
 | `POST` | `/api/agents/<agent_id>/start` | 启动 Agent。 |
 | `POST` | `/api/agents/<agent_id>/stop` | 停止 Agent。 |
 | `POST` | `/api/agents/<agent_id>/restart` | 重启 Agent。 |
@@ -226,14 +230,26 @@ app/
 
 `role` 只能是 `leader` 或 `worker`。
 
-### 7.2 消息与事件
+### 7.2 团队
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET/POST` | `/api/teams` | 团队列表与创建。 |
+| `GET/PATCH/DELETE` | `/api/teams/<slug>` | 团队详情、更新与删除。 |
+| `POST` | `/api/teams/<slug>/members` | 将已有 Agent 加入团队。 |
+| `DELETE` | `/api/teams/<slug>/members/<agent_id>` | 移出成员，保留 Profile。 |
+| `POST` | `/api/teams/<slug>/messages` | 向指定团队 Leader 提交任务。 |
+| `GET` | `/api/teams/<slug>/usage` | 团队 Token 用量。 |
+| `POST` | `/api/org/dispatch` | 组织级关键词路由。 |
+
+### 7.3 消息与事件
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | `POST` | `/api/messages` | 提交用户任务。 |
 | `GET` | `/api/events/stream` | SSE 事件流。 |
 
-### 7.3 Kanban
+### 7.4 Kanban
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
@@ -250,7 +266,7 @@ app/
 | `POST` | `/api/kanban/dispatch` | 触发一次 dispatch。 |
 | `GET/PUT` | `/api/kanban/settings` | Kanban 自动派发设置。 |
 
-### 7.4 MCP / Skill / Model / Transfer
+### 7.5 MCP / Skill / Model / Transfer
 
 这些接口分别见：
 
@@ -258,6 +274,9 @@ app/
 - [skills-management.md](skills-management.md)
 - [model-config.md](model-config.md)
 - [import-export.md](import-export.md)
+
+团队 MCP 额外提供 `delegate_to_team` 和 `list_team_delegations`，
+用于跨团队投递任务及查询结果。
 
 ---
 
@@ -281,6 +300,7 @@ Agent 主要状态分为：
 
 实际表：
 
+- `teams`
 - `agents`
 - `user_tasks`
 - `delegations`

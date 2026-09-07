@@ -3,17 +3,19 @@ from __future__ import annotations
 import subprocess
 import threading
 
-from ..config import now_iso
+from ..config import HERMES_CLI, now_iso
 from ..models.store import RuntimeStore
+from .profiles import hermes_command_env
 
 
 def _run_hermes_chat(profile_name: str, content: str) -> str:
     try:
         result = subprocess.run(
-            ["hermes", "-p", profile_name, "chat", "-Q", "-q", content],
+            [HERMES_CLI, "-p", profile_name, "chat", "-Q", "-q", content],
             capture_output=True,
             text=True,
             timeout=300,
+            env=hermes_command_env(),
         )
     except FileNotFoundError as exc:
         raise RuntimeError("hermes CLI not found in PATH") from exc

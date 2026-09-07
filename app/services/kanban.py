@@ -6,7 +6,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from ..config import KANBAN_BOARD, KANBAN_DEFAULT_WORKSPACE
+from ..config import HERMES_CLI, HERMES_HOME, KANBAN_BOARD, KANBAN_DEFAULT_WORKSPACE
+from .profiles import hermes_command_env
 
 
 class KanbanError(RuntimeError):
@@ -156,7 +157,7 @@ class KanbanService:
         workspace = _workspace_from_claim_output(claim_output)
         log_path = self._worker_log_path(task_id)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        env = dict(os.environ)
+        env = hermes_command_env()
         env["HERMES_KANBAN_TASK"] = task_id
         env["HERMES_KANBAN_WORKSPACE"] = workspace
         env["HERMES_KANBAN_BOARD"] = self.board
@@ -164,7 +165,7 @@ class KanbanService:
         with log_path.open("ab") as log_file:
             proc = subprocess.Popen(
                 [
-                    "hermes",
+                    HERMES_CLI,
                     "-p",
                     assignee,
                     "--skills",
@@ -199,8 +200,8 @@ class KanbanService:
 
     def _base_args(self, *, scoped: bool = True) -> list[str]:
         if scoped:
-            return ["hermes", "kanban", "--board", self.board]
-        return ["hermes", "kanban"]
+            return [HERMES_CLI, "kanban", "--board", self.board]
+        return [HERMES_CLI, "kanban"]
 
     def _run(self, args: list[str], *, scoped: bool = True, timeout: int | None = None) -> str:
         try:
@@ -210,6 +211,7 @@ class KanbanService:
                 text=True,
                 timeout=timeout if timeout is not None else self.timeout,
                 start_new_session=True,
+                env=hermes_command_env(),
             )
         except FileNotFoundError as exc:
             raise KanbanError("hermes CLI not found in PATH") from exc
@@ -294,14 +296,14 @@ def _workspace_from_claim_output(output: str) -> str:
 
 def _worker_logs_dir(board: str) -> Path:
     slug = (board or "default").strip() or "default"
-    home = Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes")))
+    home = HERMES_HOME
     if slug == "default":
         return home / "kanban" / "logs"
     return home / "kanban" / "boards" / slug / "logs"
 
 
 def _legacy_worker_log_path(task_id: str) -> Path:
-    home = Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes")))
+    home = HERMES_HOME
     return home / "kanban" / "logs" / f"{task_id}.log"
 
 

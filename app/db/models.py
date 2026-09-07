@@ -53,6 +53,7 @@ class UserTaskRecord(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_task_id: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     leader_agent_id: Mapped[str] = mapped_column(String(120), index=True)
+    team_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     content: Mapped[str] = mapped_column(Text)
     delegation_ids_json: Mapped[str] = mapped_column(Text, default="[]")
     status: Mapped[str] = mapped_column(String(60), index=True)
@@ -154,6 +155,7 @@ class MessageRecord(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     message_id: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    team_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     from_agent_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     from_name: Mapped[str] = mapped_column(String(200), default="")
     to_agent_id: Mapped[str] = mapped_column(String(120), index=True)

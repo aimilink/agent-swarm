@@ -8,7 +8,20 @@ from pathlib import Path
 
 UTC = timezone.utc
 PROFILE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
-HERMES_HOME = Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes")))
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+HERMES_CONTROL_MODE = os.environ.get("HERMES_CONTROL_MODE", "shared").strip().lower()
+if HERMES_CONTROL_MODE not in {"shared", "isolated"}:
+    raise ValueError("HERMES_CONTROL_MODE must be shared or isolated")
+_default_hermes_home = (
+    PROJECT_ROOT / "hermes-home"
+    if HERMES_CONTROL_MODE == "isolated"
+    else Path.home() / ".hermes"
+)
+HERMES_HOME = Path(
+    os.environ.get("HERMES_HOME", str(_default_hermes_home))
+).expanduser().resolve(strict=False)
+HERMES_CLI = os.environ.get("HERMES_CLI", "hermes").strip() or "hermes"
+HERMES_MANAGED_BY = "hermes-agent-team"
 AGENT_TEAM_WORKSPACE_ROOT = Path(
     os.environ.get("AGENT_TEAM_WORKSPACE_ROOT", str(Path.home() / "agent_team"))
 ).expanduser().resolve(strict=False)

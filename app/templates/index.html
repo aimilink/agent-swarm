@@ -5,7 +5,7 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>HERMES AGENTS · Team Management</title>
 <script src="{{ url_for('static', filename='ui/tailwind.js') }}"></script>
-
+<link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet"/>
 
 <script id="tailwind-config">
         tailwind.config = {
@@ -176,7 +176,10 @@
        white-space: nowrap; word-wrap: normal; direction: ltr;
        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
        -webkit-font-smoothing: antialiased; }
-</style><link href="{{ url_for('static', filename='ui/fonts/material-symbols.css') }}" rel="stylesheet"/></head>
+</style>
+<link href="{{ url_for('static', filename='ui/fonts/material-symbols.css') }}" rel="stylesheet"/>
+<link href="{{ url_for('static', filename='styles.css') }}?v={{ asset_version('styles.css') }}" rel="stylesheet"/>
+</head>
 <body class="bg-background text-on-background font-body-md h-screen flex flex-col overflow-hidden">
 <!-- Top Navigation (JSON) -->
 <header class="bg-surface/70 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-white/20 shadow-sm flex justify-between items-center px-margin-desktop py-4 h-16">
@@ -186,9 +189,9 @@
 <div class="flex items-center gap-4">
 <button id="open-create-agent" type="button" class="bg-primary-container text-on-primary-container px-4 py-2 rounded-lg font-label-md hover:opacity-90 transition-opacity">+ 新员工</button>
 <div class="flex gap-2 text-primary">
-<button id="sidebar-toggle" type="button" class="md:hidden p-2 hover:bg-surface-container-high/50 rounded-full transition-colors"><span class="material-symbols-outlined msr" aria-hidden="true">menu</span></button>
+<button id="sidebar-toggle" type="button" class="md:hidden p-2 hover:bg-surface-container-high/50 rounded-full transition-colors" aria-controls="app-sidebar" aria-expanded="false" aria-label="打开导航"><span class="material-symbols-outlined msr" aria-hidden="true">menu</span></button>
 <button id="open-teams-page" type="button" class="p-2 hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95 transition-transform" aria-label="团队管理" title="团队管理"><span class="material-symbols-outlined msr" aria-hidden="true">groups</span></button>
-<button id="open-team-settings" type="button" class="p-2 hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95 transition-transform" aria-label="团队配置" title="团队配置"><span class="material-symbols-outlined msr" aria-hidden="true">settings</span></button><span class="material-symbols-outlined msr" aria-hidden="true"></span></button>
+<button id="open-team-settings" type="button" class="p-2 hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95 transition-transform" aria-label="团队配置" title="团队配置"><span class="material-symbols-outlined msr" aria-hidden="true">settings</span></button>
 </div>
 <img class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A highly detailed close-up of a professional corporate headshot of a smiling professional in a modern, light-filled office. The lighting is soft and bright, emphasizing a clean, modern aesthetic with a primary blue tie or accent. High quality, photorealistic." src="{{ url_for('static', filename='ui/img/img_0.png') }}"/>
 </div>
@@ -209,6 +212,7 @@
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="board" onclick="switchView('board', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>任务板</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="members" onclick="switchView('members', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>成员列表</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="stats" onclick="switchView('stats', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>效能统计</a></li>
+<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="teams" onclick="switchView('teams', event)"><span class="material-symbols-outlined msr" aria-hidden="true">groups</span>团队管理</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="settings" onclick="switchView('settings', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>设置</a></li>
 </ul>
 <div class="mt-auto pt-4 border-t border-outline-variant/30 flex flex-col gap-2">
@@ -217,6 +221,7 @@
 <a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-on-surface text-sm" href="#"><span class="material-symbols-outlined text-[20px]" aria-hidden="true"></span>退出登录</a>
 </div>
 </nav>
+<button id="sidebar-backdrop" class="mobile-sidebar-backdrop" type="button" aria-label="关闭导航" hidden></button>
 <!-- Main Workspace -->
 
 
@@ -334,6 +339,19 @@
 </div>
 <div class="flex-1 overflow-y-auto p-md grid grid-cols-2 gap-md">
 <div id="stats-content" class="contents col-span-2 grid grid-cols-2 gap-md"></div></div>
+</section>
+
+<!-- ========== VIEW: 团队管理 ========== -->
+<section id="view-teams" class="view hidden flex-1 flex flex-col overflow-hidden">
+<div class="p-md pb-0 shrink-0">
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">团队管理</h2>
+<p class="font-label-md text-on-surface-variant mt-1">创建、编辑和管理团队结构</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-md">
+<div id="teams-content" class="contents"></div>
+</div>
 </section>
 
 <!-- ========== VIEW: 设置 ========== -->
@@ -741,8 +759,10 @@
             <input name="name" required placeholder="姓名或职务，例如：林克">
           </label>
           <label>
-            <span>英文名称</span>
-            <input name="profile_name" required placeholder="全部小写，不能有空格" pattern="[a-z0-9][a-z0-9_\-]*">
+            <span>Hermes Profile</span>
+            <input name="profile_name" list="hermes-profile-options" required placeholder="选择已有 Profile，或输入新名称" pattern="[a-z0-9][a-z0-9_\-]*">
+            <datalist id="hermes-profile-options"></datalist>
+            <small class="form-hint">选择已有 Profile 会原地接入；Skill、记忆和经验与单 Agent 模式共用。</small>
           </label>
           <div class="modal__form-row">
             <span>角色</span>
@@ -761,7 +781,7 @@
           <label>
             <span>模型配置</span>
             <select name="model_config_id" id="create-agent-model-config">
-              <option value="">继承当前 Hermes active profile 配置</option>
+              <option value="">沿用已有 Profile 配置；新建时继承 active profile</option>
             </select>
           </label>
           <label>
@@ -789,6 +809,7 @@
           <button class="filter-chip is-active" type="button" data-transfer-tab="export">导出</button>
           <button class="filter-chip" type="button" data-transfer-tab="import">导入</button>
           <button class="filter-chip" type="button" data-transfer-tab="models">模型配置</button>
+          <button class="filter-chip" type="button" data-transfer-tab="teams">团队管理</button>
         </div>
         <section class="transfer-pane" data-transfer-pane="runtime" hidden>
           <p class="form-hint">批量管理当前团队所有 Agent 的运行状态。</p>
@@ -840,6 +861,54 @@
           <div class="model-config-list" id="model-config-list"></div>
           <p class="empty-hint" id="model-config-empty" hidden>还没有模型配置。</p>
           <p class="form-error" id="model-config-status" hidden></p>
+        </section>
+        <section class="transfer-pane" data-transfer-pane="teams" hidden>
+          <div class="teams-toolbar">
+            <p class="form-hint">管理团队结构与成员分配。</p>
+            <button class="primary-button primary-button--sm" type="button" id="open-teams-manage-modal">+ 团队管理</button>
+          </div>
+          <div class="teams-manage-panel" id="teams-manage-panel">
+            <div class="modal__head">
+              <h2>团队管理</h2>
+              <button class="modal__close" type="button" data-close-teams-manage-modal aria-label="close">×</button>
+            </div>
+            <div class="teams-manage__layout">
+              <div class="teams-manage__left">
+                <form id="create-team-form" class="teams-manage__create">
+                  <label>
+                    <span>团队标识（slug）</span>
+                    <input name="slug" required placeholder="小写字母数字与-，如 sales" pattern="[a-z][a-z0-9-]{1,40}[a-z0-9]">
+                  </label>
+                  <label>
+                    <span>团队名称</span>
+                    <input name="name" required placeholder="如：销售团队">
+                  </label>
+                  <label>
+                    <span>描述（可选）</span>
+                    <input name="description" placeholder="团队职责一句话">
+                  </label>
+                  <p class="form-error" id="create-team-error" hidden></p>
+                  <button type="submit" class="primary-button primary-button--sm">创建团队</button>
+                </form>
+              </div>
+              <div class="teams-manage__right">
+                <div class="teams-list">
+                  <div class="teams-list-header">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined msr text-[14px]">people</span>
+                      <span class="font-label-md">团队成员</span>
+                    </div>
+                  </div>
+                  <div id="teams-manage-list" class="teams-list-content space-y-2">
+                    <!-- Team items will be inserted here by JS -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal__actions">
+            <button type="button" class="modal__close" data-close-teams-manage-modal>取消</button>
+          </div>
         </section>
       </div>
     </div>

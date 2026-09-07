@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ..models.store import RuntimeStore
 from . import messages as messages_service
+from . import registry
 
 
 
@@ -106,6 +107,17 @@ def update_team(runtime_store: RuntimeStore, team_id: str, **patch) -> dict:
 
 def delete_team(runtime_store: RuntimeStore, team_id: str) -> dict:
     return runtime_store.delete_team(team_id)
+
+
+def assign_agent_team(
+    runtime_store: RuntimeStore,
+    agent_id: str,
+    team_id: str | None,
+) -> dict:
+    """Persist team membership both in SQLite and beside the shared profile."""
+    agent = runtime_store.assign_agent_team(agent_id, team_id)
+    registry.write_team_meta(agent["profile_name"], agent)
+    return agent
 
 
 def team_detail(runtime_store: RuntimeStore, slug: str) -> dict:

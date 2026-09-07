@@ -4,8 +4,8 @@ import asyncio
 import logging
 from contextlib import suppress
 
+from a2wsgi import WSGIMiddleware
 from starlette.applications import Starlette
-from starlette.middleware.wsgi import WSGIMiddleware
 from starlette.routing import Mount, WebSocketRoute
 from starlette.websockets import WebSocket, WebSocketDisconnect
 

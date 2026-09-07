@@ -56,6 +56,7 @@ const openTeamSettings = document.getElementById("open-team-settings");
 const modal = document.getElementById("create-agent-modal");
 const createAgentForm = document.getElementById("create-agent-form");
 const createAgentError = document.getElementById("create-agent-error");
+const hermesProfileOptions = document.getElementById("hermes-profile-options");
 const transferModal = document.getElementById("team-transfer-modal");
 const transferAgentList = document.getElementById("transfer-agent-list");
 const transferInlineSkills = document.getElementById("transfer-inline-skills");
@@ -162,12 +163,22 @@ let resizeTimer = 0;
 let hermesStatusPromise = null;
 const overlayAnimationMs = 220;
 const overlayCloseTimers = new WeakMap();
+const overlayReturnFocus = new WeakMap();
 
-function openAnimatedLayer(element, focusTarget = null) {
+function openAnimatedLayer(element, focusTarget = null, returnTarget = null) {
   if (!element) return;
+  if (!element.classList.contains("is-open")) {
+    const target = returnTarget instanceof HTMLElement ? returnTarget : document.activeElement;
+    if (target instanceof HTMLElement) overlayReturnFocus.set(element, target);
+  }
   const closeTimer = overlayCloseTimers.get(element);
   if (closeTimer) window.clearTimeout(closeTimer);
   element.hidden = false;
+  const dialog = element.querySelector(".modal__panel");
+  if (dialog) {
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+  }
   element.classList.remove("is-closing");
   requestAnimationFrame(() => {
     element.classList.add("is-open");
@@ -184,6 +195,9 @@ function closeAnimatedLayer(element, afterClose = null) {
       element.hidden = true;
       element.classList.remove("is-closing");
       if (afterClose) afterClose();
+      const returnTarget = overlayReturnFocus.get(element);
+      overlayReturnFocus.delete(element);
+      if (returnTarget?.isConnected) returnTarget.focus();
     }
   }, overlayAnimationMs);
   overlayCloseTimers.set(element, closeTimer);
@@ -3943,7 +3957,8 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && confirmModal && !confirmModal.hidden) {
+  if (event.key !== "Escape") return;
+  if (confirmModal && !confirmModal.hidden) {
     event.preventDefault();
     event.stopImmediatePropagation();
     closeAnimatedLayer(confirmModal, () => {
@@ -3953,9 +3968,39 @@ document.addEventListener("keydown", (event) => {
     });
     return;
   }
-  if (event.key === "Escape") closeAllContextMenus();
-  if (event.key === "Escape" && terminalDrawer && !terminalDrawer.hidden) closeTerminalPanel();
-  if (event.key === "Escape" && transferModal && !transferModal.hidden) closeTransferModal();
+  const modalClosers = [
+    [modelConfigEditModal, closeModelConfigEditModal],
+    [mcpEditModal, closeMcpEditModal],
+    [skillsInstallModal, closeSkillsInstallModal],
+    [modal, closeModal],
+    [teamsManageModal, () => closeAnimatedLayer(teamsManageModal)],
+    [transferModal, closeTransferModal],
+  ];
+  for (const [layer, close] of modalClosers) {
+    if (layer && !layer.hidden) {
+      event.preventDefault();
+      close();
+      return;
+    }
+  }
+  closeAllContextMenus();
+  if (terminalDrawer && !terminalDrawer.hidden) {
+    closeTerminalPanel();
+    return;
+  }
+  if (historyDrawer && !historyDrawer.hidden) {
+    closeHistoryPanel();
+    return;
+  }
+  if (soulDrawer && !soulDrawer.hidden) {
+    void closeSoulPanel();
+    return;
+  }
+  if (skillsDrawer && !skillsDrawer.hidden) {
+    closeSkillsPanel();
+    return;
+  }
+  if (agentModelDrawer && !agentModelDrawer.hidden) closeAgentModelPanel();
 });
 
 window.addEventListener("resize", closeAllContextMenus);
@@ -3981,7 +4026,14 @@ async function ensureHermesReadyForAgentCreation(button) {
   if (button) button.disabled = true;
   try {
     const { response, data } = await checkHermesStatus();
-    if (response.ok && data.ok) return true;
+    if (response.ok && data.ok) {
+      if (hermesProfileOptions) {
+        hermesProfileOptions.innerHTML = (data.profiles || [])
+          .map((profile) => `<option value="${escapeHtml(profile)}"></option>`)
+          .join("");
+      }
+      return true;
+    }
     await confirmAction({
       title: "需要配置 Hermes",
       message: data.message || "Hermes 当前不可用，请先安装并配置 Hermes Agent。",
@@ -4004,13 +4056,13 @@ async function ensureHermesReadyForAgentCreation(button) {
   }
 }
 
-function openModal() {
+function openModal(returnTarget = null) {
   if (!modal) return;
   if (createAgentError) {
     createAgentError.hidden = true;
     createAgentError.textContent = "";
   }
-  openAnimatedLayer(modal, createAgentForm?.querySelector('input[name="name"]'));
+  openAnimatedLayer(modal, createAgentForm?.querySelector('input[name="name"]'), returnTarget);
 }
 
 function closeModal() {
@@ -4020,7 +4072,7 @@ function closeModal() {
 
 if (openCreateAgent) {
   openCreateAgent.addEventListener("click", async () => {
-    if (await ensureHermesReadyForAgentCreation(openCreateAgent)) openModal();
+    if (await ensureHermesReadyForAgentCreation(openCreateAgent)) openModal(openCreateAgent);
   });
   window.setTimeout(() => {
     void checkHermesStatus().catch(() => {});
@@ -4227,25 +4279,6 @@ if (modal) {
       closeModal();
     }
   });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !modal.hidden) closeModal();
-    if (e.key === "Escape" && skillsInstallModal && !skillsInstallModal.hidden) {
-      closeSkillsInstallModal();
-      return;
-    }
-    if (e.key === "Escape" && mcpEditModal && !mcpEditModal.hidden) {
-      closeMcpEditModal();
-      return;
-    }
-    if (e.key === "Escape" && modelConfigEditModal && !modelConfigEditModal.hidden) {
-      closeModelConfigEditModal();
-      return;
-    }
-    if (e.key === "Escape") closeHistoryPanel();
-    if (e.key === "Escape") void closeSoulPanel();
-    if (e.key === "Escape") closeSkillsPanel();
-    if (e.key === "Escape") closeAgentModelPanel();
-  });
 }
 
 if (createAgentForm) {
@@ -4402,7 +4435,7 @@ function renderTeamDetail(team) {
 openTeamsPage?.addEventListener("click", () => {
   if (!teamsManageModal) return;
   refreshTeamsManage();
-  openAnimatedLayer(teamsManageModal);
+  openAnimatedLayer(teamsManageModal, createTeamForm?.querySelector('input[name="slug"]'));
 });
 
 document.querySelectorAll("[data-close-teams-manage]").forEach((el) => {
@@ -4448,7 +4481,16 @@ createTeamForm?.addEventListener("submit", async (event) => {
     };
     const modelConfigId = String(formData.get("model_config_id") || "");
     const submitBtn = createAgentForm.querySelector('button[type="submit"]');
-    if (submitBtn) submitBtn.disabled = true;
+    const originalSubmitText = submitBtn?.textContent || "入职";
+    if (createAgentError) {
+      createAgentError.hidden = true;
+      createAgentError.textContent = "";
+      createAgentError.dataset.kind = "error";
+    }
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "接入中…";
+    }
     try {
       const response = await fetch("/api/agents", {
         method: "POST",
@@ -4479,8 +4521,16 @@ createTeamForm?.addEventListener("submit", async (event) => {
         }
       }
       closeModal();
+    } catch (error) {
+      if (createAgentError) {
+        createAgentError.textContent = error.message || "网络异常，请稍后重试";
+        createAgentError.hidden = false;
+      }
     } finally {
-      if (submitBtn) submitBtn.disabled = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalSubmitText;
+      }
     }
   });
 }

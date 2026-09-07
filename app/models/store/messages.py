@@ -31,6 +31,7 @@ class MessagesMixin:
                     from_name = sender["name"]
             message = {
                 "message_id": f"msg_{next(self._message_ids):04d}",
+                "team_id": agent.get("team_id"),
                 "from_agent_id": from_agent_id,
                 "from_name": from_name,
                 "to_agent_id": agent["agent_id"],

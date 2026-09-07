@@ -2,7 +2,7 @@
   const app = () => window.__HERMES_APP__ || {};
   const boot = () => window.__BOOTSTRAP__ || {};
 
-  const VIEWS = ["overview", "board", "members", "stats", "settings"];
+  const VIEWS = ["overview", "board", "members", "stats", "settings", "teams"];
   let currentView = "overview";
   let memberFilter = "全部";
   let memberSearch = "";
@@ -11,6 +11,7 @@
   const els = {
     sidebar: document.getElementById("app-sidebar"),
     sidebarToggle: document.getElementById("sidebar-toggle"),
+    sidebarBackdrop: document.getElementById("sidebar-backdrop"),
     dock: document.querySelector("[data-ui-dock='task-dock']"),
     overviewStats: document.getElementById("overview-stats-grid"),
     overviewHealth: document.getElementById("overview-team-health"),
@@ -26,6 +27,7 @@
     statsSubtitle: document.getElementById("stats-subtitle"),
     settingsModelList: document.getElementById("settings-model-list"),
     kanbanTeamSelect: document.getElementById("kanban-team-select"),
+    teamsContent: document.getElementById("teams-content"),
   };
 
   function esc(value) {
@@ -86,8 +88,9 @@
     }
     if (name === "stats") void renderStatsView();
     if (name === "settings") void renderSettingsView();
+    if (name === "teams") void renderTeamsView();
     if (window.innerWidth < 768 && els.sidebar) {
-      els.sidebar.classList.add("-translate-x-full");
+      setMobileSidebar(false);
     }
   }
 
@@ -698,6 +701,315 @@
     if (els.kanbanTeamSelect && !els.kanbanTeamSelect.options.length) els.kanbanTeamSelect.innerHTML = options;
   }
 
+  async function renderTeamsView() {
+    if (!els.teamsContent) return;
+    try {
+      const response = await fetch("/api/teams");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        els.teamsContent.innerHTML = `<p class="text-on-surface-variant font-label-md">加载团队列表失败</p>`;
+        return;
+      }
+
+      const teams = Array.isArray(data.teams) ? data.teams : [];
+      const agents = boot().agents || [];
+      const links = boot().kanban_task_links || [];
+
+      // Calculate task counts and completion rates per team
+      const teamStats = new Map();
+      teams.forEach((team) => {
+        const teamAgents = agents.filter((a) => a.team_id === team.team_id);
+        const teamAgentProfiles = new Set(teamAgents.map((a) => a.profile_name));
+        const teamLinks = links.filter((l) => teamAgentProfiles.has(l.assignee_profile));
+        const done = teamLinks.filter((l) => (l.kanban_status || "").toLowerCase() === "done").length;
+        const total = teamLinks.length;
+        teamStats.set(team.team_id, { task_count: total, completion_rate: total > 0 ? Math.round((done / total) * 100) : 0 });
+      });
+
+      if (teams.length === 0) {
+        els.teamsContent.innerHTML = `
+          <div class="text-center py-12">
+            <span class="material-symbols-outlined msr text-4xl mb-4 text-on-surface-variant">groups</span>
+            <p class="font-label-md text-on-surface-variant mb-2">暂无团队数据</p>
+            <button type="button" id="btn-create-first-team" class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-md hover:bg-primary/90">
+              创建第一个团队
+            </button>
+          </div>
+        `;
+
+        document.getElementById("btn-create-first-team")?.addEventListener("click", () => {
+          openTeamCreateModal();
+        });
+        return;
+      }
+
+      const teamsGrid = teams
+        .map(
+          (team) => {
+            const stats = teamStats.get(team.team_id) || { task_count: 0, completion_rate: 0 };
+            return `
+          <div class="bg-surface rounded-xl p-4 shadow-sm border border-outline-variant/30 flex flex-col gap-4 hover:border-primary/50 transition-colors" data-team-id="${esc(team.team_id)}">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-full bg-primary-container/20 text-primary flex items-center justify-center font-bold text-sm">
+                ${esc(team.name.slice(0, 2).toUpperCase())}
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="font-title-lg text-[18px] font-bold text-on-surface mb-1">${esc(team.name)}</div>
+                <div class="font-label-sm text-on-surface-variant mb-1">${esc(team.description || "暂无描述")}</div>
+                <div class="flex items-center gap-4 text-sm">
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined msr text-[14px]">people</span>
+                    <span class="font-label-sm text-on-surface-variant">${team.member_count || 0} 人</span>
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined msr text-[14px]">assessment</span>
+                    <span class="font-label-sm text-on-surface-variant">${stats.completion_rate}% 验收通过</span>
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined msr text-[14px]">schedule</span>
+                    <span class="font-label-sm text-on-surface-variant">${stats.task_count} 任务</span>
+                  </span>
+                </div>
+                ${team.lead_name ? `<div class="font-label-sm text-on-surface-variant">负责人：${esc(team.lead_name)}</div>` : ""}
+              </div>
+            </div>
+            <div class="flex justify-between items-center pt-3 border-t border-outline-variant/20">
+              <span class="font-label-sm text-on-surface-variant">slug: ${esc(team.slug)}</span>
+              <div class="flex gap-2">
+                <button type="button" class="px-3 py-1.5 rounded-lg font-label-md bg-surface-container text-on-surface hover:bg-surface-container-high" data-view-team="${esc(team.slug)}">
+                  查看成员
+                </button>
+                <button type="button" class="px-3 py-1.5 rounded-lg font-label-md bg-surface-container text-on-surface hover:bg-surface-container-high" data-edit-team="${esc(team.slug)}">
+                  编辑
+                </button>
+                <button type="button" class="px-3 py-1.5 rounded-lg font-label-md bg-error-container/30 text-error hover:bg-error-container/50" data-delete-team="${esc(team.team_id)}">
+                  删除
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+          }
+        )
+        .join("");
+
+      els.teamsContent.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-headline-md text-headline-md font-bold text-on-surface">团队管理</h2>
+            <button type="button" id="btn-create-team" class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-md hover:bg-primary/90">
+              + 新建团队
+            </button>
+          </div>
+          <div class="grid gap-4">${teamsGrid}</div>
+        </div>
+      `;
+
+      document.getElementById("btn-create-team")?.addEventListener("click", () => {
+        openTeamCreateModal();
+      });
+
+      els.teamsContent.querySelectorAll("[data-edit-team]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          openTeamEditModal(btn.dataset.editTeam);
+        });
+      });
+
+      els.teamsContent.querySelectorAll("[data-view-team]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          openTeamViewModal(btn.dataset.viewTeam);
+        });
+      });
+
+      els.teamsContent.querySelectorAll("[data-delete-team]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const teamId = btn.dataset.deleteTeam;
+          if (!confirm("确定要删除此团队吗？团队内所有成员将被移出团队。")) return;
+          const team = teams.find((t) => t.team_id === teamId);
+          if (!team) return;
+          try {
+            const resp = await fetch(`/api/teams/${encodeURIComponent(team.slug)}`, { method: "DELETE" });
+            const result = await resp.json().catch(() => ({}));
+            if (!resp.ok || !result.ok) {
+              alert(result.error || "删除失败");
+              return;
+            }
+            void renderTeamsView();
+          } catch (err) {
+            console.error("[hermes-ui] Failed to delete team:", err);
+            alert("删除团队失败");
+          }
+        });
+      });
+    } catch (err) {
+      els.teamsContent.innerHTML = `<p class="text-on-surface-variant font-label-md">加载团队列表失败</p>`;
+      console.error("[hermes-ui] Failed to load teams:", err);
+    }
+  }
+
+  function openTeamCreateModal() {
+    const modal = document.getElementById("teams-manage-modal");
+    if (!modal) return;
+    modal.hidden = false;
+    modal.classList.add('is-open');
+    // Reset form
+    const form = document.getElementById("create-team-form");
+    if (form) {
+      form.reset();
+      const errorEl = document.getElementById("create-team-error");
+      if (errorEl) errorEl.hidden = true;
+    }
+    // Clear list and detail
+    const listEl = document.getElementById("teams-manage-list");
+    if (listEl) listEl.innerHTML = "";
+    const detailEl = document.getElementById("teams-manage-detail");
+    if (detailEl) detailEl.innerHTML = '<p class="form-hint">从左侧选择一个团队查看成员。</p>';
+  }
+
+  function openTeamEditModal(teamSlug) {
+    const modal = document.getElementById("teams-manage-modal");
+    if (!modal) return;
+    modal.hidden = false;
+    modal.classList.add('is-open');
+    // Load team details and populate edit form
+    fetch(`/api/teams/${encodeURIComponent(teamSlug)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.ok || !data.team) throw new Error("Team not found");
+        const team = data.team;
+        const form = document.getElementById("create-team-form");
+        if (form) {
+          form.slug.value = team.slug || "";
+          form.name.value = team.name || "";
+          form.description.value = team.description || "";
+          // Change submit button to update
+          const submitBtn = form.querySelector('button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.textContent = "保存更改";
+            submitBtn.dataset.teamSlug = team.slug;
+          }
+        }
+        // Show members in detail panel
+        renderTeamMembersDetail(team);
+      })
+      .catch((err) => {
+        console.error("[hermes-ui] Failed to load team:", err);
+        alert("加载团队信息失败");
+      });
+  }
+
+  function openTeamViewModal(teamSlug) {
+    const modal = document.getElementById("teams-manage-modal");
+    if (!modal) return;
+    modal.hidden = false;
+    modal.classList.add('is-open');
+    fetch(`/api/teams/${encodeURIComponent(teamSlug)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.ok || !data.team) throw new Error("Team not found");
+        renderTeamMembersDetail(data.team);
+      })
+      .catch((err) => {
+        console.error("[hermes-ui] Failed to load team:", err);
+      });
+  }
+
+  function renderTeamMembersDetail(team) {
+    const detailEl = document.getElementById("teams-manage-detail");
+    if (!detailEl) return;
+    const members = team.members || [];
+    const membersHtml = members.length
+      ? members
+          .map(
+            (m) => `
+            <div class="flex items-center gap-3 py-2 border-b border-outline-variant/20 last:border-0">
+              <div class="w-8 h-8 rounded-full bg-primary-container/20 text-primary flex items-center justify-center font-bold text-xs">
+                ${esc(m.name?.slice(0, 1) || "?")}
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="font-label-md text-on-surface font-bold">${esc(m.name)}</div>
+                <div class="font-label-sm text-on-surface-variant">${esc(m.profile_name)} · ${esc(m.role)}</div>
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                m.runtime_status === "running"
+                  ? "bg-secondary-container/20 text-secondary"
+                  : "bg-surface-container text-on-surface-variant"
+              }">${m.runtime_status === "running" ? "运行中" : "已停止"}</span>
+            </div>
+          `
+          )
+          .join("")
+      : '<p class="font-label-sm text-on-surface-variant">暂无成员</p>';
+
+    detailEl.innerHTML = `
+      <div class="mb-4">
+        <h3 class="font-title-lg text-title-lg font-bold text-on-surface mb-1">${esc(team.name)}</h3>
+        <p class="font-label-sm text-on-surface-variant">${esc(team.description || "暂无描述")}</p>
+        <p class="font-label-sm text-on-surface-variant mt-1">成员：${team.member_count || 0} 人</p>
+      </div>
+      <div class="border-t border-outline-variant/30 pt-3">
+        <h4 class="font-label-md text-on-surface font-bold mb-2">团队成员</h4>
+        ${membersHtml}
+      </div>
+    `;
+  }
+
+  // Handle create/update team form submission
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("create-team-form");
+    if (!form) return;
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errorEl = document.getElementById("create-team-error");
+      if (errorEl) errorEl.hidden = true;
+
+      const formData = new FormData(form);
+      const payload = {
+        slug: formData.get("slug")?.trim() || "",
+        name: formData.get("name")?.trim() || "",
+        description: formData.get("description")?.trim() || "",
+      };
+
+      if (!payload.slug || !payload.name) {
+        if (errorEl) {
+          errorEl.textContent = "请填写团队标识和名称";
+          errorEl.hidden = false;
+        }
+        return;
+      }
+
+      const isEdit = form.querySelector('button[type="submit"]')?.dataset?.teamSlug;
+      const url = isEdit ? `/api/teams/${encodeURIComponent(payload.slug)}` : "/api/teams";
+      const method = isEdit ? "PATCH" : "POST";
+
+      try {
+        const resp = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const result = await resp.json().catch(() => ({}));
+        if (!resp.ok || !result.ok) {
+          if (errorEl) {
+            errorEl.textContent = result.error || "操作失败";
+            errorEl.hidden = false;
+          }
+          return;
+        }
+        // Close modal and refresh
+        const modal = document.getElementById("teams-manage-modal");
+        if (modal) { modal.hidden = true; modal.classList.remove('is-open'); }
+        void renderTeamsView();
+      } catch (err) {
+        console.error("[hermes-ui] Failed to save team:", err);
+        if (errorEl) {
+          errorEl.textContent = "网络错误，请重试";
+          errorEl.hidden = false;
+        }
+      }
+    });
+  });
+
   function focusTaskInput() {
     const input = document.getElementById("kanban-task-input");
     if (input) {
@@ -706,13 +1018,38 @@
     }
   }
 
+  function setMobileSidebar(open) {
+    if (!els.sidebar) return;
+    els.sidebar.classList.toggle("-translate-x-full", !open);
+    if (els.sidebarBackdrop) els.sidebarBackdrop.hidden = !open;
+    els.sidebarToggle?.setAttribute("aria-expanded", open ? "true" : "false");
+    els.sidebarToggle?.setAttribute("aria-label", open ? "关闭导航" : "打开导航");
+  }
+
   function wireEvents() {
     document.querySelectorAll(".nav-link[data-view]").forEach((link) => {
       link.addEventListener("click", (event) => switchView(link.dataset.view || "overview", event));
     });
 
     els.sidebarToggle?.addEventListener("click", () => {
-      els.sidebar?.classList.toggle("-translate-x-full");
+      setMobileSidebar(els.sidebar?.classList.contains("-translate-x-full"));
+    });
+    els.sidebarBackdrop?.addEventListener("click", () => setMobileSidebar(false));
+    document.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Escape"
+        && window.innerWidth < 768
+        && els.sidebar
+        && !els.sidebar.classList.contains("-translate-x-full")
+      ) {
+        setMobileSidebar(false);
+      }
+    });
+    window.addEventListener("resize", () => {
+      if (window.innerWidth >= 768 && els.sidebarBackdrop) {
+        els.sidebarBackdrop.hidden = true;
+        els.sidebarToggle?.setAttribute("aria-expanded", "false");
+      }
     });
 
     document.getElementById("btn-create-task-overview")?.addEventListener("click", focusTaskInput);
@@ -817,6 +1154,17 @@
           .finally(() => { sessionBtn.disabled = false; });
       }
     });
+
+    // Close teams-manage modal
+    document.querySelectorAll('[data-close-teams-manage]').forEach((el) => {
+      el.addEventListener("click", () => {
+        const modal = document.getElementById("teams-manage-modal");
+        if (modal) {
+          modal.hidden = true;
+          modal.classList.remove("is-open");
+        }
+      });
+    });
   }
 
   function hydrateFromBootstrap() {
@@ -884,4 +1232,5 @@
   switchView("overview");
   hydrateFromBootstrap();
   void loadCollaborationSettings();
+  void renderTeamsView();
 })();

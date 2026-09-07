@@ -131,7 +131,7 @@ def assign_member(slug: str):
     if not agent_id:
         return jsonify({"ok": False, "error": "agent_id is required"}), 400
     try:
-        agent = store.assign_agent_team(agent_id, team["team_id"])
+        agent = teams_service.assign_agent_team(store, agent_id, team["team_id"])
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     return jsonify({"ok": True, "agent": agent})
@@ -146,7 +146,7 @@ def remove_member(slug: str, agent_id: str):
     if agent is None or agent.get("team_id") != team["team_id"]:
         return jsonify({"ok": False, "error": "agent not in this team"}), 404
     try:
-        store.assign_agent_team(agent_id, None)
+        teams_service.assign_agent_team(store, agent_id, None)
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     return jsonify({"ok": True})

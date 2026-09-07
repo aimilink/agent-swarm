@@ -1,6 +1,6 @@
 # Hermes Agents Team
 
-基于 [Hermes Agent](https://hermes-agent.nousresearch.com/) profile 机制构建的多 Agent 协作 Web 系统。每个 Agent 是一个独立的 Hermes profile，拥有独立的人设、技能、记忆与工具，通过 Web 中枢、MCP、ACP 与 Hermes Kanban 完成任务拆解、分派、执行、审查与汇总。
+基于 [Hermes Agent](https://hermes-agent.nousresearch.com/) Profile 机制构建的多团队、多 Agent 协作 Web 系统。一个 Profile 是一个持久 Agent 身份：它可以在 Hermes CLI 中独立使用，也可以被本控制台接入团队；两种模式共用人设、技能、记忆、经验、模型与工具配置。
 
 > 1. 本项目是社区实验项目，不是 Nous Research 或 Hermes Agent 官方项目。
 > 2. 当前仅建议在本机或可信内网环境运行，不要在未加鉴权、访问控制和 HTTPS 保护的情况下直接暴露到公网。
@@ -12,9 +12,21 @@
 - **存储**：SQLite
 - **前端**：原生 HTML/JS，实时展示多 Agent 对话、终端输出与任务流转
 
-更多设计细节见 [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) 和 [doc/design.md](doc/design.md)。
+先看 [功能地图](doc/FEATURE-MAP.md) 了解当前版本边界；安装上线见 [部署与安装教程](doc/deployment.md)。更多设计细节见 [架构说明](doc/ARCHITECTURE.md)。
 
 ## 功能
+
+### Hermes 共享接管模式
+
+默认使用 `shared` 模式，控制台直接接入用户正常使用的 `~/.hermes`。一个 Profile
+就是同一个 Agent：既可以从 Hermes CLI 单独运行，也可以加入一个团队参与多
+Agent 协作。两种入口共用 SOUL、Skill、记忆、经验、模型配置和 MCP 配置。
+
+- 接入已有 Profile 时不克隆、不覆盖已有 SOUL，团队只增加编排元数据。
+- 新建 Profile 同样写入 ~/.hermes，可立即脱离控制台独立使用。
+- Agent 退出团队时只解除编排关系，不删除 Profile、Skill、记忆或工作区。
+- 团队任务、消息和成员关系带 team_id 持久化，支持多团队并行与跨团队委派。
+- 如需与日常 Hermes 数据完全隔离，可设置 `HERMES_CONTROL_MODE=isolated`。
 
 - Leader / Specialist 两层 Agent 角色，自动任务拆解、执行、审查与汇总
 - Web UI 实时观察多 Agent 对话、终端输出、工具调用与子任务流转
@@ -43,36 +55,74 @@ run.py           本地开发启动入口
 
 ### 1. 环境要求
 
-- 操作系统：Linux / macOS（依赖 `pexpect`，**不支持原生 Windows**；Windows 用户请使用 WSL2）
+- 控制台运行环境：Linux / macOS；Windows 推荐 WSL2
 - Python 3.10+
-- 已安装并配置好的 [Hermes Agent](https://hermes-agent.nousresearch.com/docs/getting-started)
-- Hermes Agent v0.12.0 及以上版本，Hermes CLI 需要支持 `profile`、`acp`、`kanban` 等子命令
+- 已安装并完成模型配置的 [Hermes Agent](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart/)
+- Hermes CLI 需要支持 `profile`、`acp`、`kanban` 等子命令
 
-### 2. 安装依赖
+> Hermes Agent 本身已支持原生 Windows，但本项目的嵌入式 Agent 终端依赖
+> `pexpect`/POSIX PTY，因此原生 Windows 不是推荐部署方式。
+
+### 2. 安装并验证 Hermes
+
+Linux、macOS 或 WSL2：
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+source ~/.bashrc  # zsh 用户改为 source ~/.zshrc
+hermes setup
+hermes profile list
+hermes acp --help
+hermes kanban --help
 ```
 
-### 3. 配置环境变量（可选）
+先运行一次 `hermes`，确认单 Agent 对话和模型调用正常，再安装本控制台。
+
+### 3. 安装项目依赖
+
+```bash
+git clone <REPOSITORY_URL> hermes-agent-team
+cd hermes-agent-team
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### 4. 配置环境变量
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
+| `HERMES_CONTROL_MODE` | `shared` | `shared` 共用正常 Hermes 数据；`isolated` 使用项目隔离目录 |
+| `HERMES_CLI` | `hermes` | Hermes CLI 可执行文件名或绝对路径 |
 | `HERMES_HOME` | `~/.hermes` | Hermes profiles 根目录 |
 | `AGENT_TEAM_WORKSPACE_ROOT` | `~/agent_team` | Agent 工作区根目录 |
 | `DATABASE_URL` | `sqlite:///data/hermes_agent_team.db` | 数据库连接串 |
 | `HERMES_AGENTS_MCP_URL` | `http://127.0.0.1:5050/mcp/` | MCP Bus 地址 |
+| `HOST` | `127.0.0.1` | HTTP 监听地址 |
 | `PORT` | `5050` | HTTP 服务端口 |
-| `FLASK_DEBUG` | `0` | 调试日志开关（不启用自动 reload） |
+| `AGENT_TEAM_API_TOKEN` | 空 | `/api/*` Bearer Token；留空时不鉴权 |
+| `FLASK_DEBUG` | `0` | 调试日志开关 |
 | `AUTO_START_AGENTS` | `1` | 项目启动时自动启动所有已就绪 Agent；设为 `0` 可关闭 |
 | `KANBAN_BOARD` | `hermes-agents-team` | Hermes Kanban board 名称 |
 | `KANBAN_POLL_INTERVAL` | `2` | Kanban 状态同步轮询间隔（秒） |
 | `KANBAN_DEFAULT_WORKSPACE` | `scratch` | Kanban 任务默认 workspace |
 | `KANBAN_AUTO_DISPATCH` | `0` | 首次无持久化设置时，自动 Dispatch 开关的默认值 |
 
-### 4. 配置调整
+`.env.example` 是配置样例，应用不会自动读取 `.env`。本地启动可这样加载：
+
+```bash
+cp .env.example .env
+# 按实际路径和安全要求编辑 .env
+set -a
+source .env
+set +a
+```
+
+`shared` 模式建议不设置 `HERMES_HOME`，让控制台自动使用当前运行用户的
+`~/.hermes`。服务必须与日常使用 Hermes 的用户一致，否则会接入另一个用户目录。
+
+### 5. Hermes Kanban 调整
 
 需要关闭 Hermes Agent 的 `config.yaml` 中的 `dispatch_in_gateway`：
 
@@ -81,7 +131,7 @@ kanban:
   dispatch_in_gateway: false
 ```
 
-### 5. 启动
+### 6. 启动
 
 ```bash
 python run.py
@@ -89,18 +139,25 @@ python run.py
 
 访问 [http://127.0.0.1:5050](http://127.0.0.1:5050)。
 
-### 6. 运行测试
+生产环境、systemd、Nginx、升级、备份与故障排查见
+[部署与安装教程](doc/deployment.md)。
+
+### 7. 运行测试
 
 ```bash
-pytest
+python -m pytest -q
 ```
 
 ## 文档
 
 - [架构设计](doc/ARCHITECTURE.md)
+- [当前版本功能地图](doc/FEATURE-MAP.md)
+- [部署与安装教程](doc/deployment.md)
+- [多团队说明](doc/MULTI-TEAM.md)
 - [详细设计](doc/design.md)
 - [MCP 管理](doc/mcp-management.md)
 - [Skill 管理](doc/skills-management.md)
+- [团队导入导出](doc/import-export.md)
 
 ## 维护说明
 
