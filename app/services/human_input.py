@@ -5,6 +5,7 @@ import hashlib
 from .kanban import extract_task_id, kanban_service, task_status
 from .kanban_dispatch import dispatch_worker
 from .kanban_workspace import workspace_for_agent
+from . import projects
 
 
 def create_human_input_task(
@@ -25,9 +26,10 @@ def create_human_input_task(
         raise ValueError("from_agent_id not found")
     normalized_options = [str(item).strip() for item in options or [] if str(item).strip()]
     title = f"人工处理：{question[:80]}"
+    project = projects.project_for_task(runtime_store, parent_task_id, user_task_id)
     task = kanban_service.create_task(
         title,
-        body=_format_human_input_body(
+        body=projects.instructions(project) + _format_human_input_body(
             question=question,
             context=context,
             options=normalized_options,
@@ -37,7 +39,7 @@ def create_human_input_task(
         ),
         assignee=None,
         parent=parent_task_id or None,
-        workspace="scratch",
+        workspace=projects.workspace(project, lambda: "scratch"),
         idempotency_key=_human_input_idempotency_key(
             from_agent_id=requester["agent_id"],
             parent_task_id=parent_task_id,
@@ -55,6 +57,7 @@ def create_human_input_task(
         assignee_profile="",
         parent_local_id=user_task_id or parent_task_id or None,
         metadata={
+            **projects.metadata(project),
             "kind": "human_input",
             "task_title": title,
             "question": question,
@@ -104,12 +107,13 @@ def answer_human_input_task(
     requester = runtime_store.find_agent(metadata.get("requester_agent_id") or "")
     if requester is None:
         raise ValueError("requester agent not found")
+    project = projects.project_for_task(runtime_store, human_task_id)
     continuation = kanban_service.create_task(
         f"继续执行：{metadata.get('question') or human_task_id}"[:100],
-        body=_format_continuation_body(metadata=metadata, answer=answer, human_task_id=human_task_id),
+        body=projects.instructions(project) + _format_continuation_body(metadata=metadata, answer=answer, human_task_id=human_task_id),
         assignee=requester.get("profile_name") or None,
         parent=human_task_id,
-        workspace=workspace_for_agent(requester),
+        workspace=projects.workspace(project, lambda: workspace_for_agent(requester)),
         idempotency_key=f"human-input-answer:{human_task_id}",
     )
     continuation_task_id = extract_task_id(continuation)
@@ -122,6 +126,7 @@ def answer_human_input_task(
         assignee_profile=requester.get("profile_name") or "",
         parent_local_id=metadata.get("user_task_id") or metadata.get("parent_task_id") or None,
         metadata={
+            **projects.metadata(project),
             "kind": "human_continuation",
             "task_title": f"继续执行：{metadata.get('question') or human_task_id}"[:100],
             "human_task_id": human_task_id,

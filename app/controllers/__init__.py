@@ -13,10 +13,12 @@ from .teams import bp as teams_bp
 from .model_configs import bp as model_configs_bp
 from .transfer import bp as transfer_bp
 from .web import bp as web_bp
+from .projects import bp as projects_bp
 
 
 def register_blueprints(app: Flask) -> None:
     app.register_blueprint(web_bp)
+    app.register_blueprint(projects_bp)
     app.register_blueprint(agents_bp)
     app.register_blueprint(agent_chats_bp)
     app.register_blueprint(agent_mcps_bp)

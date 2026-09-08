@@ -20,6 +20,7 @@ from .services.kanban_dispatch import dispatch_worker
 from .services.kanban_workspace import workspace_for_agent
 from .services.human_input import create_human_input_task
 from .services.settings import settings_service
+from .services import projects
 
 mcp = FastMCP("hermes-agents", streamable_http_path="/")
 logger = logging.getLogger("hermes.agent_state")
@@ -186,6 +187,7 @@ def delegate_to_team(
         if parent_link:
             parent_task_id = parent_link["kanban_task_id"]
 
+    project = projects.project_for_task(store, parent_task_id, resolved_user_task_id)
     title = (task_title or "").strip() or content[:60]
     body_parts = [
         f"local_user_task_id: {resolved_user_task_id or '-'}",
@@ -205,9 +207,9 @@ def delegate_to_team(
     board_service = kanban_service_for_board(target_team["board_name"])
     kanban_task = board_service.create_task(
         f"跨团队：{title}",
-        body="\n".join(body_parts),
+        body=projects.instructions(project) + "\n".join(body_parts),
         assignee=target_lead.get("profile_name") or "",
-        workspace=workspace_for_agent(target_lead),
+        workspace=projects.workspace(project, lambda: workspace_for_agent(target_lead)),
         idempotency_key=f"cross_team:{resolved_user_task_id or 'adhoc'}:{sender_agent_id}:{title[:40]}",
     )
     kanban_task_id = extract_task_id(kanban_task)
@@ -220,6 +222,7 @@ def delegate_to_team(
         assignee_profile=target_lead.get("profile_name") or "",
         parent_local_id=resolved_user_task_id or None,
         metadata={
+            **projects.metadata(project),
             "kind": "cross_team_delegation",
             "from_agent_id": sender_agent_id,
             "from_team": (store.find_team(sender.get("team_id") or '') or {}).get("slug"),
@@ -407,22 +410,23 @@ def create_kanban_worker_tasks(
         user_task_id=resolved_user_task_id,
         round_number=target_round,
     )
+    project = projects.project_for_task(store, parent_task_id, resolved_user_task_id)
     dispatched = []
     for assignment in delegation["assignments"]:
         worker = store.find_agent(assignment["worker_agent_id"]) or {}
         task_title = _assignment_title(assignments, assignment)
         kanban_task = board_service.create_task(
             task_title,
-            body=_format_worker_kanban_body(
+            body=projects.instructions(project) + _format_worker_kanban_body(
                 assignment=assignment,
                 delegation=delegation,
                 user_task_id=resolved_user_task_id,
                 leader_agent_id=sender_agent_id,
-                worker=worker,
+                worker={**worker, "workspace_path": project["workspace_path"]} if project else worker,
             ),
             assignee=worker["profile_name"],
             parent=parent_task_id or None,
-            workspace=workspace_for_agent(worker),
+            workspace=projects.workspace(project, lambda: workspace_for_agent(worker)),
             priority=_assignment_priority(assignments, assignment),
             idempotency_key=_worker_idempotency_key(
                 user_task_id=resolved_user_task_id,
@@ -441,6 +445,7 @@ def create_kanban_worker_tasks(
             assignee_profile=worker["profile_name"],
             parent_local_id=resolved_user_task_id or delegation["delegation_id"],
             metadata={
+                **projects.metadata(project),
                 "delegation_id": delegation["delegation_id"],
                 "task_title": task_title,
                 "parent_task_id": parent_task_id,
@@ -738,6 +743,23 @@ def _format_worker_kanban_body(
         f"{assignment['content']}"
         f"{role_guidance}"
     )
+
+
+@mcp.tool()
+def get_project(project_id: str) -> dict:
+    """读取项目目标、统一工作目录、关联任务和已登记产物。"""
+    return {"ok": True, **projects.detail(store, project_id)}
+
+
+@mcp.tool()
+def register_project_artifact(project_id: str, path: str, title: str, task_id: str,
+                              agent_id: str = "", summary: str = "", validation: str = "") -> dict:
+    """登记项目目录内已存在的交付文件；path 为相对路径，task_id 为当前 Kanban 任务 ID。
+
+    summary 说明变更，validation 说明验证方法及结果。登记不是验收通过，同路径再次登记更新记录。
+    """
+    return {"ok": True, "artifact": projects.register_artifact(store, project_id, path, title,
+                                                               task_id, agent_id, summary, validation)}
 
 
 mcp_asgi_app = mcp.streamable_http_app()

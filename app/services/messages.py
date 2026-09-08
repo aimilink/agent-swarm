@@ -7,6 +7,7 @@ from .agent_status import agent_dispatch_block_reason, is_agent_dispatchable
 from .kanban import extract_task_id, kanban_service, task_status
 from .kanban_dispatch import dispatch_worker
 from .kanban_workspace import workspace_for_agent
+from . import projects
 
 
 logger = logging.getLogger("hermes.agent_state")
@@ -124,22 +125,23 @@ def _format_direct_worker_task(content: str, worker: dict) -> str:
     )
 
 
-def send_user_task(store: RuntimeStore, *, content: str, to_agent_id: str = "") -> dict:
+def send_user_task(store: RuntimeStore, *, content: str, to_agent_id: str = "", project_id: str = "") -> dict:
     content = (content or "").strip()
     if not content:
         raise ValueError("content is required")
+    project = projects.get_project(project_id) if project_id else None
     target = _find_ready_agent(store, to_agent_id) if (to_agent_id or "").strip() else None
     leader_id = target["agent_id"] if target and target.get("role") == "leader" else find_leader_agent_id(
         store, target.get("team_id") if target else None
     )
     if target and target.get("role") == "worker":
-        return _send_direct_worker_task(store, content=content, leader_id=leader_id, worker=target)
+        return _send_direct_worker_task(store, content=content, leader_id=leader_id, worker=target, project=project)
     if target and target.get("role") != "leader":
         raise ValueError("target agent must be leader or worker")
     user_task = store.create_user_task(leader_agent_id=leader_id, content=content)
     leader = store.find_agent(leader_id) or {}
     board_service, board_name = _kanban_service_for_leader(store, leader)
-    body = _format_user_task(content, leader_id)
+    body = projects.instructions(project) + _format_user_task(content, leader_id)
     task_title = f"用户任务：{content[:80]}"
     kanban_task = board_service.create_task(
         task_title,
@@ -149,7 +151,7 @@ def send_user_task(store: RuntimeStore, *, content: str, to_agent_id: str = "") 
             f"{body}"
         ),
         assignee=None,
-        workspace=workspace_for_agent(leader),
+        workspace=projects.workspace(project, lambda: workspace_for_agent(leader)),
         idempotency_key=f"user_task:{user_task['user_task_id']}",
     )
     kanban_task_id = extract_task_id(kanban_task)
@@ -160,7 +162,7 @@ def send_user_task(store: RuntimeStore, *, content: str, to_agent_id: str = "") 
         kanban_role="parent",
         kanban_status="pending_dispatch",
         assignee_profile=leader["profile_name"],
-        metadata={"board": board_name, "task_title": task_title, "pending_dispatch": True},
+        metadata={**projects.metadata(project), "board": board_name, "task_title": task_title, "pending_dispatch": True},
     )
     store.push_event(
         "kanban.task.created",
@@ -189,10 +191,10 @@ def send_user_task(store: RuntimeStore, *, content: str, to_agent_id: str = "") 
     }
 
 
-def _send_direct_worker_task(store: RuntimeStore, *, content: str, leader_id: str, worker: dict) -> dict:
+def _send_direct_worker_task(store: RuntimeStore, *, content: str, leader_id: str, worker: dict, project: dict | None = None) -> dict:
     user_task = store.create_user_task(leader_agent_id=leader_id, content=content)
     board_service, board_name = _kanban_service_for_leader(store, worker)
-    body = _format_direct_worker_task(content, worker)
+    body = projects.instructions(project) + _format_direct_worker_task(content, worker)
     task_title = f"指派给 {worker.get('name') or worker['agent_id']}：{content[:60]}"
     kanban_task = board_service.create_task(
         task_title,
@@ -202,7 +204,7 @@ def _send_direct_worker_task(store: RuntimeStore, *, content: str, leader_id: st
             f"{body}"
         ),
         assignee=worker["profile_name"],
-        workspace=workspace_for_agent(worker),
+        workspace=projects.workspace(project, lambda: workspace_for_agent(worker)),
         idempotency_key=f"direct_worker_task:{user_task['user_task_id']}:{worker['agent_id']}",
     )
     kanban_task_id = extract_task_id(kanban_task)
@@ -213,7 +215,7 @@ def _send_direct_worker_task(store: RuntimeStore, *, content: str, leader_id: st
         kanban_role="worker",
         kanban_status=task_status(kanban_task) or "ready",
         assignee_profile=worker["profile_name"],
-        metadata={"task_title": task_title, "direct_worker": True, "assignee_agent_id": worker["agent_id"], "board": board_name},
+        metadata={**projects.metadata(project), "task_title": task_title, "direct_worker": True, "assignee_agent_id": worker["agent_id"], "board": board_name},
     )
     store.push_event(
         "kanban.task.created",

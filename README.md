@@ -39,6 +39,7 @@ Agent 协作。两种入口共用 SOUL、Skill、记忆、经验、模型配置�
 - MCP Server 安装管理，支持 `http` / `streamable_http` / `stdio`
 - Skill 安装管理，支持从 frontmatter 解析元信息
 - SOUL.md 人设编辑
+- 项目工作区：统一资料和交付目录、项目任务继承、产物登记与下载
 - 单 Agent 聊天：新建会话、查看历史、携带当前会话上下文继续聊天
 
 ## 目录结构
@@ -172,6 +173,7 @@ python -m pytest -q
 
 - [使用指南](doc/USER-GUIDE.md)
 - [单 Agent 聊天与接口](doc/AGENT-CHAT.md)
+- [项目工作区与产物管理](doc/PROJECTS.md)
 - [架构设计](doc/ARCHITECTURE.md)
 - [当前版本功能地图](doc/FEATURE-MAP.md)
 - [部署与安装教程](doc/deployment.md)

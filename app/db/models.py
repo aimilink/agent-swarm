@@ -220,3 +220,28 @@ class AgentChatRecord(Base):
     messages_json: Mapped[str] = mapped_column(Text, default="[]")
     busy: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[str] = mapped_column(String(40))
+
+
+class ProjectRecord(Base):
+    __tablename__ = "projects"
+
+    project_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    workspace_path: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(String(40))
+
+
+class ProjectArtifactRecord(Base):
+    __tablename__ = "project_artifacts"
+    __table_args__ = (UniqueConstraint("project_id", "path"),)
+
+    artifact_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(80), index=True)
+    path: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(String(200))
+    task_id: Mapped[str] = mapped_column(String(120))
+    agent_id: Mapped[str] = mapped_column(String(120), default="")
+    summary: Mapped[str] = mapped_column(Text, default="")
+    validation: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[str] = mapped_column(String(40))

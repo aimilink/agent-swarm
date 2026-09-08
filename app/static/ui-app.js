@@ -2,7 +2,7 @@
   const app = () => window.__HERMES_APP__ || {};
   const boot = () => window.__BOOTSTRAP__ || {};
 
-  const VIEWS = ["overview", "board", "members", "stats", "settings", "teams", "chat"];
+  const VIEWS = ["overview", "board", "members", "stats", "settings", "teams", "chat", "projects"];
   let currentView = "overview";
   let memberFilter = "全部";
   let memberSearch = "";

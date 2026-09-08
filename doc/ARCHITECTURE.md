@@ -65,6 +65,10 @@ Agent 移出团队或从控制台解雇时，只解除编排关系，不删除 H
 
 `agent-chat.js` → `/api/agents/<agent_id>/chats` → `agent_chats` 数据表与 `services/chat.py` → `hermes -p <profile> chat -Q -q <prompt>`。发送接口先保存用户消息并原子占用会话，再等待 CLI 输出并保存回复或错误消息。每次调用携带当前会话的文本记录，不复用 ACP 会话，也不自动进入 Kanban 调度；同一 Profile 的配置与记忆继续共享。接口、恢复机制和验证范围见 [单 Agent 聊天](AGENT-CHAT.md)。
 
+### 项目工作区与产物归属
+
+项目数据由 `services/projects.py` 和独立 SQLAlchemy 表管理。项目任务入口向 `send_user_task` 传递项目 ID，将项目上下文写入任务正文，并把项目目录作为 Kanban workspace。任务关联保存于 `kanban_task_links.metadata`；子任务、跨团队、复盘与人工续接按父任务或用户任务继承该关联。Worker 的正文目录约束同步改用项目目录。产物登记校验项目内现存文件和任务归属，Web 与 MCP 共用同一服务。详见 [项目工作区](PROJECTS.md)。
+
 ### 3. Agent Registry
 
 Flask 后端维护 Agent Registry。Leader 通过 MCP 工具读取可调度 Worker。
