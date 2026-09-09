@@ -76,6 +76,24 @@ def test_project_parent_worker_review_and_artifacts(env, monkeypatch):
     assert detail['artifacts'][0]['exists']
     assert client.get(f'/api/projects/{pid}/file?path=docs/design.md').data.decode() == '设计'
     assert 'docs/design.md' in client.get(f'/api/projects/{pid}/files').json['files']
+    project_workspace = client.get(f'/api/projects/{pid}/workspace').json
+    design_entry = next(item for item in project_workspace['files'] if item['path'] == 'docs/design.md')
+    assert design_entry['preview_type'] == 'text'
+    assert design_entry['is_artifact'] is True
+    assert design_entry['size'] == len('设计'.encode('utf-8'))
+    task_workspace = client.get(f'/api/projects/{pid}/workspace?task_id=kb_2').json
+    assert task_workspace['scope'] == 'task'
+    assert task_workspace['task']['kanban_task_id'] == 'kb_2'
+    assert [item['path'] for item in task_workspace['files']] == ['docs/design.md']
+    preview = client.get(f'/api/projects/{pid}/preview?path=docs/design.md')
+    assert preview.status_code == 200
+    assert preview.json['content'] == '设计'
+    assert preview.json['preview_type'] == 'text'
+    assert client.get(f'/api/projects/{pid}/workspace?task_id=missing').status_code == 400
+    (root / 'deliverables' / 'archive.zip').write_bytes(b'PK\x03\x04')
+    unsupported = client.get(f'/api/projects/{pid}/preview?path=deliverables/archive.zip')
+    assert unsupported.status_code == 400
+    assert '不支持在线预览' in unsupported.json['error']
     (root / 'docs' / 'design.md').unlink()
     assert not client.get(f'/api/projects/{pid}').json['artifacts'][0]['exists']
 

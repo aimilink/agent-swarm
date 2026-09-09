@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import mimetypes
 import os
 import shutil
 import uuid
@@ -298,8 +299,29 @@ def detail(runtime_store, project_id):
     }
 
 
-def list_files(project_id):
-    project = get_project(project_id)
+
+PREVIEW_TEXT_EXTENSIONS = {
+    ".c", ".cc", ".conf", ".cpp", ".css", ".csv", ".env", ".go", ".h", ".hpp",
+    ".html", ".ini", ".java", ".js", ".json", ".jsx", ".log", ".md", ".mjs", ".php",
+    ".properties", ".py", ".rb", ".rs", ".scss", ".sh", ".sql", ".svg", ".toml", ".ts",
+    ".tsx", ".txt", ".vue", ".xml", ".yaml", ".yml",
+}
+PREVIEW_MAX_BYTES = 2 * 1024 * 1024
+
+
+def _preview_type(path):
+    mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    suffix = path.suffix.lower()
+    if mime_type.startswith("image/") and suffix != ".svg":
+        return "image", mime_type
+    if mime_type == "application/pdf":
+        return "pdf", mime_type
+    if mime_type.startswith("text/") or suffix in PREVIEW_TEXT_EXTENSIONS:
+        return "text", mime_type
+    return "download", mime_type
+
+
+def _workspace_entries(project):
     root = Path(project["workspace_path"]).resolve()
     files = []
     for directory, dirs, names in os.walk(root, followlinks=False):
@@ -314,8 +336,88 @@ def list_files(project_id):
             candidate = Path(directory) / name
             if name.startswith(".") or candidate.is_symlink():
                 continue
-            if candidate.is_file() and candidate.resolve().is_relative_to(root):
-                files.append(candidate.relative_to(root).as_posix())
-                if len(files) >= 500:
-                    return {"files": files, "truncated": True}
-    return {"files": files, "truncated": False}
+            resolved = candidate.resolve()
+            if not candidate.is_file() or not resolved.is_relative_to(root):
+                continue
+            stat = candidate.stat()
+            preview_type, mime_type = _preview_type(candidate)
+            files.append({
+                "path": candidate.relative_to(root).as_posix(),
+                "name": name,
+                "size": stat.st_size,
+                "modified_ns": stat.st_mtime_ns,
+                "preview_type": preview_type,
+                "mime_type": mime_type,
+            })
+            if len(files) >= 500:
+                return files, True
+    return files, False
+
+
+def list_files(project_id):
+    project = get_project(project_id)
+    files, truncated = _workspace_entries(project)
+    return {"files": [item["path"] for item in files], "truncated": truncated}
+
+
+def workspace_snapshot(runtime_store, project_id, task_id=""):
+    data = detail(runtime_store, project_id)
+    project = data["project"]
+    tasks = data["tasks"]
+    task = None
+    if task_id:
+        task = next((item for item in tasks if item.get("kanban_task_id") == task_id), None)
+        if task is None:
+            raise ValueError("任务不属于当前项目")
+    files, truncated = _workspace_entries(project)
+    artifacts = data["artifacts"]
+    artifacts_by_path = {item["path"]: item for item in artifacts if item.get("exists")}
+    if task_id:
+        artifacts = [item for item in artifacts if item.get("task_id") == task_id]
+        allowed_paths = {item["path"] for item in artifacts if item.get("exists")}
+        files = [item for item in files if item["path"] in allowed_paths]
+        truncated = False
+    for item in files:
+        artifact = artifacts_by_path.get(item["path"])
+        item["artifact"] = artifact
+        item["is_artifact"] = artifact is not None
+    return {
+        "project": project,
+        "scope": "task" if task_id else "project",
+        "task": task,
+        "files": files,
+        "artifacts": artifacts,
+        "all_artifacts": data["artifacts"],
+        "truncated": truncated,
+    }
+
+
+def preview_file(project_id, value):
+    project = get_project(project_id)
+    path, relative = artifact_path(project, value)
+    preview_type, mime_type = _preview_type(path)
+    stat = path.stat()
+    result = {
+        "path": path,
+        "relative_path": relative,
+        "preview_type": preview_type,
+        "mime_type": mime_type,
+        "size": stat.st_size,
+        "modified_ns": stat.st_mtime_ns,
+    }
+    if preview_type != "text":
+        return result
+    if stat.st_size > PREVIEW_MAX_BYTES:
+        raise ValueError("文本文件超过 2 MB，请下载后查看")
+    raw = path.read_bytes()
+    encoding = "utf-8"
+    try:
+        content = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        encoding = "gb18030"
+        try:
+            content = raw.decode(encoding)
+        except UnicodeDecodeError:
+            encoding = "utf-8-replace"
+            content = raw.decode("utf-8", errors="replace")
+    return {**result, "content": content, "encoding": encoding}

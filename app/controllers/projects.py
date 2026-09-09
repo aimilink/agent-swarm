@@ -82,3 +82,35 @@ def download_file(project_id):
 @bp.get("/<project_id>/files")
 def files(project_id):
     return jsonify(ok=True, **projects.list_files(project_id))
+
+
+@bp.get("/<project_id>/workspace")
+def project_workspace(project_id):
+    return jsonify(ok=True, **projects.workspace_snapshot(
+        store, project_id, task_id=(request.args.get("task_id") or "").strip()
+    ))
+
+
+@bp.get("/<project_id>/preview")
+def preview_file(project_id):
+    result = projects.preview_file(project_id, request.args.get("path"))
+    if result["preview_type"] == "text":
+        return jsonify(
+            ok=True,
+            path=result["relative_path"],
+            preview_type="text",
+            mime_type=result["mime_type"],
+            size=result["size"],
+            modified_ns=result["modified_ns"],
+            encoding=result["encoding"],
+            content=result["content"],
+        )
+    if result["preview_type"] in {"image", "pdf"}:
+        return send_file(
+            result["path"],
+            as_attachment=False,
+            conditional=True,
+            mimetype=result["mime_type"],
+            max_age=0,
+        )
+    raise ValueError("该文件不支持在线预览，请下载后查看")

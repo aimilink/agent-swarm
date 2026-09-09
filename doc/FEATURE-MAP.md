@@ -51,7 +51,7 @@ Hermes CLI 单 Agent ─┐
 | 跨团队协作 | Leader 向另一团队 Leader 委派并查询回执 | MCP `delegate_to_team`、`list_team_delegations` |
 | Kanban | 任务列表、详情、运行记录、日志、派发、解阻、回答人工问题、删除与归档 | 看板页、`/api/kanban/*` |
 | 人工介入 | Agent 创建需要用户回答的任务，用户从页面响应 | MCP `request_human_input` |
-| 项目工作区 | 统一目录、项目任务与子任务继承、资料下载、产物登记 | 项目工作区、`/api/projects` |
+| 项目与任务工作空间 | 统一目录、任务与子任务继承、任务产物归集、实时在线预览、下载与产物登记 | 项目工作区、`/api/projects` |
 | Agent 对话 | 新建、历史查看、会话上下文续聊、数据库持久化 | 侧栏、成员卡片、`/api/agents/<agent_id>/chats` |
 | 消息与事件 | 用户消息、Agent 输出、SSE 实时刷新、团队维度持久化 | 对话区、`/api/events/stream` |
 | 用量统计 | 团队级 Token 用量聚合，支持 1–30 天窗口 | `GET /api/teams/<slug>/usage` |

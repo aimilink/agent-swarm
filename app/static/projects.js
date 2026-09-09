@@ -2,8 +2,17 @@
   const $ = id => document.getElementById(id);
   const esc = value => window.__HERMES_APP__.escapeHtml(String(value ?? ""));
   const storageKey = "hermesCurrentProject";
+  const refreshInterval = 3000;
   let current = "";
   let revision = 0;
+  let currentDetail = null;
+  let workspaceScope = "project";
+  let workspaceTask = "";
+  let selectedFile = "";
+  let selectedSignature = "";
+  let previewObjectUrl = "";
+  let workspaceTimer = 0;
+  let workspaceFiles = [];
 
   try {
     current = window.localStorage.getItem(storageKey) || "";
@@ -17,7 +26,7 @@
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body),
     });
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.ok) throw new Error(data.error || "请求失败");
     return data;
   }
@@ -50,6 +59,12 @@
   function teamName(teamId) {
     const team = teams().find(item => item.team_id === teamId);
     return team?.name || team?.slug || teamId;
+  }
+
+  function taskTitle(task) {
+    const iteration = task?.metadata?.project_iteration;
+    const title = task?.metadata?.task_title || task?.kanban_task_id || "任务";
+    return iteration ? `迭代 ${iteration} · ${title}` : title;
   }
 
   function teamBadges(project, emptyLabel = "未关联团队") {
@@ -125,58 +140,220 @@
     return data.projects;
   }
 
-  async function selectProject(id) {
-    const token = ++revision;
-    rememberProject(id);
-    $("project-error").textContent = "";
-    $("project-detail").hidden = true;
-    const data = await api(projectUrl());
-    if (token !== revision) return;
+  function renderTasks(tasks) {
+    $("project-tasks").innerHTML = tasks.length
+      ? tasks.map(task => {
+          const agent = agents().find(item => item.profile_name === task.assignee_profile || item.agent_id === task.metadata?.assignee_agent_id);
+          const owner = agent?.team_id ? `${teamName(agent.team_id)} · ${task.assignee_profile}` : (task.assignee_profile || "未分配");
+          return `<article class="project-task-card" data-project-task="${esc(task.kanban_task_id)}">
+            <div><strong>${esc(taskTitle(task))}</strong><small>${esc(owner)} · ${esc(task.kanban_status)}</small></div>
+            <div class="project-task-actions"><button type="button" data-project-task-workspace="${esc(task.kanban_task_id)}">任务工作空间</button><button type="button" data-project-task-process="${esc(task.kanban_task_id)}">处理过程</button></div>
+          </article>`;
+        }).join("")
+      : "<p>暂无任务。新建迭代任务后，所有子任务会继承项目目录。</p>";
+  }
 
+  function renderArtifacts(artifacts) {
+    $("project-artifacts").innerHTML = artifacts.length
+      ? artifacts.map(artifact => `<article>
+          <strong>${esc(artifact.title)}</strong>
+          <span>${artifact.exists ? "已登记 · 待人工验收" : "文件已缺失"}</span>
+          <p>${esc(artifact.path)}</p><p>${esc(artifact.summary)}</p>
+          <p>验证：${esc(artifact.validation || "未提供")}</p>
+          <small>任务 ${esc(artifact.task_id)} · ${esc(artifact.agent_id || "手动登记")}</small>
+          ${artifact.exists ? `<div class="project-artifact-actions"><button type="button" data-workspace-open="${esc(artifact.path)}">在线查看</button><button type="button" data-workspace-download="${esc(artifact.path)}">下载</button></div>` : ""}
+        </article>`).join("")
+      : "<p>暂无产物。Agent 可通过 MCP 自动登记，也可在下方手动登记。</p>";
+  }
+
+  function configureWorkspaceTasks(tasks) {
+    const select = $("project-workspace-task");
+    const previous = workspaceTask;
+    select.innerHTML = tasks.map(task => `<option value="${esc(task.kanban_task_id)}">${esc(taskTitle(task))}</option>`).join("");
+    workspaceTask = tasks.some(task => task.kanban_task_id === previous)
+      ? previous
+      : (tasks[0]?.kanban_task_id || "");
+    select.value = workspaceTask;
+  }
+
+  function renderDetail(data) {
+    currentDetail = data;
     const project = data.project;
     $("project-detail").hidden = false;
     $("project-title").textContent = project.name;
     $("project-team-badges").innerHTML = teamBadges(project);
     renderTeamOptions("project-edit-teams", project.team_ids);
     renderProjectAgents(project);
-    $("project-iteration").textContent = data.current_iteration
-      ? `已迭代 ${data.current_iteration} 次`
-      : "尚未开始迭代";
-    $("project-next-iteration").textContent =
-      `即将创建第 ${data.next_iteration} 次迭代任务。任务会继续使用同一项目工作目录。`;
+    $("project-iteration").textContent = data.current_iteration ? `已迭代 ${data.current_iteration} 次` : "尚未开始迭代";
+    $("project-next-iteration").textContent = `即将创建第 ${data.next_iteration} 次迭代任务。任务会继续使用同一项目工作目录。`;
     $("project-description").textContent = project.description || "尚未填写目标";
     $("project-workspace").textContent = project.workspace_path;
-    $("project-tasks").innerHTML = data.tasks.length
-      ? data.tasks.map(task => {
-          const iteration = task.metadata?.project_iteration;
-          const prefix = iteration ? `迭代 ${iteration} · ` : "";
-          const agent = agents().find(item => item.profile_name === task.assignee_profile || item.agent_id === task.metadata?.assignee_agent_id);
-          const owner = agent?.team_id ? `${teamName(agent.team_id)} · ${task.assignee_profile}` : (task.assignee_profile || "未分配");
-          return `<button type="button" data-project-task="${esc(task.kanban_task_id)}">
-            <span>${esc(prefix + (task.metadata?.task_title || task.kanban_task_id))}</span>
-            <small>${esc(owner)} · ${esc(task.kanban_status)}</small>
-          </button>`;
-        }).join("")
-      : "<p>暂无任务。新建迭代任务后，所有子任务会继承项目目录。</p>";
+    renderTasks(data.tasks);
+    configureWorkspaceTasks(data.tasks);
     $("artifact-task").innerHTML = '<option value="">选择关联任务</option>' +
-      data.tasks.map(task => `<option value="${esc(task.kanban_task_id)}">${esc(task.metadata?.task_title || task.kanban_task_id)}</option>`).join("");
-    $("project-artifacts").innerHTML = data.artifacts.length
-      ? data.artifacts.map(artifact => `<article>
-          <strong>${esc(artifact.title)}</strong>
-          <span>${artifact.exists ? "已登记 · 待人工验收" : "文件已缺失"}</span>
-          <p>${esc(artifact.path)}</p><p>${esc(artifact.summary)}</p>
-          <p>验证：${esc(artifact.validation || "未提供")}</p>
-          <small>任务 ${esc(artifact.task_id)} · ${esc(artifact.agent_id || "手动登记")}</small>
-          ${artifact.exists ? `<button type="button" data-project-file="${esc(artifact.path)}">下载</button>` : ""}
-        </article>`).join("")
-      : "<p>暂无产物。Agent 可通过 MCP 自动登记，也可在下方手动登记。</p>";
+      data.tasks.map(task => `<option value="${esc(task.kanban_task_id)}">${esc(taskTitle(task))}</option>`).join("");
+    renderArtifacts(data.artifacts);
+  }
 
-    const files = await api(projectUrl() + "/files");
+  function fileSize(value) {
+    const size = Number(value || 0);
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  function fileSignature(file) {
+    return `${file.path}:${file.size}:${file.modified_ns}`;
+  }
+
+  function releasePreviewUrl() {
+    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = "";
+  }
+
+  function emptyPreview(message = "选择文件在线查看内容。") {
+    releasePreviewUrl();
+    selectedFile = "";
+    selectedSignature = "";
+    $("project-preview-title").textContent = "选择文件在线查看";
+    $("project-preview-meta").textContent = "支持文本、代码、图片和 PDF";
+    $("project-preview-download").hidden = true;
+    $("project-preview-content").innerHTML = `<p>${esc(message)}</p>`;
+  }
+
+  async function openPreview(file, force = false) {
+    if (!file || !current) return;
+    const signature = fileSignature(file);
+    if (!force && selectedFile === file.path && selectedSignature === signature) return;
+    selectedFile = file.path;
+    selectedSignature = signature;
+    $("project-preview-title").textContent = file.path;
+    $("project-preview-meta").textContent = `${fileSize(file.size)} · ${file.mime_type || "未知类型"}`;
+    $("project-preview-download").hidden = false;
+    $("project-preview-content").innerHTML = "<p>正在加载预览…</p>";
+    releasePreviewUrl();
+    if (file.preview_type === "download") {
+      $("project-preview-content").innerHTML = "<p>该文件不支持在线预览，可下载后查看。</p>";
+      return;
+    }
+    const projectId = current;
+    try {
+      const response = await fetch(projectUrl() + "/preview?path=" + encodeURIComponent(file.path));
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "文件预览失败");
+      }
+      if (projectId !== current || selectedFile !== file.path) return;
+      if (file.preview_type === "text") {
+        const data = await response.json();
+        const pre = document.createElement("pre");
+        pre.textContent = data.content || "";
+        $("project-preview-content").replaceChildren(pre);
+      } else {
+        const blob = await response.blob();
+        previewObjectUrl = URL.createObjectURL(blob);
+        if (file.preview_type === "image") {
+          const image = document.createElement("img");
+          image.alt = file.name || file.path;
+          image.src = previewObjectUrl;
+          $("project-preview-content").replaceChildren(image);
+        } else {
+          const frame = document.createElement("iframe");
+          frame.title = file.name || file.path;
+          frame.src = previewObjectUrl;
+          $("project-preview-content").replaceChildren(frame);
+        }
+      }
+    } catch (error) {
+      if (projectId === current && selectedFile === file.path) {
+        $("project-preview-content").innerHTML = `<p>${esc(error.message || "文件预览失败")}</p>`;
+      }
+    }
+  }
+
+  function renderWorkspace(data) {
+    const scopeLabel = data.scope === "task" ? "任务工作空间" : "项目工作空间";
+    $("project-workspace-status").textContent = `${scopeLabel} · ${new Date().toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", second: "2-digit"})} 已同步`;
+    const files = data.files || [];
+    workspaceFiles = files;
+    if (Array.isArray(data.all_artifacts)) {
+      renderArtifacts(data.all_artifacts);
+      if (currentDetail) currentDetail.artifacts = data.all_artifacts;
+    }
+    $("project-files").innerHTML = files.length
+      ? files.map(file => `<div class="project-file-row" data-preview-type="${esc(file.preview_type)}">
+          <button type="button" data-workspace-open="${esc(file.path)}" aria-pressed="${file.path === selectedFile}"><span>${esc(file.path)}</span><small>${file.is_artifact ? "已登记产物 · " : ""}${esc(fileSize(file.size))}</small></button>
+          <button type="button" data-workspace-download="${esc(file.path)}" aria-label="下载 ${esc(file.path)}">下载</button>
+        </div>`).join("")
+      : `<p>${data.scope === "task" ? "该任务尚未登记产物。产物登记后会自动出现在这里。" : "工作空间暂无文件。"}</p>`;
+    if (data.truncated) $("project-files").insertAdjacentHTML("beforeend", "<p>仅显示前 500 个文件。</p>");
+    const active = files.find(file => file.path === selectedFile);
+    if (active) openPreview(active);
+    else if (selectedFile) emptyPreview("所选文件已不存在或不属于当前任务。");
+  }
+
+  async function refreshWorkspace({silent = false} = {}) {
+    if (!current) return;
+    if (workspaceScope === "task" && !workspaceTask) {
+      $("project-files").innerHTML = "<p>项目尚无任务。</p>";
+      $("project-workspace-status").textContent = "任务工作空间 · 等待创建任务";
+      return;
+    }
+    const token = revision;
+    if (!silent) $("project-workspace-status").textContent = "正在同步工作空间…";
+    const query = workspaceScope === "task" ? `?task_id=${encodeURIComponent(workspaceTask)}` : "";
+    try {
+      const data = await api(projectUrl() + "/workspace" + query);
+      if (token === revision) renderWorkspace(data);
+    } catch (error) {
+      if (!silent) report(error);
+      $("project-workspace-status").textContent = "同步失败，已保留当前内容";
+    }
+  }
+
+  function setWorkspaceScope(scope, taskId = "") {
+    workspaceScope = scope === "task" ? "task" : "project";
+    if (taskId) workspaceTask = taskId;
+    document.querySelectorAll("[data-workspace-scope]").forEach(button => {
+      button.setAttribute("aria-pressed", String(button.dataset.workspaceScope === workspaceScope));
+    });
+    $("project-workspace-task-wrap").hidden = workspaceScope !== "task";
+    if (workspaceTask) $("project-workspace-task").value = workspaceTask;
+    selectedFile = "";
+    selectedSignature = "";
+    emptyPreview(workspaceScope === "task" ? "选择该任务登记的产物在线查看。" : "选择项目文件在线查看内容。");
+    refreshWorkspace().catch(report);
+  }
+
+  async function selectProject(id) {
+    const token = ++revision;
+    rememberProject(id);
+    workspaceScope = "project";
+    workspaceTask = "";
+    emptyPreview("选择项目文件在线查看内容。");
+    $("project-error").textContent = "";
+    $("project-detail").hidden = true;
+    const data = await api(projectUrl());
     if (token !== revision) return;
-    $("project-files").innerHTML = files.files.map(file =>
-      `<button type="button" data-project-file="${esc(file)}">${esc(file)}</button>`
-    ).join("") + (files.truncated ? "<p>仅显示前 500 个文件。</p>" : "");
+    renderDetail(data);
+    setWorkspaceScope("project");
     await refreshList();
+  }
+
+  async function downloadFile(path) {
+    try {
+      const response = await fetch(projectUrl() + "/file?path=" + encodeURIComponent(path));
+      if (!response.ok) throw new Error("文件读取失败");
+      const blob = await response.blob();
+      const link = document.createElement("a");
+      const objectUrl = URL.createObjectURL(blob);
+      link.href = objectUrl;
+      link.download = path.split("/").pop();
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      report(error);
+    }
   }
 
   window.openProjects = async function () {
@@ -261,28 +438,55 @@
       }
     });
   });
-  $("project-detail").addEventListener("click", async event => {
-    const task = event.target.closest("[data-project-task]");
-    if (task) {
-      window.__HERMES_APP__.openKanbanTask(task.dataset.projectTask);
-      return;
-    }
-    const button = event.target.closest("[data-project-file]");
-    if (!button) return;
-    try {
-      const response = await fetch(projectUrl() + "/file?path=" + encodeURIComponent(button.dataset.projectFile));
-      if (!response.ok) throw new Error("文件读取失败");
-      const blob = await response.blob();
-      const link = document.createElement("a");
-      const objectUrl = URL.createObjectURL(blob);
-      link.href = objectUrl;
-      link.download = button.dataset.projectFile.split("/").pop();
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-    } catch (error) {
-      report(error);
-    }
+
+  $("project-workspace-task").addEventListener("change", event => {
+    workspaceTask = event.target.value;
+    selectedFile = "";
+    emptyPreview("选择该任务登记的产物在线查看。");
+    refreshWorkspace().catch(report);
+  });
+  document.querySelectorAll("[data-workspace-scope]").forEach(button => {
+    button.addEventListener("click", () => setWorkspaceScope(button.dataset.workspaceScope));
+  });
+  $("project-preview-download").addEventListener("click", () => {
+    if (selectedFile) downloadFile(selectedFile);
   });
 
+  $("project-detail").addEventListener("click", async event => {
+    const workspaceButton = event.target.closest("[data-project-task-workspace]");
+    if (workspaceButton) {
+      setWorkspaceScope("task", workspaceButton.dataset.projectTaskWorkspace);
+      $("project-workspace-heading").scrollIntoView({behavior: "smooth", block: "start"});
+      return;
+    }
+    const processButton = event.target.closest("[data-project-task-process]");
+    if (processButton) {
+      window.__HERMES_APP__.openKanbanTask(processButton.dataset.projectTaskProcess);
+      return;
+    }
+    const openButton = event.target.closest("[data-workspace-open]");
+    if (openButton) {
+      let entry = workspaceFiles.find(item => item.path === openButton.dataset.workspaceOpen);
+      if (!entry) {
+        const response = await api(projectUrl() + "/workspace");
+        entry = response.files.find(item => item.path === openButton.dataset.workspaceOpen);
+      }
+      if (entry) openPreview(entry, true);
+      return;
+    }
+    const downloadButton = event.target.closest("[data-workspace-download]");
+    if (downloadButton) downloadFile(downloadButton.dataset.workspaceDownload);
+  });
+
+  function scheduleWorkspaceRefresh() {
+    window.clearTimeout(workspaceTimer);
+    workspaceTimer = window.setTimeout(async () => {
+      const visible = current && !document.hidden && !$("view-projects").classList.contains("hidden");
+      if (visible) await refreshWorkspace({silent: true});
+      scheduleWorkspaceRefresh();
+    }, refreshInterval);
+  }
+
   refreshList().catch(() => {});
+  scheduleWorkspaceRefresh();
 })();

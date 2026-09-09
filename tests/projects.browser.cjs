@@ -31,7 +31,7 @@ assert.equal(rendered.status,0,rendered.stderr);
   const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>localStorage.setItem('agentTeamApiToken','fixture'));
-  let projects=[],tasks=[],artifacts=[],fail=true;
+  let projects=[],tasks=[],artifacts=[],fail=true,workspaceReads=0,previewReads=0;
   const enrich = project => ({
     ...project,
     team_ids: project.team_ids || [],
@@ -60,6 +60,20 @@ assert.equal(rendered.status,0,rendered.stderr);
    if(url.pathname.startsWith('/api/projects/')) {
     const parts=url.pathname.split('/'),pid=parts[3];
     if(parts[4]==='files')return route.fulfill({json:{ok:true,files:['PROJECT.md','docs/design.md'],truncated:false}});
+    if(parts[4]==='workspace'){
+      workspaceReads+=1;
+      const taskId=url.searchParams.get('task_id') || '';
+      const allFiles=[
+        {path:'PROJECT.md',name:'PROJECT.md',size:80,modified_ns:1,preview_type:'text',mime_type:'text/markdown',is_artifact:false,artifact:null},
+        {path:'docs/design.md',name:'design.md',size:16,modified_ns:previewReads?2:1,preview_type:'text',mime_type:'text/markdown',is_artifact:artifacts.length>0,artifact:artifacts[0] || null},
+      ];
+      const files=taskId ? allFiles.filter(file=>file.path==='docs/design.md' && artifacts.some(item=>item.task_id===taskId)) : allFiles;
+      return route.fulfill({json:{ok:true,project:enrich(projects.find(p=>p.project_id===pid)),scope:taskId?'task':'project',task:tasks.find(item=>item.kanban_task_id===taskId) || null,files,artifacts:taskId?artifacts.filter(item=>item.task_id===taskId):artifacts,all_artifacts:artifacts,truncated:false}});
+    }
+    if(parts[4]==='preview'){
+      previewReads+=1;
+      return route.fulfill({json:{ok:true,path:url.searchParams.get('path'),preview_type:'text',mime_type:'text/markdown',size:16,modified_ns:previewReads>1?2:1,encoding:'utf-8',content:previewReads>1?'设计内容 v2':'设计内容 v1'}});
+    }
     if(parts[4]==='teams' && req.method()==='PUT'){
       projects.find(item=>item.project_id===pid).team_ids=req.postDataJSON().team_ids;
       return route.fulfill({json:{ok:true,project:enrich(projects.find(item=>item.project_id===pid))}});
@@ -118,6 +132,15 @@ assert.equal(rendered.status,0,rendered.stderr);
   await page.locator('#project-artifact-form [name=validation]').fill('已核对接口');
   await page.locator('#project-artifact-form [type=submit]').click();
   await page.waitForFunction(()=>document.querySelectorAll('#project-artifacts article').length===1);
+  await page.locator('#project-files [data-workspace-open="docs/design.md"]').click();
+  await page.waitForFunction(()=>document.querySelector('#project-preview-content').textContent.includes('设计内容 v1'));
+  await page.waitForFunction(()=>document.querySelector('#project-preview-content').textContent.includes('设计内容 v2'),null,{timeout:7000});
+  assert.ok(workspaceReads>=2,'project workspace polls for changes');
+  await page.locator('[data-project-task-workspace="kb_1"]').click();
+  await page.waitForFunction(()=>document.querySelector('[data-workspace-scope="task"]').getAttribute('aria-pressed')==='true');
+  assert.match(await page.locator('#project-workspace-status').innerText(),/任务工作空间/);
+  assert.equal(await page.locator('#project-files [data-workspace-open]').count(),1);
+  assert.match(await page.locator('#project-files').innerText(),/docs\/design.md/);
 
   await page.locator('#project-create [name=name]').fill('第二项目');
   await page.locator('#project-create-teams input[value="team-eng"]').check();
@@ -133,6 +156,6 @@ assert.equal(rendered.status,0,rendered.stderr);
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.locator('#view-projects').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
   assert.deepEqual(errors,[]);
-  console.log('PASS: project/team many-to-many UI, agent filtering, iterations, artifacts, project isolation, mobile layout');
+  console.log('PASS: project/team many-to-many UI, agent filtering, iterations, live project/task workspaces, online artifact preview, project isolation, mobile layout');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
