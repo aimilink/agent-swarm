@@ -1,0 +1,90 @@
+/* Keep large task boards inside the available viewport while each status remains independently scrollable. */
+#view-board,
+#view-board .board-layout,
+#view-board .board-scroll-region,
+#view-board .board-columns,
+#view-board .board-column {
+  min-height: 0;
+}
+
+.board-scroll-region {
+  overscroll-behavior-x: contain;
+}
+
+.board-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(260px, 1fr));
+  gap: 14px;
+  width: 100%;
+  min-width: 1100px;
+  height: 100%;
+  align-items: stretch;
+}
+
+.board-column {
+  height: 100%;
+  max-height: 100%;
+}
+
+.board-column__header {
+  flex: 0 0 auto;
+  border-bottom: 1px solid color-mix(in srgb, var(--outline-variant, #c3c6d7) 35%, transparent);
+}
+
+.board-column__scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin !important;
+  scrollbar-color: #a8b2c3 transparent;
+}
+
+.board-column__scroll::-webkit-scrollbar {
+  display: block !important;
+  width: 7px;
+}
+
+.board-column__scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #a8b2c3;
+}
+
+.board-column__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.board-column__top {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(115, 118, 134, 0.25);
+  border-radius: 8px;
+  color: var(--on-surface-variant, #434655);
+  background: var(--surface, #f8f9ff);
+  cursor: pointer;
+}
+
+.board-column__top:hover {
+  color: var(--primary, #004ac6);
+  border-color: rgba(0, 74, 198, 0.4);
+}
+
+.board-column__top:focus-visible {
+  outline: 2px solid var(--primary, #004ac6);
+  outline-offset: 2px;
+}
+
+.board-column__top .material-symbols-outlined {
+  font-size: 18px;
+}
+
+@media (max-width: 767px) {
+  .board-columns {
+    grid-template-columns: repeat(4, minmax(280px, 84vw));
+    min-width: max-content;
+  }
+}

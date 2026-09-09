@@ -9,6 +9,7 @@
 - 删除团队提示与后端规则一致：先移出成员，空团队才能删除，保留 Agent Profile。
 - 新 Agent 接入可选择团队，角色提示改为每团队最多一个 Leader。
 - 看板真正按团队 board 过滤；实时更新保留选中团队；成员筛选按 team_id 区分同名团队。
+- 任务看板取消每列 30 条的截断；四列在页面可用高度内独立滚动，实时刷新保留滚动位置，并支持快速回到列顶部。
 - 任务接收 Agent 选择器从隐藏区域移到发送栏；没有接收者时阻止提交。
 - 修复提交反馈被 hidden 样式遮挡；发送失败保留内容，成功保留发送期间输入的新草稿，提交防重复。
 - Agent 启停失败显示反馈；成员配置按钮可操作；成员搜索支持 Profile 与角色。
@@ -18,7 +19,7 @@
 
 Python 回归：`python -m pytest -q`。
 
-浏览器回归：`node tests/team_ux.browser.cjs`。需要 Playwright Node 包、Flask Python 环境和 Edge；可用 `NODE_PATH` 指定包目录、`PYTHON` 指定 Python 可执行文件、`BROWSER_CHANNEL` 指定浏览器 channel（默认 msedge）。`UX_SCREENSHOT` 可指定截图输出路径。
+浏览器回归：`node tests/team_ux.browser.cjs`；大量任务看板回归：`node tests/board_many_tasks.browser.cjs`。需要 Playwright Node 包、Flask Python 环境和 Edge；可用 `NODE_PATH` 指定包目录、`PYTHON` 指定 Python 可执行文件、`BROWSER_CHANNEL` 指定浏览器 channel（默认 msedge）。`UX_SCREENSHOT` 可指定截图输出路径。
 
 浏览器测试实际渲染项目模板和前端脚本，拦截 API 使用模拟数据，不启动 Hermes，也不修改真实团队和 Profile。覆盖编辑/新建、重复提交、成员控件、同名团队过滤、实时筛选保留、失败重试、草稿保留、Agent 团队传参、DOM ID 唯一性、页面运行错误与 390px 布局。
 

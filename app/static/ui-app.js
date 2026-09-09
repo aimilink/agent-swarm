@@ -218,6 +218,11 @@
 
   function renderBoardColumns(kanbanState) {
     if (!els.boardColumns) return;
+    const activeFilter = els.boardTeamSelect?.value || "__all__";
+    const scrollOffsets = {};
+    els.boardColumns.querySelectorAll("[data-board-column-scroll]").forEach((column) => {
+      if (column.dataset.boardFilter === activeFilter) scrollOffsets[column.dataset.boardColumnScroll] = column.scrollTop;
+    });
     const links = [...(kanbanState?.links || [])].filter((link) => app().kanbanLinkMatchesTeam?.(link) ?? true).sort((a, b) =>
       String(b.updated_at || b.created_at || "").localeCompare(String(a.updated_at || a.created_at || "")),
     );
@@ -245,7 +250,6 @@
         const items = grouped[column.key] || [];
         const body = items.length
           ? items
-              .slice(0, 30)
               .map((link) => {
                 const agent = agentFor(link);
                 const assigneeName = agent?.name || link.assignee_profile || "unassigned";
@@ -274,16 +278,28 @@
               <p class="font-label-md">暂无任务</p>
             </div>`;
         return `
-        <div class="w-[320px] shrink-0 flex flex-col bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/20">
+        <div class="board-column flex flex-col bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/20">
           <div class="h-2 ${column.bar}"></div>
-          <div class="p-3 font-title-lg text-title-lg text-on-surface flex justify-between items-center">
-            ${esc(column.title)}
-            <span class="bg-surface-container text-on-surface-variant px-2 rounded-full text-sm">${items.length}</span>
+          <div class="board-column__header p-3 font-title-lg text-title-lg text-on-surface flex justify-between items-center gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span>${esc(column.title)}</span>
+              <span class="bg-surface-container text-on-surface-variant px-2 rounded-full text-sm" aria-label="${esc(column.title)} ${items.length} 个任务">${items.length}</span>
+            </div>
+            ${items.length > 5 ? `<button type="button" class="board-column__top" data-board-scroll-top="${column.key}" title="回到${esc(column.title)}顶部" aria-label="回到${esc(column.title)}顶部"><span class="material-symbols-outlined msr" aria-hidden="true">vertical_align_top</span></button>` : ""}
           </div>
-          <div class="flex-1 p-3 overflow-y-auto flex flex-col gap-3">${body}</div>
+          <div class="board-column__scroll flex-1 p-3 flex flex-col gap-3" data-board-column-scroll="${column.key}" data-board-filter="${esc(activeFilter)}" aria-label="${esc(column.title)}任务列表">${body}</div>
         </div>`;
       })
       .join("");
+
+    els.boardColumns.querySelectorAll("[data-board-column-scroll]").forEach((column) => {
+      column.scrollTop = scrollOffsets[column.dataset.boardColumnScroll] || 0;
+    });
+    els.boardColumns.querySelectorAll("[data-board-scroll-top]").forEach((button) => {
+      button.addEventListener("click", () => {
+        els.boardColumns.querySelector(`[data-board-column-scroll="${button.dataset.boardScrollTop}"]`)?.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
 
     els.boardColumns.querySelectorAll(".kanban-ui-card").forEach((card) => {
       card.addEventListener("keydown", (event) => {

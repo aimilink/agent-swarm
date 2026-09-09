@@ -185,6 +185,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='agent-chat.css') }}?v={{ asset_version('agent-chat.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='ui/compact.css') }}?v={{ asset_version('ui/compact.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='projects.css') }}?v={{ asset_version('projects.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='board.css') }}?v={{ asset_version('board.css') }}">
 </head>
 <body class="bg-background text-on-background font-body-md h-screen flex flex-col overflow-hidden">
 <!-- Top Navigation (JSON) -->
@@ -296,7 +297,7 @@
 
 <!-- ========== VIEW: 任务板 ========== -->
 <section id="view-board" class="view hidden flex-1 flex flex-col overflow-hidden">
-<div class="flex-1 flex flex-col p-md gap-md">
+<div class="board-layout flex-1 min-h-0 flex flex-col p-md gap-md">
 <div class="flex items-center justify-between shrink-0">
 <div>
 <h2 class="font-headline-md text-headline-md font-bold text-on-surface">团队任务</h2>
@@ -307,8 +308,8 @@
 <button id="btn-create-task-board" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-xl font-label-md shadow-sm hover:bg-primary/90">+ 新建任务</button>
 </div>
 </div>
-<div class="flex-1 overflow-x-auto flex gap-4 pb-2">
-<div id="board-kanban-columns" class="contents flex gap-4"></div></div>
+<div class="board-scroll-region flex-1 min-h-0 overflow-x-auto overflow-y-hidden pb-2">
+<div id="board-kanban-columns" class="board-columns"></div></div>
 </div>
 </section>
 
