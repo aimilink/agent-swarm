@@ -41,6 +41,10 @@ ensureApiToken();
 const terminalShell = document.getElementById("terminal-shell");
 const terminalViewport = document.getElementById("terminal-viewport");
 const terminalTitle = document.getElementById("terminal-title");
+const kanbanProcessView = document.getElementById("kanban-process-view");
+const kanbanProcessStatus = document.getElementById("kanban-process-status");
+const kanbanProcessContent = document.getElementById("kanban-process-content");
+const kanbanProcessRefresh = document.getElementById("kanban-process-refresh");
 const eventList = terminalShell;
 const agentList = document.getElementById("agent-list");
 const agentEmpty = document.getElementById("agent-empty");
@@ -149,7 +153,10 @@ const terminalReconnectDelay = 900;
 const terminalUrlPattern = /https?:\/\/[^\s<>"'`]+/;
 const hermesDebug = window.localStorage?.getItem("hermesDebug") !== "0";
 let activeKanbanTerminalTaskId = "";
+let activeKanbanTerminalLink = null;
+let activeKanbanTerminalAgent = null;
 let kanbanTerminalLogTimer = 0;
+const kanbanTaskProcessSnapshots = new Map();
 let kanbanPanelsAnimationTimer = 0;
 let kanbanOrnamentAnimationId = 0;
 let kanbanStatusTimer = 0;
@@ -656,8 +663,8 @@ function openKanbanLinkTerminal(link) {
     return;
   }
   setSelectedAgent(agent.agent_id, agent.name, true, { allowStopped: true });
-  openTerminalPanel();
   showKanbanTaskLogInTerminal(link, agent);
+  openTerminalPanel();
 }
 
 function openKanbanTask(link) {
@@ -668,117 +675,144 @@ function openKanbanTask(link) {
   openKanbanLinkTerminal(link);
 }
 
+function setKanbanProcessMode(enabled) {
+  if (kanbanProcessView) kanbanProcessView.hidden = !enabled;
+  if (terminalViewport) terminalViewport.hidden = enabled;
+}
+
 function clearKanbanTerminalLog() {
   activeKanbanTerminalTaskId = "";
+  activeKanbanTerminalLink = null;
+  activeKanbanTerminalAgent = null;
   if (kanbanTerminalLogTimer) {
     window.clearTimeout(kanbanTerminalLogTimer);
     kanbanTerminalLogTimer = 0;
   }
+  setKanbanProcessMode(false);
 }
 
 function normalizeTerminalLogText(value) {
-  return String(value || "").replace(/\r?\n/g, "\r\n");
+  return String(value || "").replace(/\r\n?/g, "\n");
 }
 
-function getTerminalScrollState(session) {
-  const viewport = session?.pane?.querySelector(".xterm-viewport");
-  if (!viewport) return null;
-  const distanceFromBottom = viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop;
+function longerText(current, candidate) {
+  const previous = String(current || "");
+  const next = String(candidate || "");
+  return next.length >= previous.length ? next : previous;
+}
+
+function mergeKanbanTaskDetails(previous, incoming, link) {
+  const old = previous || {};
+  const payload = incoming?.task || {};
+  const task = payload.task || payload;
+  const incomingRuns = Array.isArray(incoming?.runs)
+    ? incoming.runs
+    : (Array.isArray(payload.runs) ? payload.runs : []);
+  const oldRuns = Array.isArray(old.runs) ? old.runs : [];
   return {
-    scrollTop: viewport.scrollTop,
-    distanceFromBottom,
-    wasNearBottom: distanceFromBottom < 24,
+    task: {...(old.task || {}), ...(task || {})},
+    latest_summary: payload.latest_summary || old.latest_summary || "",
+    context: longerText(old.context, incoming?.context || task?.body),
+    log: longerText(old.log, incoming?.log),
+    runs: incomingRuns.length >= oldRuns.length ? incomingRuns : oldRuns,
+    link: {...(old.link || {}), ...(link || {})},
+    errors: {...(old.errors || {}), ...(incoming?.errors || {})},
   };
 }
 
-function restoreTerminalScrollState(session, state) {
-  if (!state) return;
-  const viewport = session?.pane?.querySelector(".xterm-viewport");
-  if (!viewport) return;
-  requestAnimationFrame(() => {
-    if (state.wasNearBottom) {
-      viewport.scrollTop = viewport.scrollHeight;
-    } else {
-      viewport.scrollTop = Math.max(0, Math.min(state.scrollTop, viewport.scrollHeight - viewport.clientHeight));
-    }
-  });
-}
-
-function restoreTerminalScrollStateAfterWrite(session, state) {
-  requestAnimationFrame(() => requestAnimationFrame(() => restoreTerminalScrollState(session, state)));
-}
-
 function formatKanbanTaskDetails(details) {
-  const payload = details?.task || {};
-  const task = payload.task || payload;
-  const runs = Array.isArray(details?.runs) ? details.runs : (Array.isArray(payload.runs) ? payload.runs : []);
+  const task = details?.task || {};
+  const runs = Array.isArray(details?.runs) ? details.runs : [];
   const parts = [];
-  if (task.body) parts.push(`\x1b[36m## 模型实际提示词 / Worker Context\x1b[0m\r\n${normalizeTerminalLogText(details.context || task.body)}`);
-  if (task.result) parts.push(`\x1b[32m## 模型输出 / Task Result\x1b[0m\r\n${normalizeTerminalLogText(task.result)}`);
-  if (payload.latest_summary) parts.push(`\x1b[33m## 运行摘要\x1b[0m\r\n${normalizeTerminalLogText(payload.latest_summary)}`);
+  if (details?.context || task.body) {
+    parts.push("## 模型实际提示词 / Worker Context\n" + normalizeTerminalLogText(details.context || task.body));
+  }
+  const result = task.result || details?.link?.last_result || "";
+  if (result) parts.push("## 模型输出 / Task Result\n" + normalizeTerminalLogText(result));
+  if (details?.latest_summary) {
+    parts.push("## 运行摘要\n" + normalizeTerminalLogText(details.latest_summary));
+  }
   if (runs.length) {
     const runLines = runs.map((run) => [
-      `run_id=${run.id ?? "-"}`,
-      `profile=${run.profile || "-"}`,
-      `status=${run.status || run.outcome || "-"}`,
-      run.summary ? `summary=${run.summary}` : "",
-      run.error ? `error=${run.error}` : "",
+      "run_id=" + (run.id ?? "-"),
+      "profile=" + (run.profile || "-"),
+      "status=" + (run.status || run.outcome || "-"),
+      run.summary ? "summary=" + run.summary : "",
+      run.error ? "error=" + run.error : "",
     ].filter(Boolean).join(" · "));
-    parts.push(`\x1b[35m## Runs\x1b[0m\r\n${normalizeTerminalLogText(runLines.join("\n"))}`);
+    parts.push("## Runs\n" + runLines.join("\n"));
   }
-  if (details?.log) parts.push(`\x1b[90m## 原始 Worker 日志\x1b[0m\r\n${normalizeTerminalLogText(details.log)}`);
-  return parts.join("\r\n\r\n");
+  if (details?.log) parts.push("## 原始 Worker 日志\n" + normalizeTerminalLogText(details.log));
+  return parts.join("\n\n");
 }
 
-function writeKanbanLogToTerminal(session, link, agent, logText, message = "") {
-  if (!session) return;
-  const taskId = link?.kanban_task_id || "";
-  const body = message
-    ? `\x1b[90m${message}\x1b[0m\r\n`
-    : normalizeTerminalLogText(logText).trim() || "\x1b[90m暂无 Kanban 运行日志。任务可能刚启动，稍后会自动刷新。\x1b[0m";
+function kanbanProcessLabel(link, note = "", isError = false) {
+  const status = String(link?.kanban_status || "").toLowerCase();
+  if (isError) return "刷新失败，已保留上次记录 · " + note;
+  if (["done", "completed"].includes(status)) return "任务已完成 · 处理记录已保留";
+  if (["blocked", "failed", "crashed", "timed_out", "gave_up"].includes(status)) {
+    return "任务已停止 · 处理记录已保留";
+  }
+  return note || "任务处理中 · 记录每 2.5 秒更新";
+}
+
+function renderKanbanTaskProcess(link, agent, snapshot, note = "", isError = false) {
+  if (!kanbanProcessView || !kanbanProcessContent) return;
+  setKanbanProcessMode(true);
+  const body = formatKanbanTaskDetails(snapshot?.details);
   const content = [
-    `\x1b[33m● Kanban Task\x1b[0m ${taskId}`,
-    `\x1b[90m${agent?.name || agent?.agent_id || link?.assignee_profile || "Agent"} · ${link?.assignee_profile || "unassigned"} · ${kanbanStatusLabel(link?.kanban_status)}\x1b[0m`,
+    "● Kanban Task " + (link?.kanban_task_id || ""),
+    (agent?.name || agent?.agent_id || link?.assignee_profile || "Agent")
+      + " · " + (link?.assignee_profile || "unassigned")
+      + " · " + kanbanStatusLabel(link?.kanban_status),
     "",
-  ].join("\r\n") + body;
-  if (session.lastKanbanRender === content) return;
-  session.lastKanbanRender = content;
-  const scrollState = getTerminalScrollState(session);
-  session.term.reset();
-  session.term.clear();
-  session.hasRenderedOutput = true;
-  session.term.write(content, () => {
-    restoreTerminalScrollStateAfterWrite(session, scrollState);
-    requestAnimationFrame(() => {
-      fitTerminalSession(session, "kanban-write");
-      restoreTerminalScrollStateAfterWrite(session, scrollState);
-    });
-    window.setTimeout(() => {
-      fitTerminalSession(session, "kanban-write-after-drawer");
-      restoreTerminalScrollStateAfterWrite(session, scrollState);
-    }, overlayAnimationMs + 60);
-  });
+    body || "暂无处理记录。任务可能刚启动，可点击“刷新记录”再次获取。",
+  ].join("\n");
+  const wasNearBottom = kanbanProcessContent.scrollHeight
+    - kanbanProcessContent.clientHeight
+    - kanbanProcessContent.scrollTop < 28;
+  const previousScrollTop = kanbanProcessContent.scrollTop;
+  if (kanbanProcessContent.textContent !== content) kanbanProcessContent.textContent = content;
+  if (wasNearBottom) kanbanProcessContent.scrollTop = kanbanProcessContent.scrollHeight;
+  else kanbanProcessContent.scrollTop = previousScrollTop;
+  if (kanbanProcessStatus) {
+    kanbanProcessStatus.textContent = kanbanProcessLabel(link, note, isError);
+    kanbanProcessStatus.dataset.kind = isError ? "error" : "normal";
+  }
 }
 
 async function refreshKanbanTaskLog(link, agent) {
   const taskId = link?.kanban_task_id || "";
   if (!taskId || activeKanbanTerminalTaskId !== taskId) return;
-  const session = terminalSessions.get(agent?.agent_id || "");
+  if (kanbanProcessRefresh) kanbanProcessRefresh.disabled = true;
+  let snapshot = kanbanTaskProcessSnapshots.get(taskId) || {details: {}, updatedAt: 0};
   try {
-    const response = await fetch(`/api/kanban/tasks/${encodeURIComponent(taskId)}/details?tail=8000`);
+    const response = await fetch("/api/kanban/tasks/" + encodeURIComponent(taskId) + "/details?tail=200000");
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.ok) throw new Error(data.error || "Kanban 详情加载失败");
     if (activeKanbanTerminalTaskId !== taskId) return;
-    writeKanbanLogToTerminal(session, link, agent, formatKanbanTaskDetails(data));
+    const latestLink = data.link || link;
+    snapshot = {
+      details: mergeKanbanTaskDetails(snapshot.details, data, latestLink),
+      updatedAt: Date.now(),
+    };
+    kanbanTaskProcessSnapshots.set(taskId, snapshot);
+    activeKanbanTerminalLink = {...link, ...latestLink};
+    renderKanbanTaskProcess(activeKanbanTerminalLink, agent, snapshot);
   } catch (error) {
     if (activeKanbanTerminalTaskId !== taskId) return;
-    writeKanbanLogToTerminal(session, link, agent, "", error.message || "Kanban 详情加载失败");
+    renderKanbanTaskProcess(link, agent, snapshot, error.message || "Kanban 详情加载失败", true);
+  } finally {
+    if (activeKanbanTerminalTaskId === taskId && kanbanProcessRefresh) kanbanProcessRefresh.disabled = false;
   }
-  const status = String(link?.kanban_status || "").toLowerCase();
-  if (activeKanbanTerminalTaskId === taskId && ["running", "ready", "todo", "triage"].includes(status)) {
+  const status = String(activeKanbanTerminalLink?.kanban_status || link?.kanban_status || "").toLowerCase();
+  if (activeKanbanTerminalTaskId === taskId && ["pending_dispatch", "running", "ready", "todo", "triage"].includes(status)) {
     kanbanTerminalLogTimer = window.setTimeout(async () => {
       await refreshKanbanTasks({ silent: true });
-      const latest = (kanbanState.links || []).find((item) => item.kanban_task_id === taskId) || link;
+      const latest = (kanbanState.links || []).find((item) => item.kanban_task_id === taskId)
+        || activeKanbanTerminalLink
+        || link;
+      activeKanbanTerminalLink = latest;
       refreshKanbanTaskLog(latest, agent);
     }, 2500);
   }
@@ -789,15 +823,15 @@ function showKanbanTaskLogInTerminal(link, agent) {
   if (!taskId) return;
   clearKanbanTerminalLog();
   activeKanbanTerminalTaskId = taskId;
-  const session = ensureTerminalSession(agent.agent_id);
-  if (!session) return;
-  session.lastKanbanRender = "";
-  disconnectTerminalSession(session);
-  if (terminalTitle) terminalTitle.textContent = `${agent.name || agent.agent_id} · Kanban ${taskId}`;
-  writeKanbanLogToTerminal(session, link, agent, "", "正在加载 Kanban 运行日志…");
+  activeKanbanTerminalLink = link;
+  activeKanbanTerminalAgent = agent;
+  const session = terminalSessions.get(agent.agent_id);
+  if (session) disconnectTerminalSession(session);
+  if (terminalTitle) terminalTitle.textContent = (agent.name || agent.agent_id) + " · Kanban " + taskId;
+  const snapshot = kanbanTaskProcessSnapshots.get(taskId) || {details: {}, updatedAt: 0};
+  renderKanbanTaskProcess(link, agent, snapshot, snapshot.updatedAt ? "正在刷新已保存的处理记录…" : "正在加载任务处理过程…");
   refreshKanbanTaskLog(link, agent);
 }
-
 function kanbanTaskCanUnblock(link) {
   return kanbanColumnForStatus(link?.kanban_status) === "blocked";
 }
@@ -4117,6 +4151,13 @@ if (kanbanAutoDispatch) {
   }
 }
 if (kanbanDispatch) kanbanDispatch.addEventListener("click", dispatchKanbanOnce);
+if (kanbanProcessRefresh) {
+  kanbanProcessRefresh.addEventListener("click", () => {
+    if (activeKanbanTerminalLink && activeKanbanTerminalAgent) {
+      refreshKanbanTaskLog(activeKanbanTerminalLink, activeKanbanTerminalAgent);
+    }
+  });
+}
 if (terminalDrawer) {
   terminalDrawer.addEventListener("click", (event) => {
     if (event.target instanceof HTMLElement && event.target.dataset.closeTerminal !== undefined) {

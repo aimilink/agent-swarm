@@ -49,19 +49,41 @@ def task_log(task_id: str):
 
 @bp.get("/tasks/<task_id>/details")
 def task_details(task_id: str):
-    tail = request.args.get("tail", 4000, type=int)
-    try:
-        return jsonify(
-            {
-                "ok": True,
-                "task": _service_for_task(task_id).show_task(task_id),
-                "runs": _service_for_task(task_id).runs(task_id),
-                "context": _service_for_task(task_id).context(task_id),
-                "log": _service_for_task(task_id).log(task_id, tail=tail),
+    tail = max(1, min(request.args.get("tail", 4000, type=int), 500_000))
+    service = _service_for_task(task_id)
+    link = store.find_kanban_task_link(kanban_task_id=task_id) or {}
+    errors = {}
+
+    def read_part(name, reader, default):
+        try:
+            return reader()
+        except KanbanError as exc:
+            errors[name] = str(exc)
+            return default
+
+    task = read_part("task", lambda: service.show_task(task_id), {})
+    runs = read_part("runs", lambda: service.runs(task_id), [])
+    context = read_part("context", lambda: service.context(task_id), "")
+    log = read_part("log", lambda: service.log(task_id, tail=tail), "")
+    if not task:
+        task = {
+            "task": {
+                "id": task_id,
+                "status": link.get("kanban_status") or "",
+                "result": link.get("last_result") or "",
             }
-        )
-    except KanbanError as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        }
+    return jsonify(
+        {
+            "ok": True,
+            "task": task,
+            "runs": runs,
+            "context": context,
+            "log": log,
+            "link": link,
+            "errors": errors,
+        }
+    )
 
 
 @bp.delete("/tasks/done")

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-
 import pytest
 
 from app.services.kanban import KanbanError, KanbanService, _workspace_from_claim_output, extract_task_id
@@ -76,3 +75,20 @@ def test_reset_board_rejects_default_board():
 )
 def test_workspace_from_claim_output_normalizes_workspace_formats(output, expected):
     assert _workspace_from_claim_output(output) == expected
+
+
+def test_log_falls_back_to_persistent_board_worker_log(monkeypatch, tmp_path):
+    from app.services import kanban as module
+
+    monkeypatch.setattr(module, "HERMES_HOME", tmp_path)
+    service = KanbanService(board="team-tech")
+    log_path = tmp_path / "kanban" / "boards" / "team-tech" / "logs" / "kb_1.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text("step one\nstep two\nfinal result", encoding="utf-8")
+
+    def unavailable(*_args, **_kwargs):
+        raise KanbanError("hermes CLI not found in PATH")
+
+    monkeypatch.setattr(service, "_run", unavailable)
+    assert service.log("kb_1") == "step one\nstep two\nfinal result"
+    assert service.log("kb_1", tail=12) == "final result"

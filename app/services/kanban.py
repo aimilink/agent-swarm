@@ -117,16 +117,22 @@ class KanbanService:
         args = ["log", task_id]
         if tail is not None:
             args.extend(["--tail", str(tail)])
-        output = self._run(args)
-        if output:
-            return output
-        legacy = _legacy_worker_log_path(task_id)
+        cli_error = None
         try:
-            if legacy.exists():
-                return _tail_text(legacy, tail=tail)
-        except OSError:
-            return output
-        return output
+            output = self._run(args)
+            if output:
+                return output
+        except KanbanError as exc:
+            cli_error = exc
+        for candidate in (self._worker_log_path(task_id), _legacy_worker_log_path(task_id)):
+            try:
+                if candidate.exists():
+                    return _tail_text(candidate, tail=tail)
+            except OSError:
+                continue
+        if cli_error is not None:
+            raise cli_error
+        return ""
 
     def context(self, task_id: str) -> str:
         return self._run(["context", task_id])

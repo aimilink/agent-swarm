@@ -505,6 +505,13 @@
             <span class="terminal-dot"></span>
             <span id="terminal-title">Agent Terminal</span>
           </div>
+          <div class="kanban-process-view" id="kanban-process-view" hidden>
+            <div class="kanban-process-statusbar">
+              <span id="kanban-process-status" role="status">正在加载任务处理过程…</span>
+              <button id="kanban-process-refresh" type="button">刷新记录</button>
+            </div>
+            <pre id="kanban-process-content" tabindex="0" aria-label="任务处理过程"></pre>
+          </div>
           <div class="terminal-viewport" id="terminal-viewport"></div>
         </div>
       </aside>

@@ -29,7 +29,7 @@ assert.equal(rendered.status,0,rendered.stderr);
   const browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL || 'msedge',headless:true});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
-    const errors=[]; const writes=[]; const messages=[]; const agentCreates=[]; let failMessage=true;
+    const errors=[]; const writes=[]; const messages=[]; const agentCreates=[]; let failMessage=true; let detailReads=0;
     page.on('pageerror',e=>errors.push(e.message));
     page.on('dialog',d=>d.accept());
     await page.addInitScript(()=>localStorage.setItem('agentTeamApiToken','fixture'));
@@ -46,6 +46,19 @@ assert.equal(rendered.status,0,rendered.stderr);
       }
       if(url.pathname.includes('/events/stream')) return route.fulfill({contentType:'text/event-stream',body:''});
       let body={ok:true,settings:{},configs:[],links};
+      if(url.pathname==='/api/kanban/tasks/tech/details') {
+        detailReads += 1;
+        if(detailReads===1) return route.fulfill({json:{
+          ok:true,
+          task:{task:{id:'tech',status:'running',body:'实现技术任务',result:''},latest_summary:'正在分析需求'},
+          runs:[{id:'run-1',profile:'tech_leader',status:'running',summary:'已读取项目资料'}],
+          context:'先读取资料，再实现并测试。',
+          log:'步骤 1：读取资料\n步骤 2：实现功能',
+          link:links.find(item=>item.kanban_task_id==='tech'),
+          errors:{},
+        }});
+        return route.fulfill({status:500,json:{ok:false,error:'temporary details failure'}});
+      }
       if(url.pathname==='/api/messages') {
         messages.push(route.request().postDataJSON());
         await new Promise(r=>setTimeout(r,250));
@@ -99,6 +112,16 @@ assert.equal(rendered.status,0,rendered.stderr);
     await page.locator('#board-team-select').selectOption('tech');
     await page.waitForFunction(()=>document.querySelectorAll('#board-kanban-columns .kanban-ui-card').length===1);
     assert.match(await page.locator('#board-kanban-columns').innerText(),/tech task/);
+    await page.locator('#board-kanban-columns .kanban-ui-card').click();
+    await page.locator('#kanban-process-view').waitFor({state:'visible'});
+    await page.waitForFunction(()=>document.querySelector('#kanban-process-content').textContent.includes('步骤 2：实现功能'));
+    const processBeforeFailure=await page.locator('#kanban-process-content').innerText();
+    await page.waitForTimeout(3000);
+    assert.ok(detailReads>=2,'task process refreshes while running');
+    assert.equal(await page.locator('#kanban-process-content').innerText(),processBeforeFailure);
+    assert.match(await page.locator('#kanban-process-status').innerText(),/已保留上次记录/);
+    await page.keyboard.press('Escape');
+    await page.locator('#terminal-drawer').waitFor({state:'hidden'});
     await page.evaluate(()=>window.__HERMES_UI__.onAgentsUpdate(window.__BOOTSTRAP__.agents,[]));
     assert.equal(await page.locator('#board-team-select').inputValue(),'tech');
     assert.equal(await page.locator('#kanban-team-select').inputValue(),'tech');
@@ -155,6 +178,6 @@ assert.equal(rendered.status,0,rendered.stderr);
     const duplicateIds=await page.evaluate(()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);return ids.filter((id,i)=>ids.indexOf(id)!==i)});
     assert.deepEqual(duplicateIds,[]);
     assert.deepEqual(errors,[]);
-    console.log('PASS: edit/create reset, single submit, member controls, team filtering, realtime selection, unique IDs, send failure/retry, draft preservation, Agent team selection, mobile layout, no page errors');
+    console.log('PASS: edit/create reset, single submit, member controls, team filtering, realtime selection, persistent task process, unique IDs, send failure/retry, draft preservation, Agent team selection, mobile layout, no page errors');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
