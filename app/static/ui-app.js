@@ -443,14 +443,16 @@
       try {
         const response = await fetch(`/api/teams/${encodeURIComponent(team.slug)}/usage?days=${days}`);
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data?.total) continue;
-        const members = Object.entries(data.by_member || {})
+        const usage = data?.usage || data;
+        if (!response.ok || !usage?.total) continue;
+        const members = Object.entries(usage.by_member || {})
           .sort((a, b) => (b[1]?.total_tokens || 0) - (a[1]?.total_tokens || 0));
         const top = members[0];
         rows.push({
           name: team.name || team.slug,
-          total: data.total?.total_tokens || 0,
-          topMember: top ? `${top[0]} ${formatTokenCount(top[1]?.total_tokens || 0)}` : "—",
+          total: usage.total?.total_tokens || 0,
+          calls: usage.total?.calls || 0,
+          topMember: top ? `${top[0]} ${formatTokenCount(top[1]?.total_tokens || 0)}` : "暂无调用",
         });
       } catch {
         /* ignore per-team failures */
@@ -527,7 +529,7 @@
             <div class="rounded-xl bg-surface-container-low p-4">
               <div class="font-label-md text-on-surface font-bold mb-1">${esc(row.name)}</div>
               <div class="font-headline-md font-bold text-primary mb-1">${formatTokenCount(row.total)}</div>
-              <div class="font-label-sm text-on-surface-variant">Top: ${esc(row.topMember)}</div>
+              <div class="font-label-sm text-on-surface-variant">${row.calls} 次调用 · Top: ${esc(row.topMember)}</div>
             </div>`).join("")}
         </div>` : `<p class="text-on-surface-variant font-label-md">暂无用量数据</p>`}
       </div>`;

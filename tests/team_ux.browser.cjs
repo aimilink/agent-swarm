@@ -46,6 +46,8 @@ assert.equal(rendered.status,0,rendered.stderr);
       }
       if(url.pathname.includes('/events/stream')) return route.fulfill({contentType:'text/event-stream',body:''});
       let body={ok:true,settings:{},configs:[],links};
+      if(url.pathname==='/api/teams/tech/usage') return route.fulfill({json:{ok:true,usage:{total:{calls:3,in_tokens:10000,out_tokens:2345,total_tokens:12345},by_member:{tech_leader:{calls:3,in_tokens:10000,out_tokens:2345,total_tokens:12345}},by_model:[]}}});
+      if(url.pathname==='/api/teams/sales/usage') return route.fulfill({json:{ok:true,usage:{total:{calls:0,in_tokens:0,out_tokens:0,total_tokens:0},by_member:{},by_model:[]}}});
       if(url.pathname==='/api/kanban/tasks/tech/details') {
         detailReads += 1;
         if(detailReads===1) return route.fulfill({json:{
@@ -162,6 +164,14 @@ assert.equal(rendered.status,0,rendered.stderr);
     await page.locator('#members-filter-bar [data-filter="tech"]').click();
     assert.equal(await page.locator('#members-grid [data-session-action]').count(),2);
     assert.equal(await page.locator('#members-grid [data-session-action][data-agent-id^="sales"]').count(),0);
+    await page.locator('[data-view="stats"]').click();
+    await page.waitForFunction(()=>document.querySelector('#stats-content').textContent.includes('12.3K'));
+    assert.match(await page.locator('#stats-content').innerText(),/技术|tech/i);
+    assert.match(await page.locator('#stats-content').innerText(),/3 次调用/);
+    const usagePanel=page.locator('#stats-content h3').filter({hasText:'团队 Token 用量'}).locator('..');
+    assert.equal(await usagePanel.locator('.rounded-xl.bg-surface-container-low').count(),2);
+    assert.match(await usagePanel.innerText(),/0\s+0 次调用/);
+    assert.doesNotMatch(await usagePanel.innerText(),/暂无用量数据/);
     await page.locator('[data-view="board"]').click();
     await page.setViewportSize({width:390,height:844});
     await page.locator('#kanban-task-form button[type="submit"]').scrollIntoViewIfNeeded();
@@ -178,6 +188,6 @@ assert.equal(rendered.status,0,rendered.stderr);
     const duplicateIds=await page.evaluate(()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);return ids.filter((id,i)=>ids.indexOf(id)!==i)});
     assert.deepEqual(duplicateIds,[]);
     assert.deepEqual(errors,[]);
-    console.log('PASS: edit/create reset, single submit, member controls, team filtering, realtime selection, persistent task process, unique IDs, send failure/retry, draft preservation, Agent team selection, mobile layout, no page errors');
+    console.log('PASS: edit/create reset, single submit, member controls, team filtering, realtime selection, persistent task process, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, mobile layout, no page errors');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
