@@ -188,6 +188,7 @@ def delegate_to_team(
             parent_task_id = parent_link["kanban_task_id"]
 
     project = projects.project_for_task(store, parent_task_id, resolved_user_task_id)
+    projects.ensure_team_in_project(project, target_team["team_id"])
     title = (task_title or "").strip() or content[:60]
     body_parts = [
         f"local_user_task_id: {resolved_user_task_id or '-'}",
@@ -378,6 +379,7 @@ def create_kanban_worker_tasks(
             "assignments": existing_dispatch["assignments"],
             "note": "同一用户任务已存在 Kanban worker 子任务；已返回现有派发结果，避免重复创建。",
         }
+    project = projects.project_for_task(store, parent_task_id, resolved_user_task_id)
     for assignment in assignments:
         worker_id = (assignment.get("to_agent_id") or "").strip()
         if not worker_id:
@@ -385,6 +387,7 @@ def create_kanban_worker_tasks(
         worker = store.find_agent(worker_id)
         if worker is None:
             raise ValueError(f"target agent not found: {worker_id}")
+        projects.ensure_agent_in_project(store, project, worker)
         reason = agent_dispatch_block_reason(worker)
         if reason:
             raise ValueError(f"target agent is not dispatchable: {worker_id} ({reason})")
@@ -410,7 +413,6 @@ def create_kanban_worker_tasks(
         user_task_id=resolved_user_task_id,
         round_number=target_round,
     )
-    project = projects.project_for_task(store, parent_task_id, resolved_user_task_id)
     dispatched = []
     for assignment in delegation["assignments"]:
         worker = store.find_agent(assignment["worker_agent_id"]) or {}

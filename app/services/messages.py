@@ -136,11 +136,12 @@ def send_user_task(
     content = (content or "").strip()
     if not content:
         raise ValueError("content is required")
-    project = projects.get_project(project_id) if project_id else None
+    project = projects.get_project(project_id, store) if project_id else None
     target = _find_ready_agent(store, to_agent_id) if (to_agent_id or "").strip() else None
     leader_id = target["agent_id"] if target and target.get("role") == "leader" else find_leader_agent_id(
         store, target.get("team_id") if target else None
     )
+    projects.ensure_agent_in_project(store, project, target or store.find_agent(leader_id))
     if target and target.get("role") == "worker":
         return _send_direct_worker_task(
             store,

@@ -11,9 +11,9 @@
     current = "";
   }
 
-  async function api(url, body) {
+  async function api(url, body, method = "POST") {
     const response = await fetch(url, body === undefined ? {} : {
-      method: "POST",
+      method,
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body),
     });
@@ -39,13 +39,71 @@
     return `/api/projects/${encodeURIComponent(current)}`;
   }
 
+  function teams() {
+    return window.__BOOTSTRAP__.teams || [];
+  }
+
+  function agents() {
+    return window.__BOOTSTRAP__.agents || [];
+  }
+
+  function teamName(teamId) {
+    const team = teams().find(item => item.team_id === teamId);
+    return team?.name || team?.slug || teamId;
+  }
+
+  function teamBadges(project, emptyLabel = "未关联团队") {
+    const values = project.teams?.length
+      ? project.teams.map(team => team.name || team.slug || team.team_id)
+      : (project.team_ids || []).map(teamName);
+    return values.length
+      ? values.map(name => `<span class="project-team-badge">${esc(name)}</span>`).join("")
+      : `<span class="project-team-badge project-team-badge--empty">${esc(emptyLabel)}</span>`;
+  }
+
+  function renderTeamOptions(targetId, selected = []) {
+    const target = $(targetId);
+    if (!target) return;
+    const selectedIds = new Set(selected || []);
+    target.innerHTML = teams().length
+      ? teams().map(team => `<label class="project-team-option">
+          <input type="checkbox" name="team_ids" value="${esc(team.team_id)}" ${selectedIds.has(team.team_id) ? "checked" : ""}>
+          <span><strong>${esc(team.name)}</strong><small>${esc(team.slug)} · ${team.member_count ?? 0} 人</small></span>
+        </label>`).join("")
+      : "<p>尚未创建团队，可先创建项目，之后再关联。</p>";
+  }
+
+  function renderProjectAgents(project) {
+    const teamIds = project.team_ids || [];
+    const allowed = agents().filter(agent => !teamIds.length || teamIds.includes(agent.team_id));
+    $("project-agent").innerHTML = '<option value="">选择任务接收 Agent</option>' +
+      allowed.map(agent => `<option value="${esc(agent.agent_id)}">${esc(teamName(agent.team_id) || "未分组")} · ${esc(agent.name)} · ${esc(agent.role)}</option>`).join("");
+    $("project-agent").disabled = allowed.length === 0;
+  }
+
+  function renderTeamPortfolio(items) {
+    const target = $("project-team-portfolio");
+    if (!target) return;
+    target.innerHTML = teams().length
+      ? teams().map(team => {
+          const projects = items.filter(project => (project.team_ids || []).includes(team.team_id));
+          return `<div class="project-portfolio-team">
+            <div><strong>${esc(team.name)}</strong><small>${projects.length} 个项目</small></div>
+            ${projects.length
+              ? projects.map(project => `<button type="button" data-project="${esc(project.project_id)}">${esc(project.name)}</button>`).join("")
+              : "<p>暂未参与项目</p>"}
+          </div>`;
+        }).join("")
+      : "<p>尚未创建团队。</p>";
+  }
+
   function renderOverview(items) {
     const target = $("overview-projects");
     if (!target) return;
     target.innerHTML = items.length
       ? items.slice(0, 4).map(project => `
           <button type="button" data-overview-project="${esc(project.project_id)}">
-            <span>${esc(project.name)}</span>
+            <span><strong>${esc(project.name)}</strong><span class="project-team-badges">${teamBadges(project)}</span></span>
             <small title="${esc(project.workspace_path)}">${esc(project.workspace_path)}</small>
           </button>`).join("")
       : '<p class="font-label-md text-on-surface-variant">暂无项目。点击“查看全部”创建项目工作区。</p>';
@@ -56,11 +114,14 @@
     $("project-list").innerHTML = data.projects.length
       ? data.projects.map(project => `
           <button type="button" data-project="${esc(project.project_id)}" aria-pressed="${project.project_id === current}">
-            <span>${esc(project.name)}</span>
+            <span class="project-list-title">${esc(project.name)}</span>
+            <span class="project-team-badges">${teamBadges(project)}</span>
             <small title="${esc(project.workspace_path)}">${esc(project.workspace_path)}</small>
           </button>`).join("")
       : "<p>暂无项目，请先创建。</p>";
     renderOverview(data.projects);
+    renderTeamPortfolio(data.projects);
+    renderTeamOptions("project-create-teams");
     return data.projects;
   }
 
@@ -75,6 +136,9 @@
     const project = data.project;
     $("project-detail").hidden = false;
     $("project-title").textContent = project.name;
+    $("project-team-badges").innerHTML = teamBadges(project);
+    renderTeamOptions("project-edit-teams", project.team_ids);
+    renderProjectAgents(project);
     $("project-iteration").textContent = data.current_iteration
       ? `已迭代 ${data.current_iteration} 次`
       : "尚未开始迭代";
@@ -86,9 +150,11 @@
       ? data.tasks.map(task => {
           const iteration = task.metadata?.project_iteration;
           const prefix = iteration ? `迭代 ${iteration} · ` : "";
+          const agent = agents().find(item => item.profile_name === task.assignee_profile || item.agent_id === task.metadata?.assignee_agent_id);
+          const owner = agent?.team_id ? `${teamName(agent.team_id)} · ${task.assignee_profile}` : (task.assignee_profile || "未分配");
           return `<button type="button" data-project-task="${esc(task.kanban_task_id)}">
             <span>${esc(prefix + (task.metadata?.task_title || task.kanban_task_id))}</span>
-            <small>${esc(task.assignee_profile || "未分配")} · ${esc(task.kanban_status)}</small>
+            <small>${esc(owner)} · ${esc(task.kanban_status)}</small>
           </button>`;
         }).join("")
       : "<p>暂无任务。新建迭代任务后，所有子任务会继承项目目录。</p>";
@@ -115,9 +181,6 @@
 
   window.openProjects = async function () {
     window.switchView("projects");
-    const agents = window.__BOOTSTRAP__.agents || [];
-    $("project-agent").innerHTML = '<option value="">选择任务接收 Agent</option>' +
-      agents.map(agent => `<option value="${esc(agent.agent_id)}">${esc(agent.name)} · ${esc(agent.role)}</option>`).join("");
     try {
       const items = await refreshList();
       const selected = items.find(item => item.project_id === current) || items[0];
@@ -128,10 +191,12 @@
     }
   };
 
-  $("project-list").addEventListener("click", event => {
+  function selectProjectFromClick(event) {
     const button = event.target.closest("[data-project]");
     if (button) selectProject(button.dataset.project).catch(report);
-  });
+  }
+  $("project-list").addEventListener("click", selectProjectFromClick);
+  $("project-team-portfolio").addEventListener("click", selectProjectFromClick);
   $("overview-projects")?.addEventListener("click", event => {
     const button = event.target.closest("[data-overview-project]");
     if (!button) return;
@@ -157,9 +222,21 @@
   $("project-create").addEventListener("submit", event => {
     event.preventDefault();
     submit(event.currentTarget, async values => {
-      const data = await api("/api/projects", Object.fromEntries(values));
+      const data = await api("/api/projects", {
+        name: values.get("name"),
+        description: values.get("description"),
+        team_ids: values.getAll("team_ids"),
+      });
       event.target.reset();
       await selectProject(data.project.project_id);
+    });
+  });
+  $("project-team-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const id = current;
+    submit(event.currentTarget, async values => {
+      await api(`/api/projects/${encodeURIComponent(id)}/teams`, {team_ids: values.getAll("team_ids")}, "PUT");
+      if (id === current) await selectProject(id);
     });
   });
   $("project-task-form").addEventListener("submit", event => {

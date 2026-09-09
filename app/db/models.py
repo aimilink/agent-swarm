@@ -232,6 +232,15 @@ class ProjectRecord(Base):
     created_at: Mapped[str] = mapped_column(String(40))
 
 
+class ProjectTeamRecord(Base):
+    __tablename__ = "project_teams"
+
+    project_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    team_id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[str] = mapped_column(String(40))
+
+
 class ProjectArtifactRecord(Base):
     __tablename__ = "project_artifacts"
     __table_args__ = (UniqueConstraint("project_id", "path"),)

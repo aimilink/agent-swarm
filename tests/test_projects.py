@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app import mcp_server
 from app.controllers import projects as controller
-from app.db.models import ProjectRecord, ProjectArtifactRecord
+from app.db.models import ProjectRecord, ProjectTeamRecord, ProjectArtifactRecord
 from app.models.store import RuntimeStore
 from app.services import projects, messages, human_input
 from app.services.kanban_sync import KanbanSyncWorker
@@ -18,6 +18,7 @@ from app.services.kanban_sync import KanbanSyncWorker
 def env(monkeypatch, tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}")
     ProjectRecord.__table__.create(engine)
+    ProjectTeamRecord.__table__.create(engine)
     ProjectArtifactRecord.__table__.create(engine)
     monkeypatch.setattr(projects, 'SessionLocal', sessionmaker(bind=engine, expire_on_commit=False))
     monkeypatch.setattr(projects, 'PROJECTS_ROOT', tmp_path / 'projects')
@@ -147,3 +148,66 @@ def test_project_tasks_are_numbered_as_iterations(env):
     detail = client.get(f"/api/projects/{project_id}").json
     assert detail["current_iteration"] == 2
     assert detail["next_iteration"] == 3
+
+
+
+def test_projects_and_teams_have_many_to_many_relationship(env, monkeypatch):
+    client, store, calls = env
+    engineering = store.create_team(slug="engineering", name="工程团队")
+    design = store.create_team(slug="design", name="设计团队")
+    store.assign_agent_team("leader", engineering["team_id"])
+    store.assign_agent_team("worker", design["team_id"])
+
+    first = client.post("/api/projects", json={
+        "name": "产品项目",
+        "team_ids": [engineering["team_id"], design["team_id"], design["team_id"]],
+    })
+    second = client.post("/api/projects", json={
+        "name": "品牌项目",
+        "team_ids": [design["team_id"]],
+    })
+    assert first.status_code == second.status_code == 201
+    first_project = first.json["project"]
+    second_project = second.json["project"]
+    assert first_project["team_ids"] == [engineering["team_id"], design["team_id"]]
+    assert [team["name"] for team in first_project["teams"]] == ["工程团队", "设计团队"]
+
+    listed = client.get("/api/projects").json["projects"]
+    by_id = {project["project_id"]: project for project in listed}
+    assert design["team_id"] in by_id[first_project["project_id"]]["team_ids"]
+    assert design["team_id"] in by_id[second_project["project_id"]]["team_ids"]
+
+    from app.services import kanban
+    monkeypatch.setattr(kanban, "kanban_service_for_board", lambda _: messages.kanban_service)
+    updated = client.put(f"/api/projects/{first_project['project_id']}/teams", json={
+        "team_ids": [engineering["team_id"]],
+    })
+    assert updated.status_code == 200
+    assert updated.json["project"]["team_ids"] == [engineering["team_id"]]
+    assert client.post(f"/api/projects/{first_project['project_id']}/tasks", json={
+        "content": "设计任务", "to_agent_id": "worker",
+    }).status_code == 400
+    allowed = client.post(f"/api/projects/{first_project['project_id']}/tasks", json={
+        "content": "工程任务", "to_agent_id": "leader",
+    })
+    assert allowed.status_code == 201
+    assert "参与团队：工程团队" in calls[-1]["body"]
+
+    store.register_agent(dict(agent_id="design-lead", profile_name="design-lead", name="设计负责人",
+        role="leader", status="idle", runtime_status="running", readiness_status="ready",
+        team_id=design["team_id"]))
+    with pytest.raises(ValueError, match="目标团队未参与当前项目"):
+        mcp_server.delegate_to_team(
+            task_title="设计",
+            content="设计页面",
+            from_agent_id="leader",
+            to_team="design",
+            parent_task_id="kb_1",
+            user_task_id=allowed.json["message"]["user_task_id"],
+        )
+
+    invalid = client.put(f"/api/projects/{first_project['project_id']}/teams", json={
+        "team_ids": ["missing-team"],
+    })
+    assert invalid.status_code == 400
+    assert "团队不存在" in invalid.json["error"]

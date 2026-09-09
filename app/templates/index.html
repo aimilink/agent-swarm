@@ -453,8 +453,10 @@
 <section id="view-projects" class="view hidden flex-1 flex flex-col overflow-hidden">
 <p id="project-error" role="alert"></p>
 <div class="project-layout"><aside><h2>项目工作区</h2><button id="project-refresh" type="button">刷新项目</button><div id="project-list"></div>
-<details><summary>＋ 新建项目</summary><form id="project-create"><label>项目名称<input name="name" maxlength="200" required></label><label>目标、交付清单与验收标准<textarea name="description" rows="4" maxlength="20000"></textarea></label><button type="submit">创建项目</button></form></details></aside>
-<section id="project-detail" hidden><h2 id="project-title"></h2><div id="project-iteration" class="project-iteration"></div><p id="project-description"></p><p>统一工作目录：<span id="project-workspace"></span></p>
+<h3 class="project-portfolio-title">团队参与项目</h3><div id="project-team-portfolio"></div>
+<details><summary>＋ 新建项目</summary><form id="project-create"><label>项目名称<input name="name" maxlength="200" required></label><label>目标、交付清单与验收标准<textarea name="description" rows="4" maxlength="20000"></textarea></label><fieldset><legend>参与团队（可多选）</legend><div id="project-create-teams" class="project-team-options"></div></fieldset><button type="submit">创建项目</button></form></details></aside>
+<section id="project-detail" hidden><div class="project-title-row"><div><h2 id="project-title"></h2><div id="project-iteration" class="project-iteration"></div></div><div id="project-team-badges" class="project-team-badges"></div></div><p id="project-description"></p><p>统一工作目录：<span id="project-workspace"></span></p>
+<details class="project-team-editor"><summary>管理参与团队</summary><form id="project-team-form"><p>一个项目可由多个团队协作，同一团队也可参与多个项目。</p><div id="project-edit-teams" class="project-team-options"></div><button type="submit">保存参与团队</button></form></details>
 <h3>资料与文件</h3><div id="project-files"></div>
 <h3>项目任务</h3><div id="project-tasks"></div>
 <details><summary>＋ 新建迭代任务</summary><form id="project-task-form"><p id="project-next-iteration"></p><label>接收 Agent<select id="project-agent" name="to_agent_id" required></select></label><label>本次迭代目标、已有资料和预期交付路径<textarea name="content" rows="3" maxlength="20000" required></textarea></label><button type="submit">开始下一次迭代</button></form></details>
