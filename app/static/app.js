@@ -3622,6 +3622,14 @@ function setSelectedAgent(agentId, agentName, force = false, options = {}) {
   scheduleTerminalFit(0);
 }
 
+function openAgentTerminal(agentId, agentName = "") {
+  const agent = (window.__BOOTSTRAP__?.agents || []).find((item) => item.agent_id === agentId);
+  if (!agent || (agent.readiness_status || "ready") !== "ready") return false;
+  setSelectedAgent(agent.agent_id, agentName || agent.name, true, { allowStopped: true });
+  openTerminalPanel();
+  return true;
+}
+
 function handleRuntimeEvent(event) {
   if (!eventList) return;
   if (event.event_type === "agent.terminal.output" || event.event_type === "agent.terminal.snapshot") {
@@ -4724,6 +4732,7 @@ window.__HERMES_APP__ = {
     window.__HERMES_UI__?.onTeamsUpdate?.();
   },
   openKanbanTask,
+  openAgentTerminal,
   kanbanRoleLabel,
   kanbanStatusLabel,
   kanbanDisplayStatus,

@@ -271,6 +271,29 @@
     }
   }
 
+  function renderFileTree(files) {
+    const root = {directories: new Map(), files: []};
+    files.forEach(file => {
+      const parts = file.path.split("/");
+      let node = root;
+      parts.slice(0, -1).forEach(part => {
+        if (!node.directories.has(part)) node.directories.set(part, {directories: new Map(), files: []});
+        node = node.directories.get(part);
+      });
+      node.files.push(file);
+    });
+    const renderNode = node => {
+      const directories = [...node.directories.entries()].sort(([a], [b]) => a.localeCompare(b));
+      const entries = directories.map(([name, child]) => `<details class="project-tree-directory" open><summary><span aria-hidden="true">▾</span><strong>${esc(name)}</strong></summary><div>${renderNode(child)}</div></details>`);
+      entries.push(...node.files.sort((a, b) => a.name.localeCompare(b.name)).map(file => `<div class="project-file-row" data-preview-type="${esc(file.preview_type)}">
+        <button type="button" data-workspace-open="${esc(file.path)}" aria-pressed="${file.path === selectedFile}" title="${esc(file.path)}"><span aria-hidden="true">◇</span><span>${esc(file.name)}</span><small>${file.is_artifact ? "产物 · " : ""}${esc(fileSize(file.size))}</small></button>
+        <button type="button" data-workspace-download="${esc(file.path)}" aria-label="下载 ${esc(file.path)}" title="下载">↓</button>
+      </div>`));
+      return entries.join("");
+    };
+    return `<div class="project-tree-root"><div class="project-tree-root-label"><span aria-hidden="true">▾</span><strong>workspace</strong></div><div class="project-tree-children">${renderNode(root)}</div></div>`;
+  }
+
   function renderWorkspace(data) {
     const scopeLabel = data.scope === "task" ? "任务工作空间" : "项目工作空间";
     $("project-workspace-status").textContent = `${scopeLabel} · ${new Date().toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", second: "2-digit"})} 已同步`;
@@ -281,10 +304,7 @@
       if (currentDetail) currentDetail.artifacts = data.all_artifacts;
     }
     $("project-files").innerHTML = files.length
-      ? files.map(file => `<div class="project-file-row" data-preview-type="${esc(file.preview_type)}">
-          <button type="button" data-workspace-open="${esc(file.path)}" aria-pressed="${file.path === selectedFile}"><span>${esc(file.path)}</span><small>${file.is_artifact ? "已登记产物 · " : ""}${esc(fileSize(file.size))}</small></button>
-          <button type="button" data-workspace-download="${esc(file.path)}" aria-label="下载 ${esc(file.path)}">下载</button>
-        </div>`).join("")
+      ? renderFileTree(files)
       : `<p>${data.scope === "task" ? "该任务尚未登记产物。产物登记后会自动出现在这里。" : "工作空间暂无文件。"}</p>`;
     if (data.truncated) $("project-files").insertAdjacentHTML("beforeend", "<p>仅显示前 500 个文件。</p>");
     const active = files.find(file => file.path === selectedFile);
@@ -450,6 +470,27 @@
   });
   $("project-preview-download").addEventListener("click", () => {
     if (selectedFile) downloadFile(selectedFile);
+  });
+  $("project-files-refresh").addEventListener("click", () => refreshWorkspace().catch(report));
+  $("project-files-tool").addEventListener("click", () => $("project-files").focus());
+  $("project-open-terminal").addEventListener("click", () => {
+    const task = currentDetail?.tasks?.find(item => item.kanban_task_id === workspaceTask);
+    const requestedAgent = task
+      ? agents().find(agent => agent.profile_name === task.assignee_profile || agent.agent_id === task.metadata?.assignee_agent_id)
+      : null;
+    const teamIds = currentDetail?.project?.team_ids || [];
+    const fallbackAgent = agents().find(agent =>
+      (!teamIds.length || teamIds.includes(agent.team_id)) &&
+      (agent.readiness_status || "ready") === "ready" &&
+      agent.runtime_status === "running"
+    );
+    const agent = requestedAgent || fallbackAgent;
+    if (!agent) {
+      report(new Error("当前工作空间没有可用的运行中 Agent，启动 Agent 后再打开终端。"));
+      return;
+    }
+    const opened = window.__HERMES_APP__.openAgentTerminal?.(agent.agent_id, agent.name);
+    if (!opened) report(new Error(`${agent.name || agent.agent_id} 尚未就绪，无法打开终端。`));
   });
 
   $("project-detail").addEventListener("click", async event => {
