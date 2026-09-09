@@ -40,7 +40,18 @@ def create_task(project_id):
     data = payload()
     content = projects.required(data.get("content"), "任务内容", 20000)
     agent_id = projects.required(data.get("to_agent_id"), "接收 Agent", 120)
-    return jsonify(ok=True, message=send_user_task(store, content=content, to_agent_id=agent_id, project_id=project_id)), 201
+    iteration = projects.detail(store, project_id)["next_iteration"]
+    return jsonify(
+        ok=True,
+        iteration=iteration,
+        message=send_user_task(
+            store,
+            content=content,
+            to_agent_id=agent_id,
+            project_id=project_id,
+            project_iteration=iteration,
+        ),
+    ), 201
 
 
 @bp.post("/<project_id>/artifacts")

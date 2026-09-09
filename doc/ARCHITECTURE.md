@@ -63,7 +63,7 @@ Agent 移出团队或从控制台解雇时，只解除编排关系，不删除 H
 
 ### 单 Agent Web 聊天路径
 
-`agent-chat.js` → `/api/agents/<agent_id>/chats` → `agent_chats` 数据表与 `services/chat.py` → `hermes -p <profile> chat -Q -q <prompt>`。发送接口先保存用户消息并原子占用会话，再等待 CLI 输出并保存回复或错误消息。每次调用携带当前会话的文本记录，不复用 ACP 会话，也不自动进入 Kanban 调度；同一 Profile 的配置与记忆继续共享。接口、恢复机制和验证范围见 [单 Agent 聊天](AGENT-CHAT.md)。
+`agent-chat.js` → `/api/agents/<agent_id>/chats` → `agent_chats` 数据表与 `services/chat.py` → `hermes -p <profile> chat -Q -q <prompt>`。发送接口先保存用户消息并原子占用会话，再等待 CLI 输出并保存回复或错误消息。每次调用携带当前会话的文本记录，不复用 ACP 会话，也不自动进入 Kanban 调度；同一 Profile 的配置与记忆继续共享。接口、恢复机制和验证范围见 [Agent 对话](AGENT-CHAT.md)。
 
 ### 项目工作区与产物归属
 

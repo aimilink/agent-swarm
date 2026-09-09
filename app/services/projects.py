@@ -143,7 +143,20 @@ def detail(runtime_store, project_id):
             item["exists"] = False
     tasks = [link for link in runtime_store.snapshot().get("kanban_task_links", [])
              if (link.get("metadata") or {}).get("project_id") == project_id]
-    return {"project": project, "tasks": tasks, "artifacts": artifacts}
+    iterations = [
+        int((link.get("metadata") or {}).get("project_iteration") or 0)
+        for link in tasks
+        if link.get("local_type") == "user_task"
+        and link.get("kanban_role") in {"parent", "worker"}
+    ]
+    current_iteration = max(iterations, default=0)
+    return {
+        "project": project,
+        "tasks": tasks,
+        "artifacts": artifacts,
+        "current_iteration": current_iteration,
+        "next_iteration": current_iteration + 1,
+    }
 
 
 def list_files(project_id):

@@ -18,10 +18,10 @@
   }
   function report(error) { status.textContent = error.message || String(error); }
   function render() {
-    byId('chat-title').textContent = selected?.title || '单 Agent 聊天';
+    byId('chat-title').textContent = selected?.title || 'Agent 对话';
     messages.innerHTML = selected?.messages?.length ? selected.messages.map(m =>
       `<article class="chat-message chat-message--${esc(m.role)}"><strong>${m.role === 'user' ? '你' : m.role === 'error' ? '提示' : esc(agentSelect.selectedOptions[0]?.textContent || 'Agent')}</strong><div>${esc(m.content)}</div><small>${esc(new Date(m.created_at).toLocaleString())}</small></article>`
-    ).join('') : '<p class="chat-empty">选择 Agent，新建聊天，开始一对一交流。历史会话会自动保存。</p>';
+    ).join('') : '<p class="chat-empty">选择 Agent，新建对话，开始一对一交流。历史会话会自动保存。</p>';
     if (selected?.busy) messages.insertAdjacentHTML('beforeend', '<p class="chat-empty">Agent 正在回复…</p>');
     byId('chat-send').disabled = !selected || selected.busy || sending;
     input.disabled = !selected || selected.busy || sending;
@@ -35,7 +35,7 @@
     if (token !== generation) return;
     history.innerHTML = data.chats.length ? data.chats.map(chat =>
       `<button type="button" data-chat-id="${esc(chat.chat_id)}"><span>${esc(chat.title)}</span><small>${esc(new Date(chat.updated_at).toLocaleString())}</small></button>`
-    ).join('') : '<p class="chat-empty">暂无历史聊天</p>';
+    ).join('') : '<p class="chat-empty">暂无历史对话</p>';
     history.querySelectorAll('button').forEach(button => button.classList.toggle('is-selected', button.dataset.chatId === selected?.chat_id));
   }
   async function selectChat(id) {

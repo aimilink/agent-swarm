@@ -119,3 +119,31 @@ def test_cross_team_project_inheritance(env, monkeypatch):
         parent_task_id='kb_1',user_task_id=result['message']['user_task_id'])
     assert calls[-1]['workspace'] == f'dir:{p["workspace_path"]}'
     assert store.find_kanban_task_link(kanban_task_id='kb_2')['metadata']['project_id'] == p['project_id']
+
+
+def test_project_tasks_are_numbered_as_iterations(env):
+    client, store, calls = env
+    project = projects.create_project("持续迭代")
+    project_id = project["project_id"]
+
+    first = client.post(
+        f"/api/projects/{project_id}/tasks",
+        json={"content": "完成第一个版本", "to_agent_id": "worker"},
+    )
+    second = client.post(
+        f"/api/projects/{project_id}/tasks",
+        json={"content": "根据反馈继续优化", "to_agent_id": "worker"},
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json["iteration"] == 1
+    assert second.json["iteration"] == 2
+    assert calls[0]["workspace"] == calls[1]["workspace"] == f"dir:{project['workspace_path']}"
+    assert "第 1 次迭代" in calls[0]["body"]
+    assert "第 2 次迭代" in calls[1]["body"]
+    links = store.snapshot()["kanban_task_links"]
+    assert [link["metadata"]["project_iteration"] for link in links] == [1, 2]
+    detail = client.get(f"/api/projects/{project_id}").json
+    assert detail["current_iteration"] == 2
+    assert detail["next_iteration"] == 3

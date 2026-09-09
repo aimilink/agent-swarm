@@ -217,7 +217,7 @@
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="projects" onclick="event.preventDefault(); openProjects()"><span class="material-symbols-outlined" aria-hidden="true">folder</span>项目工作区</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="overview" onclick="switchView('overview', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>团队概览</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="board" onclick="switchView('board', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>任务板</a></li>
-<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="chat" onclick="event.preventDefault(); openAgentChat()"><span class="material-symbols-outlined" aria-hidden="true">chat</span>单 Agent 聊天</a></li>
+<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="chat" onclick="event.preventDefault(); openAgentChat()"><span class="material-symbols-outlined" aria-hidden="true">chat</span>Agent 对话</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="members" onclick="switchView('members', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>成员列表</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="stats" onclick="switchView('stats', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>效能统计</a></li>
 <li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="teams" onclick="switchView('teams', event)"><span class="material-symbols-outlined msr" aria-hidden="true">groups</span>团队管理</a></li>
@@ -282,6 +282,13 @@
 <span class="px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px]">Kanban 看板 ✓</span>
 <span class="px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px]">幂等保护 ✓</span>
 </div>
+</div>
+<div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+<div class="p-4 border-b border-outline-variant/30 flex items-center justify-between">
+<h3 class="font-title-lg text-title-lg text-on-surface">项目工作区</h3>
+<button type="button" class="font-label-sm text-primary" onclick="openProjects()">查看全部</button>
+</div>
+<div id="overview-projects" class="p-4 grid gap-2"><p class="font-label-md text-on-surface-variant">正在加载项目…</p></div>
 </div>
 </div>
 </div>
@@ -439,17 +446,17 @@
 </form>
 <section id="view-chat" class="view hidden flex-1 flex flex-col overflow-hidden">
 <div class="chat-layout">
-<aside class="chat-sidebar"><label for="chat-agent">聊天对象</label><select id="chat-agent"></select><button id="chat-new" type="button">＋ 新建聊天</button><h2>历史聊天</h2><div id="chat-history" class="chat-history"></div></aside>
-<div class="chat-main"><h2 id="chat-title">单 Agent 聊天</h2><div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div><p id="chat-status" role="alert"></p><form id="chat-form" class="chat-compose"><textarea id="chat-input" aria-label="聊天消息" placeholder="输入消息，Enter 发送，Shift+Enter 换行" rows="3" maxlength="20000" disabled></textarea><button id="chat-send" type="submit" disabled>发送</button></form></div>
+<aside class="chat-sidebar"><label for="chat-agent">选择 Agent</label><select id="chat-agent"></select><button id="chat-new" type="button">＋ 新建对话</button><h2>历史对话</h2><div id="chat-history" class="chat-history"></div></aside>
+<div class="chat-main"><h2 id="chat-title">Agent 对话</h2><div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div><p id="chat-status" role="alert"></p><form id="chat-form" class="chat-compose"><textarea id="chat-input" aria-label="对话消息" placeholder="输入消息，Enter 发送，Shift+Enter 换行" rows="3" maxlength="20000" disabled></textarea><button id="chat-send" type="submit" disabled>发送</button></form></div>
 </div></section>
 <section id="view-projects" class="view hidden flex-1 flex flex-col overflow-hidden">
 <p id="project-error" role="alert"></p>
 <div class="project-layout"><aside><h2>项目工作区</h2><button id="project-refresh" type="button">刷新项目</button><div id="project-list"></div>
 <details><summary>＋ 新建项目</summary><form id="project-create"><label>项目名称<input name="name" maxlength="200" required></label><label>目标、交付清单与验收标准<textarea name="description" rows="4" maxlength="20000"></textarea></label><button type="submit">创建项目</button></form></details></aside>
-<section id="project-detail" hidden><h2 id="project-title"></h2><p id="project-description"></p><p>统一工作目录：<span id="project-workspace"></span></p>
+<section id="project-detail" hidden><h2 id="project-title"></h2><div id="project-iteration" class="project-iteration"></div><p id="project-description"></p><p>统一工作目录：<span id="project-workspace"></span></p>
 <h3>资料与文件</h3><div id="project-files"></div>
 <h3>项目任务</h3><div id="project-tasks"></div>
-<details><summary>＋ 创建项目任务</summary><form id="project-task-form"><label>接收 Agent<select id="project-agent" name="to_agent_id" required></select></label><label>任务目标与预期交付路径<textarea name="content" rows="3" maxlength="20000" required></textarea></label><button type="submit">创建任务</button></form></details>
+<details><summary>＋ 新建迭代任务</summary><form id="project-task-form"><p id="project-next-iteration"></p><label>接收 Agent<select id="project-agent" name="to_agent_id" required></select></label><label>本次迭代目标、已有资料和预期交付路径<textarea name="content" rows="3" maxlength="20000" required></textarea></label><button type="submit">开始下一次迭代</button></form></details>
 <h3>交付产物</h3><div id="project-artifacts"></div>
 <details><summary>＋ 登记已有产物</summary><form id="project-artifact-form"><label>名称<input name="title" required maxlength="200"></label><label>项目内相对路径<input name="path" placeholder="docs/design.md" required></label><label>关联任务<select id="artifact-task" name="task_id" required></select></label><label>成果摘要<textarea name="summary" rows="2"></textarea></label><label>验证方法与结果<textarea name="validation" rows="2"></textarea></label><button type="submit">登记产物</button></form></details>
 </section></div></section>

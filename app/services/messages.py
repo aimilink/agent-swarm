@@ -125,7 +125,14 @@ def _format_direct_worker_task(content: str, worker: dict) -> str:
     )
 
 
-def send_user_task(store: RuntimeStore, *, content: str, to_agent_id: str = "", project_id: str = "") -> dict:
+def send_user_task(
+    store: RuntimeStore,
+    *,
+    content: str,
+    to_agent_id: str = "",
+    project_id: str = "",
+    project_iteration: int | None = None,
+) -> dict:
     content = (content or "").strip()
     if not content:
         raise ValueError("content is required")
@@ -135,13 +142,26 @@ def send_user_task(store: RuntimeStore, *, content: str, to_agent_id: str = "", 
         store, target.get("team_id") if target else None
     )
     if target and target.get("role") == "worker":
-        return _send_direct_worker_task(store, content=content, leader_id=leader_id, worker=target, project=project)
+        return _send_direct_worker_task(
+            store,
+            content=content,
+            leader_id=leader_id,
+            worker=target,
+            project=project,
+            project_iteration=project_iteration,
+        )
     if target and target.get("role") != "leader":
         raise ValueError("target agent must be leader or worker")
     user_task = store.create_user_task(leader_agent_id=leader_id, content=content)
     leader = store.find_agent(leader_id) or {}
     board_service, board_name = _kanban_service_for_leader(store, leader)
-    body = projects.instructions(project) + _format_user_task(content, leader_id)
+    iteration_instruction = (
+        f"[PROJECT_ITERATION]\n当前为项目第 {project_iteration} 次迭代。"
+        "先检查项目中的已有资料和产物，在现状上继续，不要重新创建已有成果。\n\n"
+        if project and project_iteration
+        else ""
+    )
+    body = projects.instructions(project) + iteration_instruction + _format_user_task(content, leader_id)
     task_title = f"用户任务：{content[:80]}"
     kanban_task = board_service.create_task(
         task_title,
@@ -162,7 +182,13 @@ def send_user_task(store: RuntimeStore, *, content: str, to_agent_id: str = "", 
         kanban_role="parent",
         kanban_status="pending_dispatch",
         assignee_profile=leader["profile_name"],
-        metadata={**projects.metadata(project), "board": board_name, "task_title": task_title, "pending_dispatch": True},
+        metadata={
+            **projects.metadata(project),
+            "project_iteration": project_iteration,
+            "board": board_name,
+            "task_title": task_title,
+            "pending_dispatch": True,
+        },
     )
     store.push_event(
         "kanban.task.created",
@@ -191,10 +217,24 @@ def send_user_task(store: RuntimeStore, *, content: str, to_agent_id: str = "", 
     }
 
 
-def _send_direct_worker_task(store: RuntimeStore, *, content: str, leader_id: str, worker: dict, project: dict | None = None) -> dict:
+def _send_direct_worker_task(
+    store: RuntimeStore,
+    *,
+    content: str,
+    leader_id: str,
+    worker: dict,
+    project: dict | None = None,
+    project_iteration: int | None = None,
+) -> dict:
     user_task = store.create_user_task(leader_agent_id=leader_id, content=content)
     board_service, board_name = _kanban_service_for_leader(store, worker)
-    body = projects.instructions(project) + _format_direct_worker_task(content, worker)
+    iteration_instruction = (
+        f"[PROJECT_ITERATION]\n当前为项目第 {project_iteration} 次迭代。"
+        "先检查已有成果，在现状上继续。\n\n"
+        if project and project_iteration
+        else ""
+    )
+    body = projects.instructions(project) + iteration_instruction + _format_direct_worker_task(content, worker)
     task_title = f"指派给 {worker.get('name') or worker['agent_id']}：{content[:60]}"
     kanban_task = board_service.create_task(
         task_title,
@@ -215,7 +255,14 @@ def _send_direct_worker_task(store: RuntimeStore, *, content: str, leader_id: st
         kanban_role="worker",
         kanban_status=task_status(kanban_task) or "ready",
         assignee_profile=worker["profile_name"],
-        metadata={**projects.metadata(project), "task_title": task_title, "direct_worker": True, "assignee_agent_id": worker["agent_id"], "board": board_name},
+        metadata={
+            **projects.metadata(project),
+            "project_iteration": project_iteration,
+            "task_title": task_title,
+            "direct_worker": True,
+            "assignee_agent_id": worker["agent_id"],
+            "board": board_name,
+        },
     )
     store.push_event(
         "kanban.task.created",

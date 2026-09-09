@@ -52,7 +52,7 @@ Hermes CLI 单 Agent ─┐
 | Kanban | 任务列表、详情、运行记录、日志、派发、解阻、回答人工问题、删除与归档 | 看板页、`/api/kanban/*` |
 | 人工介入 | Agent 创建需要用户回答的任务，用户从页面响应 | MCP `request_human_input` |
 | 项目工作区 | 统一目录、项目任务与子任务继承、资料下载、产物登记 | 项目工作区、`/api/projects` |
-| 单 Agent 聊天 | 新建、历史查看、会话上下文续聊、数据库持久化 | 侧栏、成员卡片、`/api/agents/<agent_id>/chats` |
+| Agent 对话 | 新建、历史查看、会话上下文续聊、数据库持久化 | 侧栏、成员卡片、`/api/agents/<agent_id>/chats` |
 | 消息与事件 | 用户消息、Agent 输出、SSE 实时刷新、团队维度持久化 | 对话区、`/api/events/stream` |
 | 用量统计 | 团队级 Token 用量聚合，支持 1–30 天窗口 | `GET /api/teams/<slug>/usage` |
 | 导入导出 | Profile 白名单文件、Skill、MCP 元数据与可选工作区；校验 checksum | 团队设置 |
@@ -100,7 +100,7 @@ Hermes CLI 单 Agent ─┐
 - `agents`：Profile 与运行时映射、`team_id`。
 - `messages`、`user_tasks`：团队消息和用户任务。
 - `projects`、`project_artifacts`：项目目录和产物登记；任务元数据保存项目关联。
-- `agent_chats`：单 Agent Web 会话、消息 JSON 与回复状态；详见 [单 Agent 聊天](AGENT-CHAT.md)。
+- `agent_chats`：单 Agent Web 会话、消息 JSON 与回复状态；详见 [Agent 对话](AGENT-CHAT.md)。
 - `delegations`、`assignments`：团队内拆解批次与 Worker 分工。
 - 跨团队委派来源、目标与结果关联保存于 `kanban_task_links.metadata`。
 - `kanban_task_links`：本地实体与 Hermes Kanban 任务映射。
