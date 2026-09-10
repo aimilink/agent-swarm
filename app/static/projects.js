@@ -13,6 +13,9 @@
   let previewObjectUrl = "";
   let workspaceTimer = 0;
   let workspaceFiles = [];
+  let workspaceFilter = "";
+  let workspaceTreeSignature = "";
+  const collapsedDirectories = new Set();
 
   try {
     current = window.localStorage.getItem(storageKey) || "";
@@ -193,6 +196,7 @@
     $("artifact-task").innerHTML = '<option value="">选择关联任务</option>' +
       data.tasks.map(task => `<option value="${esc(task.kanban_task_id)}">${esc(taskTitle(task))}</option>`).join("");
     renderArtifacts(data.artifacts);
+    updateTerminalTarget();
   }
 
   function fileSize(value) {
@@ -227,6 +231,9 @@
     if (!force && selectedFile === file.path && selectedSignature === signature) return;
     selectedFile = file.path;
     selectedSignature = signature;
+    document.querySelectorAll("#project-files [data-workspace-open]").forEach(button => {
+      button.setAttribute("aria-pressed", String(button.dataset.workspaceOpen === file.path));
+    });
     $("project-preview-title").textContent = file.path;
     $("project-preview-meta").textContent = `${fileSize(file.size)} · ${file.mime_type || "未知类型"}`;
     $("project-preview-download").hidden = false;
@@ -246,12 +253,18 @@
       if (projectId !== current || selectedFile !== file.path) return;
       if (file.preview_type === "text") {
         const data = await response.json();
+        if (projectId !== current || selectedFile !== file.path || selectedSignature !== signature) return;
         const pre = document.createElement("pre");
         pre.textContent = data.content || "";
         $("project-preview-content").replaceChildren(pre);
       } else {
         const blob = await response.blob();
-        previewObjectUrl = URL.createObjectURL(blob);
+        const objectUrl = URL.createObjectURL(blob);
+        if (projectId !== current || selectedFile !== file.path || selectedSignature !== signature) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        previewObjectUrl = objectUrl;
         if (file.preview_type === "image") {
           const image = document.createElement("img");
           image.alt = file.name || file.path;
@@ -282,9 +295,13 @@
       });
       node.files.push(file);
     });
-    const renderNode = node => {
+    const renderNode = (node, parents = []) => {
       const directories = [...node.directories.entries()].sort(([a], [b]) => a.localeCompare(b));
-      const entries = directories.map(([name, child]) => `<details class="project-tree-directory" open><summary><span aria-hidden="true">▾</span><strong>${esc(name)}</strong></summary><div>${renderNode(child)}</div></details>`);
+      const entries = directories.map(([name, child]) => {
+        const directoryPath = [...parents, name].join("/");
+        const open = !collapsedDirectories.has(directoryPath);
+        return `<details class="project-tree-directory" data-directory-path="${esc(directoryPath)}" ${open ? "open" : ""}><summary><span aria-hidden="true">▾</span><strong>${esc(name)}</strong></summary><div>${renderNode(child, [...parents, name])}</div></details>`;
+      });
       entries.push(...node.files.sort((a, b) => a.name.localeCompare(b.name)).map(file => `<div class="project-file-row" data-preview-type="${esc(file.preview_type)}">
         <button type="button" data-workspace-open="${esc(file.path)}" aria-pressed="${file.path === selectedFile}" title="${esc(file.path)}"><span aria-hidden="true">◇</span><span>${esc(file.name)}</span><small>${file.is_artifact ? "产物 · " : ""}${esc(fileSize(file.size))}</small></button>
         <button type="button" data-workspace-download="${esc(file.path)}" aria-label="下载 ${esc(file.path)}" title="下载">↓</button>
@@ -292,6 +309,28 @@
       return entries.join("");
     };
     return `<div class="project-tree-root"><div class="project-tree-root-label"><span aria-hidden="true">▾</span><strong>workspace</strong></div><div class="project-tree-children">${renderNode(root)}</div></div>`;
+  }
+
+  function renderCurrentFileTree(emptyMessage = "工作空间暂无文件。", truncated = false) {
+    const target = $("project-files");
+    const query = workspaceFilter.trim().toLocaleLowerCase();
+    const visibleFiles = query
+      ? workspaceFiles.filter(file => file.path.toLocaleLowerCase().includes(query))
+      : workspaceFiles;
+    const signature = JSON.stringify(visibleFiles.map(file => [
+      file.path, file.size, file.modified_ns, file.is_artifact, file.artifact?.updated_at || "",
+    ])) + `|${query}|${truncated}`;
+    $("project-file-count").textContent = query
+      ? `${visibleFiles.length}/${workspaceFiles.length}`
+      : String(workspaceFiles.length);
+    if (signature === workspaceTreeSignature) return;
+    const scrollTop = target.scrollTop;
+    target.innerHTML = visibleFiles.length
+      ? renderFileTree(visibleFiles)
+      : `<p>${query ? "没有匹配的文件。" : emptyMessage}</p>`;
+    if (truncated && !query) target.insertAdjacentHTML("beforeend", "<p>仅显示前 500 个文件。</p>");
+    target.scrollTop = scrollTop;
+    workspaceTreeSignature = signature;
   }
 
   function renderWorkspace(data) {
@@ -303,10 +342,12 @@
       renderArtifacts(data.all_artifacts);
       if (currentDetail) currentDetail.artifacts = data.all_artifacts;
     }
-    $("project-files").innerHTML = files.length
-      ? renderFileTree(files)
-      : `<p>${data.scope === "task" ? "该任务尚未登记产物。产物登记后会自动出现在这里。" : "工作空间暂无文件。"}</p>`;
-    if (data.truncated) $("project-files").insertAdjacentHTML("beforeend", "<p>仅显示前 500 个文件。</p>");
+    renderCurrentFileTree(
+      data.scope === "task"
+        ? "该任务尚未登记产物。产物登记后会自动出现在这里。"
+        : "工作空间暂无文件。",
+      data.truncated,
+    );
     const active = files.find(file => file.path === selectedFile);
     if (active) openPreview(active);
     else if (selectedFile) emptyPreview("所选文件已不存在或不属于当前任务。");
@@ -334,11 +375,13 @@
   function setWorkspaceScope(scope, taskId = "") {
     workspaceScope = scope === "task" ? "task" : "project";
     if (taskId) workspaceTask = taskId;
+    workspaceTreeSignature = "";
     document.querySelectorAll("[data-workspace-scope]").forEach(button => {
       button.setAttribute("aria-pressed", String(button.dataset.workspaceScope === workspaceScope));
     });
     $("project-workspace-task-wrap").hidden = workspaceScope !== "task";
     if (workspaceTask) $("project-workspace-task").value = workspaceTask;
+    updateTerminalTarget();
     selectedFile = "";
     selectedSignature = "";
     emptyPreview(workspaceScope === "task" ? "选择该任务登记的产物在线查看。" : "选择项目文件在线查看内容。");
@@ -350,6 +393,10 @@
     rememberProject(id);
     workspaceScope = "project";
     workspaceTask = "";
+    workspaceFilter = "";
+    workspaceTreeSignature = "";
+    collapsedDirectories.clear();
+    $("project-file-filter").value = "";
     emptyPreview("选择项目文件在线查看内容。");
     $("project-error").textContent = "";
     $("project-detail").hidden = true;
@@ -461,6 +508,8 @@
 
   $("project-workspace-task").addEventListener("change", event => {
     workspaceTask = event.target.value;
+    workspaceTreeSignature = "";
+    updateTerminalTarget();
     selectedFile = "";
     emptyPreview("选择该任务登记的产物在线查看。");
     refreshWorkspace().catch(report);
@@ -472,26 +521,66 @@
     if (selectedFile) downloadFile(selectedFile);
   });
   $("project-files-refresh").addEventListener("click", () => refreshWorkspace().catch(report));
-  $("project-files-tool").addEventListener("click", () => $("project-files").focus());
-  $("project-open-terminal").addEventListener("click", () => {
-    const task = currentDetail?.tasks?.find(item => item.kanban_task_id === workspaceTask);
+  $("project-files-tool").addEventListener("click", () => $("project-file-filter").focus());
+  $("project-file-filter").addEventListener("input", event => {
+    workspaceFilter = event.target.value;
+    workspaceTreeSignature = "";
+    renderCurrentFileTree();
+  });
+  $("project-files").addEventListener("toggle", event => {
+    const details = event.target.closest?.("[data-directory-path]");
+    if (!details) return;
+    if (details.open) collapsedDirectories.delete(details.dataset.directoryPath);
+    else collapsedDirectories.add(details.dataset.directoryPath);
+  }, true);
+  $("project-files-expand").addEventListener("click", () => {
+    collapsedDirectories.clear();
+    $("project-files").querySelectorAll("details").forEach(details => { details.open = true; });
+  });
+  $("project-files-collapse").addEventListener("click", () => {
+    $("project-files").querySelectorAll("details[data-directory-path]").forEach(details => {
+      collapsedDirectories.add(details.dataset.directoryPath);
+      details.open = false;
+    });
+  });
+
+  function workspaceTerminalAgent() {
+    const task = workspaceScope === "task"
+      ? currentDetail?.tasks?.find(item => item.kanban_task_id === workspaceTask)
+      : null;
     const requestedAgent = task
       ? agents().find(agent => agent.profile_name === task.assignee_profile || agent.agent_id === task.metadata?.assignee_agent_id)
       : null;
+    if (requestedAgent && (requestedAgent.readiness_status || "ready") === "ready") return requestedAgent;
     const teamIds = currentDetail?.project?.team_ids || [];
-    const fallbackAgent = agents().find(agent =>
+    return agents().find(agent =>
       (!teamIds.length || teamIds.includes(agent.team_id)) &&
       (agent.readiness_status || "ready") === "ready" &&
       agent.runtime_status === "running"
     );
-    const agent = requestedAgent || fallbackAgent;
+  }
+
+  function updateTerminalTarget() {
+    const button = $("project-open-terminal");
+    const agent = workspaceTerminalAgent();
+    const label = agent
+      ? `打开 ${agent.name || agent.agent_id} 的 Hermes 终端`
+      : "当前工作空间没有可用 Agent";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.disabled = !agent;
+  }
+
+  function openWorkspaceTerminal() {
+    const agent = workspaceTerminalAgent();
     if (!agent) {
       report(new Error("当前工作空间没有可用的运行中 Agent，启动 Agent 后再打开终端。"));
       return;
     }
     const opened = window.__HERMES_APP__.openAgentTerminal?.(agent.agent_id, agent.name);
     if (!opened) report(new Error(`${agent.name || agent.agent_id} 尚未就绪，无法打开终端。`));
-  });
+  }
+  $("project-open-terminal").addEventListener("click", openWorkspaceTerminal);
 
   $("project-detail").addEventListener("click", async event => {
     const workspaceButton = event.target.closest("[data-project-task-workspace]");
@@ -517,6 +606,23 @@
     }
     const downloadButton = event.target.closest("[data-workspace-download]");
     if (downloadButton) downloadFile(downloadButton.dataset.workspaceDownload);
+  });
+
+  document.addEventListener("keydown", event => {
+    if ($("view-projects").classList.contains("hidden")) return;
+    const editing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement;
+    if (event.key === "/" && !editing) {
+      event.preventDefault();
+      $("project-file-filter").focus();
+    } else if (event.ctrlKey && event.key === "`") {
+      event.preventDefault();
+      openWorkspaceTerminal();
+    } else if (event.key === "Escape" && event.target === $("project-file-filter") && workspaceFilter) {
+      workspaceFilter = "";
+      $("project-file-filter").value = "";
+      workspaceTreeSignature = "";
+      renderCurrentFileTree();
+    }
   });
 
   function scheduleWorkspaceRefresh() {
