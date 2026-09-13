@@ -12,7 +12,7 @@
 - **存储**：SQLite
 - **前端**：原生 HTML/JS，实时展示多 Agent 对话、终端输出与任务流转
 
-先看 [功能地图](doc/FEATURE-MAP.md) 了解当前版本边界；安装上线见 [部署与安装教程](doc/deployment.md)。从接入已有 Agent 到派发团队任务，见 [使用指南](doc/USER-GUIDE.md)。更多设计细节见 [架构说明](doc/ARCHITECTURE.md)。
+先看 [功能地图](doc/FEATURE-MAP.md) 了解当前版本边界；后续建设目标、优先级和验收标准见 [项目路线图](doc/PROJECT-ROADMAP.md)。安装上线见 [部署与安装教程](doc/deployment.md)。从接入已有 Agent 到派发团队任务，见 [使用指南](doc/USER-GUIDE.md)。更多设计细节见 [架构说明](doc/ARCHITECTURE.md)。
 
 ## 功能
 
@@ -171,11 +171,12 @@ python -m pytest -q
 
 ## 文档
 
+- [项目重规划与迭代路线图](doc/PROJECT-ROADMAP.md)
+- [当前版本功能地图](doc/FEATURE-MAP.md)
 - [使用指南](doc/USER-GUIDE.md)
 - [Agent 对话与接口](doc/AGENT-CHAT.md)
 - [项目工作区与产物管理](doc/PROJECTS.md)
 - [架构设计](doc/ARCHITECTURE.md)
-- [当前版本功能地图](doc/FEATURE-MAP.md)
 - [部署与安装教程](doc/deployment.md)
 - [多团队说明](doc/MULTI-TEAM.md)
 - [UX 检查与浏览器回归](doc/UX-REVIEW.md)
