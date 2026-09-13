@@ -14,6 +14,7 @@ from .model_configs import bp as model_configs_bp
 from .transfer import bp as transfer_bp
 from .web import bp as web_bp
 from .projects import bp as projects_bp
+from .system import bp as system_bp
 
 
 def register_blueprints(app: Flask) -> None:
@@ -29,3 +30,4 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(model_configs_bp)
     app.register_blueprint(transfer_bp)
     app.register_blueprint(events_bp)
+    app.register_blueprint(system_bp)

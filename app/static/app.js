@@ -188,6 +188,7 @@ function openAnimatedLayer(element, focusTarget = null, returnTarget = null) {
   }
   element.classList.remove("is-closing");
   requestAnimationFrame(() => {
+    if (element.hidden || element.classList.contains("is-closing")) return;
     element.classList.add("is-open");
     if (focusTarget) window.setTimeout(() => focusTarget.focus(), 80);
   });

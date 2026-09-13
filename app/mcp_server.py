@@ -769,6 +769,8 @@ mcp_asgi_app = mcp.streamable_http_app()
 # a2wsgi does not dispatch ASGI lifespan events, so FastMCP's session manager
 # would never start. Run it in a dedicated background thread with its own loop.
 _started = threading.Event()
+_session_manager_lock = threading.Lock()
+_session_manager_thread: threading.Thread | None = None
 
 
 def _run_session_manager() -> None:
@@ -777,11 +779,27 @@ def _run_session_manager() -> None:
             _started.set()
             await asyncio.Event().wait()
 
-    asyncio.run(runner())
+    try:
+        asyncio.run(runner())
+    finally:
+        _started.clear()
+
+
+def session_manager_started() -> bool:
+    thread = _session_manager_thread
+    return _started.is_set() and thread is not None and thread.is_alive()
 
 
 def start_session_manager() -> None:
-    if _started.is_set():
-        return
-    threading.Thread(target=_run_session_manager, daemon=True).start()
+    global _session_manager_thread
+    with _session_manager_lock:
+        if _session_manager_thread is not None and _session_manager_thread.is_alive():
+            return
+        _started.clear()
+        _session_manager_thread = threading.Thread(
+            target=_run_session_manager,
+            name="hermes-mcp-session-manager",
+            daemon=True,
+        )
+        _session_manager_thread.start()
     _started.wait(timeout=5)

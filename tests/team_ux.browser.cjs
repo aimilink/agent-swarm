@@ -29,7 +29,7 @@ assert.equal(rendered.status,0,rendered.stderr);
   const browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL || 'msedge',headless:true});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
-    const errors=[]; const writes=[]; const messages=[]; const agentCreates=[]; let failMessage=true; let detailReads=0;
+    const errors=[]; const writes=[]; const messages=[]; const agentCreates=[]; let failMessage=true; let detailReads=0; let healthCalls=0; let failHealth=false;
     page.on('pageerror',e=>errors.push(e.message));
     page.on('dialog',d=>d.accept());
     await page.addInitScript(()=>localStorage.setItem('agentTeamApiToken','fixture'));
@@ -46,6 +46,21 @@ assert.equal(rendered.status,0,rendered.stderr);
       }
       if(url.pathname.includes('/events/stream')) return route.fulfill({contentType:'text/event-stream',body:''});
       let body={ok:true,settings:{},configs:[],links};
+      if(url.pathname==='/api/system/health') {
+        healthCalls += 1;
+        if(failHealth) return route.fulfill({status:503,json:{ok:false,error:'fixture health failure'}});
+        return route.fulfill({json:{
+          ok:true,checked_at:'2026-09-13T10:00:00Z',overall_status:'degraded',cached:false,
+          components:{
+            database:{status:'ready',message:'数据库连接正常',latency_ms:2,recovery_action:'无需处理',action_view:'settings'},
+            hermes_cli:{status:'ready',message:'Hermes CLI 已就绪',latency_ms:8,recovery_action:'无需处理',action_view:'members'},
+            kanban:{status:'degraded',message:'Kanban 响应较慢',latency_ms:120,recovery_action:'检查 Kanban',action_view:'board'},
+            mcp:{status:'ready',message:'MCP 会话管理器已就绪',latency_ms:1,recovery_action:'无需处理',action_view:'settings'},
+            event_stream:{status:'ready',message:'事件服务正常',latency_ms:1,recovery_action:'无需处理',action_view:'overview'},
+            terminal:{status:'ready',message:'2 个终端运行中',latency_ms:1,recovery_action:'无需处理',action_view:'members'},
+          },
+        }});
+      }
       if(url.pathname==='/api/teams/tech/usage') return route.fulfill({json:{ok:true,usage:{total:{calls:3,in_tokens:10000,out_tokens:2345,total_tokens:12345},by_member:{tech_leader:{calls:3,in_tokens:10000,out_tokens:2345,total_tokens:12345}},by_model:[]}}});
       if(url.pathname==='/api/teams/sales/usage') return route.fulfill({json:{ok:true,usage:{total:{calls:0,in_tokens:0,out_tokens:0,total_tokens:0},by_member:{},by_model:[]}}});
       if(url.pathname==='/api/kanban/tasks/tech/details') {
@@ -85,6 +100,14 @@ assert.equal(rendered.status,0,rendered.stderr);
     });
     await page.goto('http://ux.local');
     await page.waitForFunction(()=>window.__HERMES_UI__ && window.__HERMES_APP__);
+    await page.waitForFunction(()=>document.querySelector('#overview-system-health-badge').textContent==='部分降级');
+    assert.equal(await page.locator('#overview-system-health-components > div').count(),6);
+    assert.match(await page.locator('#overview-system-health-components').innerText(),/Kanban 响应较慢/);
+    failHealth=true;
+    await page.locator('#overview-system-health-refresh').click();
+    await page.waitForFunction(()=>document.querySelector('#overview-system-health-notice').textContent.includes('数据可能已过期'));
+    assert.match(await page.locator('#overview-system-health-components').innerText(),/Kanban 响应较慢/);
+    assert.ok(healthCalls>=2,'system health supports manual refresh');
     await page.locator('[data-view="teams"]').click();
     await page.locator('[data-edit-team="tech"]').click();
     await page.waitForFunction(()=>document.querySelector('#create-team-form').dataset.editSlug==='tech');
@@ -188,6 +211,6 @@ assert.equal(rendered.status,0,rendered.stderr);
     const duplicateIds=await page.evaluate(()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);return ids.filter((id,i)=>ids.indexOf(id)!==i)});
     assert.deepEqual(duplicateIds,[]);
     assert.deepEqual(errors,[]);
-    console.log('PASS: edit/create reset, single submit, member controls, team filtering, realtime selection, persistent task process, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, mobile layout, no page errors');
+    console.log('PASS: edit/create reset, single submit, member controls, team filtering, realtime selection, persistent task process, retained system health, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, mobile layout, no page errors');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

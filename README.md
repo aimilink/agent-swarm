@@ -34,6 +34,7 @@ Agent 协作。两种入口共用 SOUL、Skill、记忆、经验、模型配置�
 - Web UI 实时观察多 Agent 对话、终端输出、工具调用与子任务流转
 - Hermes Kanban 看板任务、自动派发、状态同步与任务归档
 - Agent 初始化、批量启动 / 停止 / 重启
+- 系统健康检查：统一展示数据库、Hermes、Kanban、MCP、实时事件和终端状态
 - 模型配置管理，可为不同 Agent 应用不同模型配置
 - 团队导入 / 导出，支持迁移 Agent profile、skills 与可选 workspace
 - MCP Server 安装管理，支持 `http` / `streamable_http` / `stdio`

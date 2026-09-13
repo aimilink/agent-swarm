@@ -328,3 +328,26 @@ systemctl --user status hermes-agent-team
 停止服务后可删除项目目录和 systemd 用户服务。`shared` 模式下，
 `~/.hermes/profiles` 是 Hermes 的持久数据，不属于控制台临时文件，不应随控制台
 一起删除。移除团队成员同样只解除编排关系，不删除 Profile。
+
+## 系统健康检查
+
+服务启动后，从工作台顶部查看数据库、Hermes CLI、Kanban、MCP、实时事件和
+Agent 终端状态，也可以调用：
+
+```bash
+curl http://127.0.0.1:5050/api/system/health
+curl "http://127.0.0.1:5050/api/system/health?refresh=1"
+```
+
+配置 `AGENT_TEAM_API_TOKEN` 时需按其他 API 的方式携带 Bearer Token。普通请求使用
+30 秒服务端缓存；`refresh=1` 会执行新的只读检查。整体状态含义：
+
+- `ready`：全部组件可用。
+- `degraded`：控制台仍可访问，但一个或多个执行组件需要处理。
+- `unavailable`：数据库不可用，核心数据读写不能保证。
+
+页面刷新失败时保留上次成功结果并显示“数据可能已过期”。组件卡片提供固定的恢复建议，
+不会返回 API Key、Header、完整命令或本机隐私路径。Hermes/Kanban 不可用时，先确认
+`hermes profile list` 和 `hermes kanban boards list --json` 能在服务用户环境中运行。
+MCP 显示未就绪时，重启服务并检查启动日志。终端状态不一致时，从“Agent 与团队”页面重启
+对应 Agent。

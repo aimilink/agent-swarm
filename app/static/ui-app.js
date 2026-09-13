@@ -14,6 +14,12 @@
     sidebarBackdrop: document.getElementById("sidebar-backdrop"),
     dock: document.querySelector("[data-ui-dock='task-dock']"),
     overviewStats: document.getElementById("overview-stats-grid"),
+    overviewSystemComponents: document.getElementById("overview-system-health-components"),
+    overviewSystemBadge: document.getElementById("overview-system-health-badge"),
+    overviewSystemDot: document.getElementById("overview-system-health-dot"),
+    overviewSystemTime: document.getElementById("overview-system-health-time"),
+    overviewSystemNotice: document.getElementById("overview-system-health-notice"),
+    overviewSystemRefresh: document.getElementById("overview-system-health-refresh"),
     overviewHealth: document.getElementById("overview-team-health"),
     overviewActivity: document.getElementById("overview-activity-feed"),
     overviewTaskStatus: document.getElementById("overview-task-status"),
@@ -95,6 +101,109 @@
   }
 
   window.switchView = switchView;
+
+  const systemHealthState = {
+    data: null,
+    loading: false,
+    stale: false,
+    error: "",
+    timer: 0,
+  };
+
+  const healthComponentLabels = {
+    database: "数据库",
+    hermes_cli: "Hermes CLI",
+    kanban: "Kanban",
+    mcp: "MCP",
+    event_stream: "实时事件",
+    terminal: "Agent 终端",
+  };
+
+  function renderSystemHealth() {
+    if (!els.overviewSystemComponents) return;
+    const data = systemHealthState.data;
+    const overall = data?.overall_status || "checking";
+    const overallMeta = {
+      ready: { label: "运行正常", dot: "bg-secondary", badge: "bg-secondary-container/30 text-on-secondary-container" },
+      degraded: { label: "部分降级", dot: "bg-tertiary", badge: "bg-tertiary-container/40 text-on-tertiary-container" },
+      unavailable: { label: "服务不可用", dot: "bg-error", badge: "bg-error-container text-on-error-container" },
+      checking: { label: "检查中", dot: "bg-outline", badge: "bg-surface-container text-on-surface-variant" },
+    }[overall] || { label: "状态未知", dot: "bg-outline", badge: "bg-surface-container text-on-surface-variant" };
+    els.overviewSystemDot.className = `w-2.5 h-2.5 rounded-full inline-block ${overallMeta.dot}`;
+    els.overviewSystemBadge.className = `px-2 py-0.5 rounded-lg font-label-sm ${overallMeta.badge}`;
+    els.overviewSystemBadge.textContent = overallMeta.label;
+    els.overviewSystemTime.textContent = data?.checked_at
+      ? `最近检测：${formatEventTime(data.checked_at)}${data.cached ? " · 缓存结果" : ""}`
+      : "正在检查数据库、Hermes、Kanban、MCP 与实时服务…";
+    els.overviewSystemRefresh.disabled = systemHealthState.loading;
+    els.overviewSystemRefresh.textContent = systemHealthState.loading ? "检测中…" : "重新检测";
+
+    const notice = els.overviewSystemNotice;
+    if (notice) {
+      notice.hidden = !systemHealthState.stale && !systemHealthState.error;
+      notice.textContent = systemHealthState.stale
+        ? `健康检查请求失败，当前展示最后一次成功结果。数据可能已过期。${systemHealthState.error ? ` ${systemHealthState.error}` : ""}`
+        : systemHealthState.error;
+    }
+
+    const entries = Object.entries(data?.components || {});
+    if (!entries.length) {
+      els.overviewSystemComponents.innerHTML = `<p class="col-span-3 py-2 text-on-surface-variant font-label-md">${systemHealthState.error || "正在获取系统状态…"}</p>`;
+      return;
+    }
+    const statusMeta = {
+      ready: { label: "正常", dot: "bg-secondary", text: "text-secondary" },
+      degraded: { label: "降级", dot: "bg-tertiary", text: "text-tertiary" },
+      unavailable: { label: "不可用", dot: "bg-error", text: "text-error" },
+    };
+    els.overviewSystemComponents.innerHTML = entries.map(([name, item]) => {
+      const meta = statusMeta[item.status] || statusMeta.unavailable;
+      const needsAction = item.status !== "ready" && item.action_view;
+      return `
+        <div class="rounded-xl border border-outline-variant/30 p-3 bg-surface-container-lowest">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2 h-2 rounded-full ${meta.dot} shrink-0"></span>
+              <span class="font-label-md font-bold text-on-surface truncate">${esc(healthComponentLabels[name] || name)}</span>
+            </div>
+            <span class="font-label-sm ${meta.text}">${meta.label}</span>
+          </div>
+          <p class="font-label-sm text-on-surface-variant min-h-[2.5em]">${esc(item.message || "暂无说明")}</p>
+          <div class="mt-2 flex items-center justify-between gap-2">
+            <span class="font-label-sm text-outline">${Number(item.latency_ms) || 0} ms</span>
+            ${needsAction ? `<button type="button" data-health-view="${esc(item.action_view)}" class="font-label-sm text-primary hover:underline">${esc(item.recovery_action || "查看")}</button>` : ""}
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  async function loadSystemHealth({ force = false } = {}) {
+    if (systemHealthState.loading) return;
+    systemHealthState.loading = true;
+    systemHealthState.error = "";
+    renderSystemHealth();
+    try {
+      const response = await fetch(`/api/system/health${force ? "?refresh=1" : ""}`);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || "系统健康检查失败");
+      systemHealthState.data = data;
+      systemHealthState.stale = false;
+    } catch (error) {
+      systemHealthState.error = error.message || "网络异常";
+      systemHealthState.stale = Boolean(systemHealthState.data);
+    } finally {
+      systemHealthState.loading = false;
+      renderSystemHealth();
+    }
+  }
+
+  function startSystemHealthPolling() {
+    if (systemHealthState.timer) return;
+    void loadSystemHealth();
+    systemHealthState.timer = window.setInterval(() => {
+      void loadSystemHealth();
+    }, 30000);
+  }
 
   function renderOverviewStats(agents, stats, teams, links) {
     if (!els.overviewStats) return;
@@ -1099,7 +1208,16 @@
     applyCollaborationSettings,
   };
 
+  els.overviewSystemRefresh?.addEventListener("click", () => {
+    void loadSystemHealth({ force: true });
+  });
+  els.overviewSystemComponents?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-health-view]");
+    if (button) switchView(button.dataset.healthView);
+  });
+
   wireEvents();
+  startSystemHealthPolling();
   syncTeamSelects();
   syncStatsRangeButtons();
   switchView("overview");

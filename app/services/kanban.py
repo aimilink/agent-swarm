@@ -36,6 +36,10 @@ class KanbanService:
                 scoped=False,
             )
 
+    def check_ready(self, *, timeout: int = 5) -> Any:
+        """Run a bounded, read-only probe against the Kanban CLI."""
+        return self._run_json(["boards", "list", "--json"], scoped=False, timeout=timeout)
+
     def reset_board(self) -> dict[str, Any]:
         if self.board == "default":
             raise KanbanError("default board cannot be reset")

@@ -249,6 +249,20 @@
 <div id="overview-stats-grid" class="contents"></div></div>
 </div>
 <div class="flex-1 min-h-0 overflow-y-auto p-md grid grid-cols-5 gap-md">
+<div id="overview-system-health" class="col-span-5 bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+<div class="p-4 border-b border-outline-variant/30 flex flex-wrap items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<span id="overview-system-health-dot" class="w-2.5 h-2.5 rounded-full bg-outline inline-block"></span>
+<div>
+<div class="flex items-center gap-2"><h3 class="font-title-lg text-title-lg text-on-surface">系统运行状态</h3><span id="overview-system-health-badge" class="px-2 py-0.5 rounded-lg bg-surface-container text-on-surface-variant font-label-sm">检查中</span></div>
+<p id="overview-system-health-time" class="font-label-sm text-on-surface-variant mt-1">正在检查数据库、Hermes、Kanban、MCP 与实时服务…</p>
+</div>
+</div>
+<button id="overview-system-health-refresh" type="button" class="px-3 py-2 rounded-lg border border-outline-variant/50 text-primary font-label-md hover:bg-primary-container/20 disabled:opacity-50">重新检测</button>
+</div>
+<div id="overview-system-health-notice" class="hidden mx-4 mt-3 px-3 py-2 rounded-lg bg-tertiary-container/30 text-on-tertiary-container font-label-md"></div>
+<div id="overview-system-health-components" class="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+</div>
 <div class="col-span-3 flex flex-col gap-md">
 <div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm">
 <div class="p-4 border-b border-outline-variant/30 flex justify-between items-center">
