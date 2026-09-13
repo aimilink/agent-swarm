@@ -29,7 +29,7 @@ assert.equal(rendered.status,0,rendered.stderr);
   const browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL || 'msedge',headless:true});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
-    const errors=[]; const writes=[]; const messages=[]; const agentCreates=[]; let failMessage=true; let detailReads=0; let healthCalls=0; let failHealth=false; let profileReads=0;
+    const errors=[]; const writes=[]; const messages=[]; const agentCreates=[]; let failMessage=true; let detailReads=0; let healthCalls=0; let failHealth=false; let profileReads=0; let profileStatusReads=0;
     page.on('pageerror',e=>errors.push(e.message));
     page.on('dialog',d=>d.accept());
     await page.addInitScript(()=>localStorage.setItem('agentTeamApiToken','fixture'));
@@ -47,8 +47,12 @@ assert.equal(rendered.status,0,rendered.stderr);
       if(url.pathname.includes('/events/stream')) return route.fulfill({contentType:'text/event-stream',body:''});
       let body={ok:true,settings:{},configs:[],links};
       if(url.pathname==='/api/hermes/status') {
+        profileStatusReads += 1;
+        return route.fulfill({json:{ok:true,profiles:['status_profile'],message:'Hermes 已就绪'}});
+      }
+      if(url.pathname==='/api/profiles') {
         profileReads += 1;
-        return route.fulfill({json:{ok:true,profiles:['live_profile_' + profileReads],message:'Hermes 已就绪'}});
+        return route.fulfill({json:{ok:true,profiles:['live_profile_' + profileReads],fetched_at:'2026-09-13T10:00:00Z'}});
       }
       if(url.pathname==='/api/system/health') {
         healthCalls += 1;
@@ -181,6 +185,20 @@ assert.equal(rendered.status,0,rendered.stderr);
       await page.locator('#hermes-profile-options option').first().getAttribute('value'),
       'live_profile_' + firstProfileRead,
     );
+    await page.locator('#refresh-hermes-profiles').click();
+    await page.waitForFunction(
+      (previous) => document.querySelector('#hermes-profile-options option')?.value !== 'live_profile_' + previous,
+      firstProfileRead,
+    );
+    const manualProfileRead = profileReads;
+    assert.match(await page.locator('#hermes-profile-status').innerText(), /已读取 1 个 Profile/);
+    await page.waitForTimeout(3200);
+    assert.ok(profileReads > manualProfileRead, 'open Agent dialog polls live Hermes profiles');
+    assert.equal(
+      await page.locator('#hermes-profile-options option').first().getAttribute('value'),
+      'live_profile_' + profileReads,
+    );
+    assert.ok(profileStatusReads >= 1);
     await page.locator('#create-agent-form [name="name"]').fill('New worker');
     await page.locator('#create-agent-form [name="profile_name"]').fill('new_worker');
     await page.locator('#create-agent-form button[type="submit"]').click();
@@ -241,6 +259,6 @@ assert.equal(rendered.status,0,rendered.stderr);
     const duplicateIds=await page.evaluate(()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);return ids.filter((id,i)=>ids.indexOf(id)!==i)});
     assert.deepEqual(duplicateIds,[]);
     assert.deepEqual(errors,[]);
-    console.log('PASS: edit/create reset, single submit, member controls, anchored member menu, team filtering, realtime selection, persistent task process, retained system health, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, live Hermes profiles, mobile layout, no page errors');
+    console.log('PASS: edit/create reset, single submit, member controls, anchored member menu, team filtering, realtime selection, persistent task process, retained system health, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, live and polling Hermes profiles, mobile layout, no page errors');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

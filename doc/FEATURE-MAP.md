@@ -38,7 +38,7 @@ Hermes CLI 单 Agent ─┐
 
 | 功能域 | 当前能力 | 主要入口 |
 |---|---|---|
-| Profile 接管 | 每次打开新员工弹窗实时读取 Profile；原地接入；新名称按 active Profile 克隆创建 | 新员工弹窗、`GET /api/profiles` |
+| Profile 接管 | 打开新员工弹窗立即读取并每 3 秒同步 Profile，支持手动刷新；原地接入；新名称按 active Profile 克隆创建 | 新员工弹窗、`GET /api/profiles` |
 | Agent 生命周期 | 创建、初始化、批量启动/停止/重启、crashed 派发前恢复、运行状态、终端输入与尺寸同步 | Agent 列表、终端抽屉、`/api/agents/*` |
 | 系统健康 | 数据库、Hermes CLI、Kanban、MCP、SSE 与终端统一检查；缓存、手动重检、降级提示和恢复入口 | 工作台、`GET /api/system/health` |
 | SOUL 人设 | 查看、编辑、重新生成；保存在 Profile 内 | SOUL 抽屉 |

@@ -858,9 +858,12 @@
           </label>
           <label>
             <span>Hermes Profile</span>
-            <input name="profile_name" list="hermes-profile-options" required placeholder="选择已有 Profile，或输入新名称" pattern="[a-z0-9][a-z0-9_\-]*">
+            <div class="hermes-profile-field">
+              <input name="profile_name" list="hermes-profile-options" required placeholder="选择已有 Profile，或输入新名称" pattern="[a-z0-9][a-z0-9_\-]*">
+              <button id="refresh-hermes-profiles" type="button">刷新</button>
+            </div>
             <datalist id="hermes-profile-options"></datalist>
-            <small class="form-hint">选择已有 Profile 会原地接入；Skill、记忆和经验与单 Agent 模式共用。</small>
+            <small id="hermes-profile-status" class="form-hint" role="status" aria-live="polite">打开弹窗时读取最新 Profile。</small>
           </label>
           <div class="modal__form-row">
             <span>角色</span>

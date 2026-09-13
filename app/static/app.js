@@ -61,6 +61,8 @@ const modal = document.getElementById("create-agent-modal");
 const createAgentForm = document.getElementById("create-agent-form");
 const createAgentError = document.getElementById("create-agent-error");
 const hermesProfileOptions = document.getElementById("hermes-profile-options");
+const refreshHermesProfilesButton = document.getElementById("refresh-hermes-profiles");
+const hermesProfileStatus = document.getElementById("hermes-profile-status");
 const transferModal = document.getElementById("team-transfer-modal");
 const transferAgentList = document.getElementById("transfer-agent-list");
 const transferInlineSkills = document.getElementById("transfer-inline-skills");
@@ -168,6 +170,8 @@ let deletingAgentId = "";
 let confirmModal = null;
 let resizeTimer = 0;
 let hermesStatusPromise = null;
+let hermesProfilesPromise = null;
+let hermesProfilesPollTimer = 0;
 const overlayAnimationMs = 220;
 const overlayCloseTimers = new WeakMap();
 const overlayReturnFocus = new WeakMap();
@@ -4101,16 +4105,69 @@ if (document.fonts?.ready) {
   });
 }
 
+function applyHermesProfiles(profiles, fetchedAt = "") {
+  const items = Array.from(new Set((profiles || []).filter(Boolean))).sort();
+  if (hermesProfileOptions) {
+    hermesProfileOptions.innerHTML = items
+      .map((profile) => '<option value="' + escapeHtml(profile) + '"></option>')
+      .join("");
+  }
+  if (hermesProfileStatus) {
+    const readAt = fetchedAt ? new Date(fetchedAt) : new Date();
+    const time = Number.isNaN(readAt.getTime())
+      ? ""
+      : " · " + readAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    hermesProfileStatus.textContent = "已读取 " + items.length + " 个 Profile" + time;
+  }
+}
+
+async function refreshHermesProfiles({ silent = false } = {}) {
+  if (hermesProfilesPromise) return hermesProfilesPromise;
+  if (refreshHermesProfilesButton) refreshHermesProfilesButton.disabled = true;
+  if (!silent && hermesProfileStatus) hermesProfileStatus.textContent = "正在读取最新 Profile…";
+  const request = fetch("/api/profiles?refresh=" + Date.now(), { cache: "no-store" })
+    .then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || "Profile 读取失败");
+      }
+      applyHermesProfiles(data.profiles, data.fetched_at);
+      return data.profiles || [];
+    })
+    .catch((error) => {
+      if (!silent && hermesProfileStatus) {
+        hermesProfileStatus.textContent = error.message || "Profile 读取失败";
+      }
+      throw error;
+    })
+    .finally(() => {
+      if (hermesProfilesPromise === request) hermesProfilesPromise = null;
+      if (refreshHermesProfilesButton) refreshHermesProfilesButton.disabled = false;
+    });
+  hermesProfilesPromise = request;
+  return request;
+}
+
+function startHermesProfilePolling() {
+  window.clearInterval(hermesProfilesPollTimer);
+  hermesProfilesPollTimer = window.setInterval(() => {
+    if (modal && !modal.hidden) void refreshHermesProfiles({ silent: true }).catch(() => {});
+  }, 3000);
+}
+
+function stopHermesProfilePolling() {
+  window.clearInterval(hermesProfilesPollTimer);
+  hermesProfilesPollTimer = 0;
+}
+
+
 async function ensureHermesReadyForAgentCreation(button) {
   if (button) button.disabled = true;
   try {
     const { response, data } = await checkHermesStatus({ force: true });
     if (response.ok && data.ok) {
-      if (hermesProfileOptions) {
-        hermesProfileOptions.innerHTML = (data.profiles || [])
-          .map((profile) => `<option value="${escapeHtml(profile)}"></option>`)
-          .join("");
-      }
+      applyHermesProfiles(data.profiles);
+      await refreshHermesProfiles({ silent: true }).catch(() => {});
       return true;
     }
     await confirmAction({
@@ -4148,11 +4205,19 @@ function openModal(returnTarget = null) {
     teamSelect.value = selectedKanbanTeam || "";
   }
   openAnimatedLayer(modal, createAgentForm?.querySelector('input[name="name"]'), returnTarget);
+  startHermesProfilePolling();
 }
 
 function closeModal() {
   if (!modal) return;
+  stopHermesProfilePolling();
   closeAnimatedLayer(modal, () => createAgentForm?.reset());
+}
+
+if (refreshHermesProfilesButton) {
+  refreshHermesProfilesButton.addEventListener("click", () => {
+    void refreshHermesProfiles().catch(() => {});
+  });
 }
 
 if (openCreateAgent) {
