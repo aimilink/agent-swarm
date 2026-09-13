@@ -54,6 +54,7 @@ Hermes CLI 单 Agent ─┐
 | 人工介入 | Agent 创建需要用户回答的任务，用户从页面响应 | MCP `request_human_input` |
 | 项目与任务工作空间 | 统一目录、任务与子任务继承、任务产物归集、实时在线预览、下载与产物登记 | 项目工作区、`/api/projects` |
 | Agent 对话 | 新建、历史查看、会话上下文续聊、数据库持久化 | 侧栏、成员卡片、`/api/agents/<agent_id>/chats` |
+| A2A 对话 | 双 Agent 持久会话、在线投递、离线排队、回复关联、失败重试；支持跨团队直接讨论 | 侧栏、`/api/a2a/*`、MCP A2A 工具 |
 | 消息与事件 | 用户消息、Agent 输出、SSE 实时刷新、团队维度持久化 | 对话区、`/api/events/stream` |
 | 用量统计 | 团队级 Token 用量聚合，支持 1–30 天窗口 | `GET /api/teams/<slug>/usage` |
 | 导入导出 | Profile 白名单文件、Skill、MCP 元数据与可选工作区；校验 checksum | 团队设置 |
@@ -102,6 +103,7 @@ Hermes CLI 单 Agent ─┐
 - `messages`、`user_tasks`：团队消息和用户任务。
 - `projects`、`project_artifacts`：项目目录和产物登记；任务元数据保存项目关联。
 - `agent_chats`：单 Agent Web 会话、消息 JSON 与回复状态；详见 [Agent 对话](AGENT-CHAT.md)。
+- `a2a_conversations`、`a2a_messages`：Agent 双方、消息投递状态和回复关联；详见 [A2A 对话](A2A.md)。
 - `delegations`、`assignments`：团队内拆解批次与 Worker 分工。
 - 跨团队委派来源、目标与结果关联保存于 `kanban_task_links.metadata`。
 - `kanban_task_links`：本地实体与 Hermes Kanban 任务映射。
@@ -193,6 +195,7 @@ RuntimeStore、终端订阅、进程句柄和高频终端事件只在进程内�
 
 - [项目重规划与迭代路线图](PROJECT-ROADMAP.md)
 - [使用指南](USER-GUIDE.md)
+- [A2A 对话与接口](A2A.md)
 - [UX 检查与浏览器回归](UX-REVIEW.md)
 - [部署与安装教程](deployment.md)
 - [架构说明](ARCHITECTURE.md)

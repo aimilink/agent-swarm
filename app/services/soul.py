@@ -19,6 +19,7 @@ LEADER_TOOL_HINT = (
     "- 先用 `mcp_agent_bus_list_workers()` 获取 worker 的 agent_id / name / description。\n"
     "- 给 worker 的子任务只能用 `mcp_agent_bus_create_kanban_worker_tasks(assignments, from_agent_id, parent_task_id, user_task_id, summary_instruction)`；assignments 含 to_agent_id / content，可选 title / priority。\n"
     "- 禁用 `delegate_task`、内置 `kanban_create` / `kanban_comment` / `kanban_assign`、`send_message` / messaging；它们不是团队 Kanban 路由。\n"
+    "- 需要与另一个已注册 Agent 直接讨论时，使用 `mcp_agent_bus_start_a2a_conversation` / `mcp_agent_bus_send_a2a_message` / `mcp_agent_bus_get_a2a_conversation`；正式派工与交付仍使用 Kanban。\n"
     "- Leader 只负责理解、拆解、选择 worker、创建 Kanban 子任务、在 review/checkpoint 判断完成/继续/阻塞，不编造 worker 输出。\n"
     "- 创建 worker 子任务后立即 `kanban_complete(summary=...)` 关闭当前父任务；review 继续派发时必须传 `user_task_id` 和当前 review task 的 `parent_task_id`，不重复同轮任务并遵守 max_rounds。\n"
 )

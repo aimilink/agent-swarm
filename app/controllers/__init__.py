@@ -4,6 +4,7 @@ from flask import Flask
 
 from .agents import bp as agents_bp
 from .agent_chats import bp as agent_chats_bp
+from .a2a import bp as a2a_bp
 from .agent_mcps import bp as agent_mcps_bp
 from .events import bp as events_bp
 from .kanban import bp as kanban_bp
@@ -22,6 +23,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(projects_bp)
     app.register_blueprint(agents_bp)
     app.register_blueprint(agent_chats_bp)
+    app.register_blueprint(a2a_bp)
     app.register_blueprint(agent_mcps_bp)
     app.register_blueprint(kanban_bp)
     app.register_blueprint(messages_bp)

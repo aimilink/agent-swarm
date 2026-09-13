@@ -42,6 +42,7 @@ Agent 协作。两种入口共用 SOUL、Skill、记忆、经验、模型配置�
 - SOUL.md 人设编辑
 - 项目与任务工作空间：统一资料和交付目录、任务产物归集、实时在线预览、产物登记与下载
 - Agent 对话：新建会话、查看历史、携带当前会话上下文继续聊天
+- A2A 对话：两个 Agent 持久讨论、在线投递、离线排队、回复回流与失败重试
 
 ## 目录结构
 
@@ -170,12 +171,15 @@ python -m pytest -q
 
 从侧栏“Agent 对话”或成员卡片“对话”进入，选择 Agent 后新建会话。聊天记录保存在数据库，可从历史列表继续；Enter 发送、Shift+Enter 换行。此入口直接调用 Hermes CLI，不自动创建看板任务。升级后重启服务以创建聊天表，详细接口与边界见 [Agent 对话](doc/AGENT-CHAT.md)。
 
+A2A 讨论从侧栏“A2A 对话”进入，选择两个 Agent 后建立持续会话。接收 Agent 在线时立即处理，离线时消息保留到其启动后投递；详细状态与接口见 [A2A 对话](doc/A2A.md)。
+
 ## 文档
 
 - [项目重规划与迭代路线图](doc/PROJECT-ROADMAP.md)
 - [当前版本功能地图](doc/FEATURE-MAP.md)
 - [使用指南](doc/USER-GUIDE.md)
 - [Agent 对话与接口](doc/AGENT-CHAT.md)
+- [A2A 对话与接口](doc/A2A.md)
 - [项目工作区与产物管理](doc/PROJECTS.md)
 - [架构设计](doc/ARCHITECTURE.md)
 - [部署与安装教程](doc/deployment.md)

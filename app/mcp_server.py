@@ -20,7 +20,7 @@ from .services.kanban_dispatch import dispatch_worker
 from .services.kanban_workspace import workspace_for_agent
 from .services.human_input import create_human_input_task
 from .services.settings import settings_service
-from .services import projects
+from .services import a2a, projects
 
 mcp = FastMCP("hermes-agents", streamable_http_path="/")
 logger = logging.getLogger("hermes.agent_state")
@@ -745,6 +745,60 @@ def _format_worker_kanban_body(
         f"{assignment['content']}"
         f"{role_guidance}"
     )
+
+
+@mcp.tool()
+def start_a2a_conversation(
+    to_agent_id: str,
+    content: str,
+    from_agent_id: str,
+    title: str = "",
+) -> dict:
+    """向另一个已注册 Agent 发起持久 A2A 对话，并发送首条消息。
+
+    接收 Agent 在线时立即处理；离线时消息保留为 queued，待其启动后自动投递。
+    本工具只用于直接讨论，不创建 Kanban 任务。
+    """
+    sender_id = _resolve_sender_agent_id(from_agent_id)
+    conversation = a2a.create_conversation(sender_id, to_agent_id, title=title)
+    return {
+        "ok": True,
+        **a2a.send_message(
+            conversation["conversation_id"],
+            sender_id,
+            content,
+        ),
+    }
+
+
+@mcp.tool()
+def send_a2a_message(
+    conversation_id: str,
+    content: str,
+    from_agent_id: str,
+) -> dict:
+    """在已有 A2A 会话中发送下一条消息；发送者必须是会话参与者。"""
+    sender_id = _resolve_sender_agent_id(from_agent_id)
+    return {
+        "ok": True,
+        **a2a.send_message(conversation_id, sender_id, content),
+    }
+
+
+@mcp.tool()
+def get_a2a_conversation(
+    conversation_id: str,
+    from_agent_id: str,
+) -> dict:
+    """读取当前 Agent 参与的 A2A 会话和完整消息历史。"""
+    sender_id = _resolve_sender_agent_id(from_agent_id)
+    return {
+        "ok": True,
+        "conversation": a2a.get_conversation(
+            conversation_id,
+            viewer_agent_id=sender_id,
+        ),
+    }
 
 
 @mcp.tool()

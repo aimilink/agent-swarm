@@ -336,9 +336,12 @@ class HermesSession:
             if self._current_message is not None:
                 failed_message = self._current_message
                 if not (
-                    failed_message.get("reply_to_leader")
-                    and failed_message.get("delegation_id")
-                    and failed_message.get("assignment_id")
+                    failed_message.get("a2a_message_id")
+                    or (
+                        failed_message.get("reply_to_leader")
+                        and failed_message.get("delegation_id")
+                        and failed_message.get("assignment_id")
+                    )
                 ):
                     self._queue.appendleft(failed_message)
             self._current_message = None
@@ -367,9 +370,14 @@ class HermesSession:
         )
         if (
             failed_message
-            and failed_message.get("reply_to_leader")
-            and failed_message.get("delegation_id")
-            and failed_message.get("assignment_id")
+            and (
+                failed_message.get("a2a_message_id")
+                or (
+                    failed_message.get("reply_to_leader")
+                    and failed_message.get("delegation_id")
+                    and failed_message.get("assignment_id")
+                )
+            )
         ):
             try:
                 self.on_final(
@@ -382,6 +390,8 @@ class HermesSession:
                     failed_message.get("summarize_delegation_id"),
                     failed_message.get("summarize_user_task_id"),
                     True,
+                    failed_message.get("a2a_message_id"),
+                    failed_message.get("a2a_conversation_id"),
                 )
             except Exception as exc:  # noqa: BLE001
                 store.push_event(
@@ -765,6 +775,8 @@ class HermesSession:
                 message.get("summarize_delegation_id"),
                 message.get("summarize_user_task_id"),
                 False,
+                message.get("a2a_message_id"),
+                message.get("a2a_conversation_id"),
             )
         except Exception as exc:  # noqa: BLE001
             store.push_event(
@@ -1017,6 +1029,8 @@ class HermesSession:
         user_task_id: str | None = None,
         summarize_delegation_id: str | None = None,
         summarize_user_task_id: str | None = None,
+        a2a_message_id: str | None = None,
+        a2a_conversation_id: str | None = None,
     ) -> None:
         item = {
             "id": f"job_{next(self._counter):04d}",
@@ -1027,6 +1041,8 @@ class HermesSession:
             "user_task_id": user_task_id,
             "summarize_delegation_id": summarize_delegation_id,
             "summarize_user_task_id": summarize_user_task_id,
+            "a2a_message_id": a2a_message_id,
+            "a2a_conversation_id": a2a_conversation_id,
         }
         with self._lock:
             self._queue.append(item)
