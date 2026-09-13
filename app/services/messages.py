@@ -3,7 +3,11 @@ from __future__ import annotations
 import logging
 
 from ..models.store import RuntimeStore
-from .agent_status import agent_dispatch_block_reason, is_agent_dispatchable
+from .agent_status import (
+    agent_dispatch_block_reason,
+    is_agent_dispatchable,
+    recover_crashed_agent,
+)
 from .kanban import extract_task_id, kanban_service, task_status
 from .kanban_dispatch import dispatch_worker
 from .kanban_workspace import workspace_for_agent
@@ -26,14 +30,27 @@ HUMAN_INPUT_RULE = (
 )
 
 
+def _refresh_dispatch_target(runtime_store: RuntimeStore, agent: dict | None) -> dict | None:
+    if not agent or (agent.get("runtime_status") or "stopped") != "crashed":
+        return agent
+    from .acp import pool as session_pool
+
+    return recover_crashed_agent(runtime_store, agent, session_pool.start)
+
+
 def find_leader_agent_id(runtime_store: RuntimeStore, team_id: str | None = None) -> str:
+    candidates = (
+        agent
+        for agent in runtime_store.snapshot()["agents"]
+        if agent.get("role") == "leader" and agent.get("team_id") == team_id
+    )
     leader = next(
         (
-            agent
-            for agent in runtime_store.snapshot()["agents"]
-            if agent.get("role") == "leader"
-            and agent.get("team_id") == team_id
-            and is_agent_dispatchable(agent)
+            refreshed
+            for agent in candidates
+            if is_agent_dispatchable(
+                refreshed := _refresh_dispatch_target(runtime_store, agent)
+            )
         ),
         None,
     )
@@ -59,7 +76,7 @@ def _find_ready_agent(runtime_store: RuntimeStore, agent_id: str) -> dict:
     agent_id = (agent_id or "").strip()
     if not agent_id:
         raise ValueError("to_agent_id is required")
-    agent = runtime_store.find_agent(agent_id)
+    agent = _refresh_dispatch_target(runtime_store, runtime_store.find_agent(agent_id))
     if agent is None:
         raise ValueError("target agent not found")
     reason = agent_dispatch_block_reason(agent)
@@ -311,7 +328,7 @@ def send_message(
         raise ValueError("content is required")
     if not to_agent_id:
         raise ValueError("to_agent_id is required")
-    target = store.find_agent(to_agent_id)
+    target = _refresh_dispatch_target(store, store.find_agent(to_agent_id))
     if target is None:
         raise ValueError("target agent not found")
     reason = agent_dispatch_block_reason(target)

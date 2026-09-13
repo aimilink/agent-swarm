@@ -14,7 +14,11 @@ from mcp.server.fastmcp import FastMCP
 
 from .config import DEFAULT_MAX_TASK_ROUNDS
 from .models.store import store
-from .services.agent_status import agent_dispatch_block_reason, is_agent_dispatchable
+from .services.agent_status import (
+    agent_dispatch_block_reason,
+    is_agent_dispatchable,
+    recover_crashed_agent,
+)
 from .services.kanban import extract_task_id, kanban_service, kanban_service_for_board, task_status
 from .services.kanban_dispatch import dispatch_worker
 from .services.kanban_workspace import workspace_for_agent
@@ -24,6 +28,14 @@ from .services import a2a, projects
 
 mcp = FastMCP("hermes-agents", streamable_http_path="/")
 logger = logging.getLogger("hermes.agent_state")
+
+
+def _refresh_dispatch_target(agent: dict | None) -> dict | None:
+    if not agent or (agent.get("runtime_status") or "stopped") != "crashed":
+        return agent
+    from .services.acp import pool as session_pool
+
+    return recover_crashed_agent(store, agent, session_pool.start)
 
 
 def _resolve_sender_agent_id(from_agent_id: str) -> str:
@@ -64,6 +76,7 @@ def list_workers(team: str = "") -> list[dict]:
 
     workers = []
     for agent in store.snapshot()["agents"]:
+        agent = _refresh_dispatch_target(agent) or agent
         if agent.get("role") != "worker":
             continue
         if team_id is not None and agent.get("team_id") != team_id:
@@ -350,16 +363,18 @@ def create_kanban_worker_tasks(
     if settings_service.get_kanban_idempotent_protection_enabled():
         existing_dispatch = _existing_worker_dispatch(resolved_user_task_id, parent_task_id, target_round)
     if existing_dispatch:
-        unavailable = [
-            item
-            for item in existing_dispatch["assignments"]
-            if not is_agent_dispatchable(store.find_agent(item.get("to_agent_id") or ""))
-        ]
+        unavailable = []
+        for item in existing_dispatch["assignments"]:
+            target = _refresh_dispatch_target(
+                store.find_agent(item.get("to_agent_id") or "")
+            )
+            if not is_agent_dispatchable(target):
+                unavailable.append((item, target))
         if unavailable:
             details = ", ".join(
                 f"{item.get('to_agent_id') or item.get('to_name')}: "
-                f"{agent_dispatch_block_reason(store.find_agent(item.get('to_agent_id') or ''))}"
-                for item in unavailable
+                f"{agent_dispatch_block_reason(target)}"
+                for item, target in unavailable
             )
             raise ValueError(f"existing worker dispatch contains unavailable agents: {details}")
         return {
@@ -384,7 +399,7 @@ def create_kanban_worker_tasks(
         worker_id = (assignment.get("to_agent_id") or "").strip()
         if not worker_id:
             raise ValueError("assignment.to_agent_id is required")
-        worker = store.find_agent(worker_id)
+        worker = _refresh_dispatch_target(store.find_agent(worker_id))
         if worker is None:
             raise ValueError(f"target agent not found: {worker_id}")
         projects.ensure_agent_in_project(store, project, worker)

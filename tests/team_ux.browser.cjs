@@ -29,7 +29,7 @@ assert.equal(rendered.status,0,rendered.stderr);
   const browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL || 'msedge',headless:true});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
-    const errors=[]; const writes=[]; const messages=[]; const agentCreates=[]; let failMessage=true; let detailReads=0; let healthCalls=0; let failHealth=false;
+    const errors=[]; const writes=[]; const messages=[]; const agentCreates=[]; let failMessage=true; let detailReads=0; let healthCalls=0; let failHealth=false; let profileReads=0;
     page.on('pageerror',e=>errors.push(e.message));
     page.on('dialog',d=>d.accept());
     await page.addInitScript(()=>localStorage.setItem('agentTeamApiToken','fixture'));
@@ -46,6 +46,10 @@ assert.equal(rendered.status,0,rendered.stderr);
       }
       if(url.pathname.includes('/events/stream')) return route.fulfill({contentType:'text/event-stream',body:''});
       let body={ok:true,settings:{},configs:[],links};
+      if(url.pathname==='/api/hermes/status') {
+        profileReads += 1;
+        return route.fulfill({json:{ok:true,profiles:['live_profile_' + profileReads],message:'Hermes 已就绪'}});
+      }
       if(url.pathname==='/api/system/health') {
         healthCalls += 1;
         if(failHealth) return route.fulfill({status:503,json:{ok:false,error:'fixture health failure'}});
@@ -172,11 +176,25 @@ assert.equal(rendered.status,0,rendered.stderr);
     await page.locator('#open-create-agent').click();
     await page.locator('#create-agent-team').waitFor({state:'visible'});
     assert.equal(await page.locator('#create-agent-team').inputValue(),'tech');
+    const firstProfileRead = profileReads;
+    assert.equal(
+      await page.locator('#hermes-profile-options option').first().getAttribute('value'),
+      'live_profile_' + firstProfileRead,
+    );
     await page.locator('#create-agent-form [name="name"]').fill('New worker');
     await page.locator('#create-agent-form [name="profile_name"]').fill('new_worker');
     await page.locator('#create-agent-form button[type="submit"]').click();
     await page.waitForFunction(()=>document.querySelector('#create-agent-error').textContent==='fixture agent rejected');
     assert.equal(agentCreates[0].team,'tech');
+    await page.keyboard.press('Escape');
+    await page.locator('#create-agent-modal').waitFor({state:'hidden'});
+    await page.locator('#open-create-agent').click();
+    await page.locator('#create-agent-team').waitFor({state:'visible'});
+    assert.ok(profileReads > firstProfileRead, 'reopening Agent dialog refetches Hermes profiles');
+    assert.equal(
+      await page.locator('#hermes-profile-options option').first().getAttribute('value'),
+      'live_profile_' + profileReads,
+    );
     await page.keyboard.press('Escape');
     await page.locator('#create-agent-modal').waitFor({state:'hidden'});
     await page.evaluate(()=>{
@@ -211,6 +229,6 @@ assert.equal(rendered.status,0,rendered.stderr);
     const duplicateIds=await page.evaluate(()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);return ids.filter((id,i)=>ids.indexOf(id)!==i)});
     assert.deepEqual(duplicateIds,[]);
     assert.deepEqual(errors,[]);
-    console.log('PASS: edit/create reset, single submit, member controls, team filtering, realtime selection, persistent task process, retained system health, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, mobile layout, no page errors');
+    console.log('PASS: edit/create reset, single submit, member controls, team filtering, realtime selection, persistent task process, retained system health, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, live Hermes profiles, mobile layout, no page errors');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

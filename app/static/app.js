@@ -215,18 +215,18 @@ function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function checkHermesStatus() {
+function checkHermesStatus({ force = false } = {}) {
+  if (force) hermesStatusPromise = null;
   if (!hermesStatusPromise) {
-    hermesStatusPromise = fetch("/api/hermes/status")
+    const request = fetch("/api/hermes/status", { cache: "no-store" })
       .then(async (response) => {
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.ok) hermesStatusPromise = null;
         return { response, data };
-      })
-      .catch((error) => {
-        hermesStatusPromise = null;
-        throw error;
       });
+    hermesStatusPromise = request;
+    request.finally(() => {
+      if (hermesStatusPromise === request) hermesStatusPromise = null;
+    });
   }
   return hermesStatusPromise;
 }
@@ -4080,7 +4080,7 @@ if (document.fonts?.ready) {
 async function ensureHermesReadyForAgentCreation(button) {
   if (button) button.disabled = true;
   try {
-    const { response, data } = await checkHermesStatus();
+    const { response, data } = await checkHermesStatus({ force: true });
     if (response.ok && data.ok) {
       if (hermesProfileOptions) {
         hermesProfileOptions.innerHTML = (data.profiles || [])
