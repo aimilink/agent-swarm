@@ -3761,14 +3761,27 @@ function ensureAgentContextMenu() {
   return agentContextMenu;
 }
 
-function positionAgentContextMenu(menu, clientX, clientY) {
-  menu.hidden = false;
+function positionAgentContextMenu(menu, clientX, clientY, anchorRect = null) {
   const padding = 8;
+  const gap = 8;
+  menu.style.visibility = "hidden";
+  menu.hidden = false;
   const rect = menu.getBoundingClientRect();
-  const left = Math.min(clientX, window.innerWidth - rect.width - padding);
-  const top = Math.min(clientY, window.innerHeight - rect.height - padding);
+  let left = clientX;
+  let top = clientY;
+  if (anchorRect) {
+    left = anchorRect.right - rect.width;
+    const below = anchorRect.bottom + gap;
+    const above = anchorRect.top - gap - rect.height;
+    top = below + rect.height <= window.innerHeight - padding
+      ? below
+      : Math.max(padding, above);
+  }
+  left = Math.min(left, window.innerWidth - rect.width - padding);
+  top = Math.min(top, window.innerHeight - rect.height - padding);
   menu.style.left = `${Math.max(padding, left)}px`;
   menu.style.top = `${Math.max(padding, top)}px`;
+  menu.style.visibility = "";
 }
 
 function showAgentConfigMenu(row, trigger) {
@@ -3800,8 +3813,19 @@ function showAgentConfigMenu(row, trigger) {
     deleteBtn.disabled = !canDelete;
     deleteBtn.textContent = "解雇";
   }
-  positionAgentContextMenu(menu, rect.left, rect.bottom + 8);
+  positionAgentContextMenu(menu, rect.left, rect.bottom + 8, rect);
 }
+
+function openAgentConfigMenu(agentId, trigger) {
+  if (!trigger) return false;
+  const row = agentList?.querySelector(
+    `.agent-row[data-agent-id="${CSS.escape(agentId || "")}"]`
+  );
+  if (!row) return false;
+  showAgentConfigMenu(row, trigger);
+  return true;
+}
+
 
 function closeAgentContextMenu() {
   if (!agentContextMenu) return;
@@ -4734,6 +4758,7 @@ window.__HERMES_APP__ = {
   },
   openKanbanTask,
   openAgentTerminal,
+  openAgentConfigMenu,
   kanbanRoleLabel,
   kanbanStatusLabel,
   kanbanDisplayStatus,

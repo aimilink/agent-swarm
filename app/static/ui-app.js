@@ -1125,8 +1125,7 @@
       const configBtn = event.target.closest("[data-agent-config]");
       if (configBtn) {
         event.stopPropagation();
-        const hiddenRow = document.querySelector(`#agent-list .agent-row[data-agent-id="${CSS.escape(configBtn.dataset.agentId || "")}"]`);
-        if (hiddenRow) hiddenRow.querySelector("[data-agent-config]")?.click();
+        app().openAgentConfigMenu?.(configBtn.dataset.agentId || "", configBtn);
         return;
       }
       const sessionBtn = event.target.closest("[data-session-action]");

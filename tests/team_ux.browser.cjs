@@ -205,6 +205,18 @@ assert.equal(rendered.status,0,rendered.stderr);
     await page.locator('#members-filter-bar [data-filter="tech"]').click();
     assert.equal(await page.locator('#members-grid [data-session-action]').count(),2);
     assert.equal(await page.locator('#members-grid [data-session-action][data-agent-id^="sales"]').count(),0);
+    const memberConfigButtons = page.locator('#members-grid [data-agent-config]');
+    await memberConfigButtons.nth(0).click();
+    const firstMenuPosition = await page.evaluate(() => {
+      const trigger = document.querySelectorAll('#members-grid [data-agent-config]')[0].getBoundingClientRect();
+      const menu = document.querySelector('.agent-context-menu:not([hidden])').getBoundingClientRect();
+      return {triggerRight: trigger.right, menuRight: menu.right, menuLeft: menu.left};
+    });
+    assert.ok(Math.abs(firstMenuPosition.triggerRight - firstMenuPosition.menuRight) < 2, 'member menu aligns to visible trigger');
+    await page.keyboard.press('Escape');
+    await memberConfigButtons.nth(1).click();
+    const secondMenuPosition = await page.locator('.agent-context-menu:not([hidden])').boundingBox();
+    assert.notEqual(Math.round(firstMenuPosition.menuLeft), Math.round(secondMenuPosition.x), 'member menu follows the clicked member');
     await page.locator('[data-view="stats"]').click();
     await page.waitForFunction(()=>document.querySelector('#stats-content').textContent.includes('12.3K'));
     assert.match(await page.locator('#stats-content').innerText(),/技术|tech/i);
@@ -229,6 +241,6 @@ assert.equal(rendered.status,0,rendered.stderr);
     const duplicateIds=await page.evaluate(()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);return ids.filter((id,i)=>ids.indexOf(id)!==i)});
     assert.deepEqual(duplicateIds,[]);
     assert.deepEqual(errors,[]);
-    console.log('PASS: edit/create reset, single submit, member controls, team filtering, realtime selection, persistent task process, retained system health, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, live Hermes profiles, mobile layout, no page errors');
+    console.log('PASS: edit/create reset, single submit, member controls, anchored member menu, team filtering, realtime selection, persistent task process, retained system health, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, live Hermes profiles, mobile layout, no page errors');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
