@@ -137,16 +137,30 @@ kanban:
   dispatch_in_gateway: false
 ```
 
-### 6. 启动
+### 6. 服务管理
+
+首次使用时创建全局命令：
 
 ```bash
-python run.py
+chmod +x agentweave start.sh
+sudo ln -sf "$(pwd)/agentweave" /usr/local/bin/agentweave
 ```
 
-访问 [http://127.0.0.1:5050](http://127.0.0.1:5050)。
+随后可统一管理服务：
 
-生产环境、systemd、Nginx、升级、备份与故障排查见
-[部署与安装教程](doc/deployment.md)。
+```bash
+agentweave start
+agentweave status
+agentweave restart
+agentweave stop
+```
+
+未创建全局链接时使用 `./agentweave <command>`。命令自动读取项目根目录的
+`.env`；普通进程的 PID 和日志保存在 `.run/`。检测到
+`agentweave.service` 用户服务时，命令会自动转交给 systemd。
+
+启动后访问 [http://127.0.0.1:5050](http://127.0.0.1:5050)。生产环境、
+systemd、Nginx、升级、备份与故障排查见[部署与安装教程](doc/deployment.md)。
 
 ### 7. 运行测试
 

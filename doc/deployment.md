@@ -167,21 +167,25 @@ kanban:
   dispatch_in_gateway: false
 ```
 
-## 6. 前台启动与首次验证
+## 6. 服务管理与首次验证
+
+安装项目自带的管理命令：
 
 ```bash
-set -a
-source .env
-set +a
-./start.sh
+chmod +x agentweave start.sh
+sudo ln -sf "$(pwd)/agentweave" /usr/local/bin/agentweave
 ```
 
-也可以在虚拟环境中直接运行：
+启动并检查状态：
 
 ```bash
-source .venv/bin/activate
-python run.py
+agentweave start
+agentweave status
 ```
+
+命令自动读取项目根目录的 `.env`，并支持 `start`、`stop`、`status`
+和 `restart`。普通进程的 PID 与日志保存在 `.run/`；未创建全局链接时可执行
+`./agentweave <command>`。
 
 浏览器打开 `http://127.0.0.1:5050`。然后：
 
@@ -240,6 +244,9 @@ systemctl --user enable --now agentweave
 systemctl --user status agentweave
 journalctl --user -u agentweave -f
 ```
+
+安装用户服务后，`agentweave start|stop|status|restart` 会自动转交给
+`systemctl --user`，无需维护另一份 PID。
 
 如需退出登录后仍保持运行，可由管理员执行：
 
