@@ -18,7 +18,7 @@
           <div class="sidebar-head__row">
             <div>
               <h1>团队管理</h1>
-              <p class="section-kicker">AgentWeave · 项目协作工作台</p>
+              <p class="section-kicker">Powered by Hermes Agents</p>
             </div>
             <div class="sidebar-head__actions">
               <button class="primary-button primary-button--sm" type="button" id="open-teams-page">团队</button>
