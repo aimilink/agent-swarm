@@ -55,6 +55,7 @@ data/            SQLite 数据库（运行时生成，已 gitignore）
 doc/             架构 / 设计 / 管理文档
 tests/           pytest 测试
 run.py           本地开发启动入口
+agentweave       Web 服务 start/stop/status/restart 管理命令
 ```
 
 ## 快速开始
@@ -196,6 +197,7 @@ A2A 讨论从侧栏“A2A 对话”进入，选择两个 Agent 后建立持续�
 - [A2A 对话与接口](doc/A2A.md)
 - [项目工作区与产物管理](doc/PROJECTS.md)
 - [架构设计](doc/ARCHITECTURE.md)
+- [服务管理命令](doc/SERVICE-MANAGEMENT.md)
 - [部署与安装教程](doc/deployment.md)
 - [多团队说明](doc/MULTI-TEAM.md)
 - [UX 检查与浏览器回归](doc/UX-REVIEW.md)

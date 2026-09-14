@@ -185,7 +185,8 @@ agentweave status
 
 命令自动读取项目根目录的 `.env`，并支持 `start`、`stop`、`status`
 和 `restart`。普通进程的 PID 与日志保存在 `.run/`；未创建全局链接时可执行
-`./agentweave <command>`。
+`./agentweave <command>`。命令细节、退出码和故障处理见
+[服务管理](SERVICE-MANAGEMENT.md)。
 
 浏览器打开 `http://127.0.0.1:5050`。然后：
 

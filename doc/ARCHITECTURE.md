@@ -1,4 +1,4 @@
-# Hermes 多 Agent 协作系统 - 架构说明
+# AgentWeave 架构说明
 
 ## 目标
 
@@ -127,6 +127,14 @@ Flask 后端维护 Agent Registry。Leader 通过 MCP 工具读取可调度 Work
 │ boards / tasks / logs/runs  │      │ CLI + team orchestration│
 └────────────────────────────┘      └────────────────────────┘
 ```
+
+### 服务管理入口
+
+根目录的 `agentweave` 命令是 Web 服务生命周期入口。它解析软链接定位项目目录，
+加载 `.env` 后调用 `start.sh`，并在普通进程模式下维护 `.run/` 内的 PID、
+日志和互斥锁。检测到用户级 `agentweave.service` 时，四个管理动作自动转交给
+`systemctl --user`。该命令只管理 Web 服务；页面内的 Agent 生命周期继续由
+ACP/profile 进程管理。详见[服务管理](SERVICE-MANAGEMENT.md)。
 
 ASGI 路由：
 

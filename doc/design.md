@@ -103,7 +103,8 @@ Hermes
   └─ kanban CLI / dispatcher / gateway
 ```
 
-启动入口是 `run.py`，默认监听 `127.0.0.1:5050`。
+服务管理入口是 `agentweave`，它在普通进程模式下通过 `start.sh` 启动
+`run.py`；`run.py` 默认监听 `127.0.0.1:5050`。
 
 ---
 

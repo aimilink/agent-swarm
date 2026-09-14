@@ -2,7 +2,11 @@
 
 ## 1. 接入前确认
 
-按 [部署教程](deployment.md) 安装并启动控制台。服务需要与日常 Hermes 使用同一系统用户；默认 shared 模式读取该用户的 Hermes Home，显式设置 HERMES_HOME 时以该路径为准。
+按 [部署教程](deployment.md) 安装控制台，使用 `agentweave start` 启动，并以
+`agentweave status` 检查状态。停止和重启分别使用 `agentweave stop`、
+`agentweave restart`；完整行为、日志位置和 systemd 模式见
+[服务管理](SERVICE-MANAGEMENT.md)。服务需要与日常 Hermes 使用同一系统用户；
+默认 shared 模式读取该用户的 Hermes Home，显式设置 HERMES_HOME 时以该路径为准。
 
 本项目接入的是 Hermes Profile：SOUL、技能、记忆、模型和工具配置继续由该 Profile 保存。它不会接管另一个终端中已运行的对话或复制对话上下文。Leader 会接入团队 MCP；主动修改人设、模型或工具会写回共享 Profile。
 
