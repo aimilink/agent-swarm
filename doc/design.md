@@ -4,7 +4,7 @@
 
 ## 1. 项目概述
 
-Hermes Agents Team 是一个本地 Web 控制台，用于创建、管理、观察和驱动多个 Hermes Profile Agent。
+AgentWeave 是一个本地 Web 协作工作台，用于创建、管理、观察和驱动多个 Hermes Profile Agent。
 
 当前实现具备：
 

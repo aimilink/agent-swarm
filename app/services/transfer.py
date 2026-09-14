@@ -153,7 +153,7 @@ def export_agents(
         manifest["files"] = checksums
         _write_json(export_root / "manifest.json", manifest)
         timestamp = now_iso()[0:16].replace("-", "").replace("T", "-").replace(":", "")
-        archive_path = HERMES_HOME / "tmp" / f"hermes-agent-team-{timestamp}{EXPORT_SUFFIX}"
+        archive_path = HERMES_HOME / "tmp" / f"agentweave-{timestamp}{EXPORT_SUFFIX}"
         archive_path.parent.mkdir(parents=True, exist_ok=True)
         _zip_dir(export_root, archive_path)
         return archive_path
@@ -367,7 +367,7 @@ def _redact_config(content: str, profile_name: str, secrets: list[str]) -> str:
 
 def _write_readme(root: Path) -> None:
     (root / "README.txt").write_text(
-        "Hermes Agent Team export. Use the web UI import dialog or /api/transfer/import to restore.\n",
+        "AgentWeave export. Use the web UI import dialog or /api/transfer/import to restore.\n",
         encoding="utf-8",
     )
 

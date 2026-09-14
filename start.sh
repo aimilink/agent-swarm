@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hermes Agents Team - production-friendly launcher.
+# AgentWeave - production-friendly launcher.
 # This script reads exported environment variables; it does not parse .env itself.
 set -euo pipefail
 

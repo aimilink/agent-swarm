@@ -22,7 +22,7 @@
 
 ```text
 Hermes Kanban = 持久化任务队列 + 派工系统 + 日志系统
-Hermes Agents Team = 多 Agent Dashboard + Profile/Skills/MCP 管理台 + Kanban 状态可视化层
+AgentWeave = 多 Agent Dashboard + Profile/Skills/MCP 管理台 + Kanban 状态可视化层
 ```
 
 ## 2. 核心概念映射
@@ -178,7 +178,7 @@ UI 列映射：
 
 | 配置 | 默认值 | 功能 |
 | --- | --- | --- |
-| `KANBAN_BOARD` | `hermes-agents-team` | 当前项目使用的 board slug |
+| `KANBAN_BOARD` | `hermes-agents-team` | 当前项目使用的兼容 board slug |
 | `KANBAN_POLL_INTERVAL` | `2` | 同步轮询间隔，单位秒 |
 | `KANBAN_DEFAULT_WORKSPACE` | `scratch` | 创建 Kanban task 的默认 workspace |
 | `KANBAN_AUTO_DISPATCH` | `0` | 初始自动派发开关 |

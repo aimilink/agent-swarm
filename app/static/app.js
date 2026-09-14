@@ -3165,7 +3165,7 @@ async function exportTeamArchive() {
     const blob = await response.blob();
     const disposition = response.headers.get("content-disposition") || "";
     const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^";]+)/i);
-    const filename = match ? decodeURIComponent(match[1].replace(/"/g, "")) : "hermes-agent-team.zip";
+    const filename = match ? decodeURIComponent(match[1].replace(/"/g, "")) : "agentweave.zip";
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -4025,7 +4025,7 @@ transferImportSubmit?.addEventListener("click", importTeamArchive);
 transferImportFile?.addEventListener("change", () => {
   transferLastInspectedFile = null;
   if (transferFileName) {
-    transferFileName.textContent = transferImportFile.files?.[0]?.name || "选择 hermes-agent-team-时间.zip 文件";
+    transferFileName.textContent = transferImportFile.files?.[0]?.name || "选择 agentweave-时间.zip 文件";
   }
   if (transferImportSubmit) transferImportSubmit.disabled = true;
   if (transferImportPreview) transferImportPreview.hidden = true;

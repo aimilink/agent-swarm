@@ -10,7 +10,7 @@
 ```text
 浏览器
   -> HTTPS / 反向代理（可选）
-  -> Hermes Agents Team :5050
+  -> AgentWeave :5050
        -> ~/.hermes/profiles/*       # SOUL、Skill、记忆、模型、MCP
        -> data/hermes_agent_team.db  # 团队、成员、任务、消息、编排状态
        -> workspace/*                # 团队任务工作区
@@ -63,15 +63,15 @@ Hermes 的模型或凭据配置，再继续安装控制台。
 - [Hermes Quickstart](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart/)
 - [Hermes Agent GitHub](https://github.com/NousResearch/hermes-agent)
 
-## 4. 安装 Hermes Agents Team
+## 4. 安装 AgentWeave
 
 将 `<REPOSITORY_URL>` 替换为实际仓库地址：
 
 ```bash
 mkdir -p ~/apps
 cd ~/apps
-git clone <REPOSITORY_URL> hermes-agent-team
-cd hermes-agent-team
+git clone <REPOSITORY_URL> agentweave
+cd agentweave
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -121,8 +121,8 @@ KANBAN_AUTO_DISPATCH=0
 
 ```dotenv
 HERMES_CONTROL_MODE=isolated
-HERMES_HOME=/home/your-user/apps/hermes-agent-team/hermes-home
-AGENT_TEAM_WORKSPACE_ROOT=/home/your-user/apps/hermes-agent-team/workspace
+HERMES_HOME=/home/your-user/apps/agentweave/hermes-home
+AGENT_TEAM_WORKSPACE_ROOT=/home/your-user/apps/agentweave/workspace
 ```
 
 `HERMES_HOME` 必须使用绝对路径。切换模式不会自动迁移 Profile 或数据库。
@@ -204,25 +204,25 @@ curl -fsS -H "Authorization: Bearer $AGENT_TEAM_API_TOKEN" http://127.0.0.1:5050
 ## 7. systemd 用户服务
 
 用户服务能确保 `HOME`、Hermes Profile 所有者和 CLI 用户保持一致。假设项目位于
-`~/apps/hermes-agent-team`：
+`~/apps/agentweave`：
 
 ```bash
 mkdir -p ~/.config/systemd/user
 ```
 
-创建 `~/.config/systemd/user/hermes-agent-team.service`：
+创建 `~/.config/systemd/user/agentweave.service`：
 
 ```ini
 [Unit]
-Description=Hermes Agents Team
+Description=AgentWeave
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/apps/hermes-agent-team
-EnvironmentFile=%h/apps/hermes-agent-team/.env
-ExecStart=%h/apps/hermes-agent-team/start.sh
+WorkingDirectory=%h/apps/agentweave
+EnvironmentFile=%h/apps/agentweave/.env
+ExecStart=%h/apps/agentweave/start.sh
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
@@ -234,11 +234,11 @@ WantedBy=default.target
 启用：
 
 ```bash
-chmod +x ~/apps/hermes-agent-team/start.sh
+chmod +x ~/apps/agentweave/start.sh
 systemctl --user daemon-reload
-systemctl --user enable --now hermes-agent-team
-systemctl --user status hermes-agent-team
-journalctl --user -u hermes-agent-team -f
+systemctl --user enable --now agentweave
+systemctl --user status agentweave
+journalctl --user -u agentweave -f
 ```
 
 如需退出登录后仍保持运行，可由管理员执行：
@@ -286,24 +286,24 @@ location / {
 
 ```bash
 stamp=$(date +%Y%m%d-%H%M%S)
-mkdir -p "$HOME/backups/hermes-agent-team-$stamp"
-cp data/hermes_agent_team.db "$HOME/backups/hermes-agent-team-$stamp/"
-cp .env "$HOME/backups/hermes-agent-team-$stamp/env"
-tar -czf "$HOME/backups/hermes-agent-team-$stamp/profiles.tar.gz" -C "$HOME/.hermes" profiles
+mkdir -p "$HOME/backups/agentweave-$stamp"
+cp data/hermes_agent_team.db "$HOME/backups/agentweave-$stamp/"
+cp .env "$HOME/backups/agentweave-$stamp/env"
+tar -czf "$HOME/backups/agentweave-$stamp/profiles.tar.gz" -C "$HOME/.hermes" profiles
 ```
 
 ### 9.2 升级
 
 ```bash
-cd ~/apps/hermes-agent-team
-systemctl --user stop hermes-agent-team
+cd ~/apps/agentweave
+systemctl --user stop agentweave
 git status --short
 git pull --ff-only
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 python -m pytest -q
-systemctl --user start hermes-agent-team
-systemctl --user status hermes-agent-team
+systemctl --user start agentweave
+systemctl --user status agentweave
 ```
 
 如 `git status` 显示本地改动，先提交或备份，不要强制覆盖。

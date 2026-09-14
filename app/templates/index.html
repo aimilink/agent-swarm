@@ -3,7 +3,7 @@
 <html lang="zh-CN"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>HERMES AGENTS · Team Management</title>
+<title>AgentWeave · 多 Agent 协作工作台</title>
 <script src="{{ url_for('static', filename='ui/tailwind.js') }}"></script>
 <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet"/>
 
@@ -191,7 +191,7 @@
 <!-- Top Navigation (JSON) -->
 <header class="bg-surface/70 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-white/20 shadow-sm flex justify-between items-center px-margin-desktop py-4 h-16">
 <div class="flex items-center gap-4">
-<h1 class="font-headline-sm text-headline-sm font-bold text-primary">HERMES AGENTS · Team Management</h1>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">AgentWeave · 多 Agent 协作工作台</h1>
 </div>
 <div class="flex items-center gap-4">
 <button id="open-create-agent" type="button" class="bg-primary-container text-on-primary-container px-4 py-2 rounded-lg font-label-md hover:opacity-90 transition-opacity">+ 新员工</button>
@@ -207,10 +207,10 @@
 <nav id="app-sidebar" class="bg-surface/70 backdrop-blur-xl fixed left-0 top-0 h-full w-[260px] z-40 border-r border-white/20 shadow-none flex flex-col pt-24 p-md transition-transform duration-300 md:translate-x-0 -translate-x-full">
 <div class="mb-8">
 <div class="flex items-center gap-3 px-4 py-2">
-<div class="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center font-bold">H</div>
+<div class="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center font-bold">A</div>
 <div>
-<h2 class="font-title-lg text-title-lg font-black text-primary">HERMES AGENTS</h2>
-<p class="font-label-sm text-label-sm text-on-surface-variant">POWERED BY HERMES</p>
+<h2 class="font-title-lg text-title-lg font-black text-primary">AgentWeave</h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant">PROJECT · TEAM · AGENT</p>
 </div>
 </div>
 </div>
@@ -242,7 +242,7 @@
 <div class="flex items-center justify-between mb-4">
 <div>
 <h2 class="font-headline-md text-headline-md font-bold text-on-surface">团队概览</h2>
-<p class="font-label-md text-on-surface-variant mt-1">HERMES AGENTS 多 Agent 协作系统运行总览</p>
+<p class="font-label-md text-on-surface-variant mt-1">AgentWeave 多 Agent 协作系统运行总览</p>
 </div>
 <button id="btn-create-task-overview" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-xl font-label-md shadow-sm hover:bg-primary/90 flex items-center gap-2"><span class="material-symbols-outlined msr text-[18px]" aria-hidden="true"></span>创建任务</button>
 </div>
@@ -928,7 +928,7 @@
           <p class="form-error" id="team-runtime-status" hidden></p>
         </section>
         <section class="transfer-pane" data-transfer-pane="export">
-          <p class="form-hint">选择要打包的 Agent，导出为 `hermes-agent-team-时间.zip`。</p>
+          <p class="form-hint">选择要打包的 Agent，导出为 `agentweave-时间.zip`。</p>
           <div class="transfer-agent-list" id="transfer-agent-list"></div>
           <label class="transfer-check"><span>内联 skills 文件</span><input type="checkbox" id="transfer-inline-skills" checked></label>
           <details class="transfer-advanced">
@@ -947,7 +947,7 @@
             <input type="file" id="transfer-import-file" accept=".zip,application/zip">
             <span class="transfer-file-picker__icon">ZIP</span>
             <span class="transfer-file-picker__body">
-              <strong id="transfer-file-name">选择 hermes-agent-team-时间.zip 文件</strong>
+              <strong id="transfer-file-name">选择 agentweave-时间.zip 文件</strong>
               <small>点击选择导出包，预检通过后再确认导入</small>
             </span>
           </label>

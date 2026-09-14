@@ -1,6 +1,6 @@
-# Hermes Agents Team
+# AgentWeave
 
-基于 [Hermes Agent](https://hermes-agent.nousresearch.com/) Profile 机制构建的多团队、多 Agent 协作 Web 系统。一个 Profile 是一个持久 Agent 身份：它可以在 Hermes CLI 中独立使用，也可以被本控制台接入团队；两种模式共用人设、技能、记忆、经验、模型与工具配置。
+AgentWeave 是基于 [Hermes Agent](https://hermes-agent.nousresearch.com/) Profile 机制构建的多团队、多 Agent 协作工作台。它以项目为交付单位，将团队、Agent 对话、任务看板、工作空间和产物集中管理。一个 Profile 是一个持久 Agent 身份：它可以在 Hermes CLI 中独立使用，也可以被 AgentWeave 接入团队；两种模式共用人设、技能、记忆、经验、模型与工具配置。
 
 > 1. 本项目是社区实验项目，不是 Nous Research 或 Hermes Agent 官方项目。
 > 2. 当前仅建议在本机或可信内网环境运行，不要在未加鉴权、访问控制和 HTTPS 保护的情况下直接暴露到公网。
@@ -87,8 +87,8 @@ hermes kanban --help
 ### 3. 安装项目依赖
 
 ```bash
-git clone <REPOSITORY_URL> hermes-agent-team
-cd hermes-agent-team
+git clone <REPOSITORY_URL> agentweave
+cd agentweave
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -110,7 +110,7 @@ python -m pip install -r requirements.txt
 | `AGENT_TEAM_API_TOKEN` | 空 | `/api/*` Bearer Token；留空时不鉴权 |
 | `FLASK_DEBUG` | `0` | 调试日志开关 |
 | `AUTO_START_AGENTS` | `1` | 项目启动时自动启动所有已就绪 Agent；设为 `0` 可关闭 |
-| `KANBAN_BOARD` | `hermes-agents-team` | Hermes Kanban board 名称 |
+| `KANBAN_BOARD` | `hermes-agents-team` | Hermes Kanban board 名称（兼容现有任务） |
 | `KANBAN_POLL_INTERVAL` | `2` | Kanban 状态同步轮询间隔（秒） |
 | `KANBAN_DEFAULT_WORKSPACE` | `scratch` | Kanban 任务默认 workspace |
 | `KANBAN_AUTO_DISPATCH` | `0` | 首次无持久化设置时，自动 Dispatch 开关的默认值 |

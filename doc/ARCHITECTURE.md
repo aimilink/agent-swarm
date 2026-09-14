@@ -296,7 +296,7 @@ SQLite 表由 `app/db/models.py` 定义，启动时通过 `Base.metadata.create_
 | `AGENT_TEAM_API_TOKEN` | 空 | 可选 Bearer Token，保护 Flask `/api/*`。 |
 | `FLASK_DEBUG` | `0` | 日志级别开关，不启用 reload。 |
 | `AUTO_START_AGENTS` | `1` | 启动项目时自动启动 ready Agent。 |
-| `KANBAN_BOARD` | `hermes-agents-team` | 使用的 Hermes Kanban board。 |
+| `KANBAN_BOARD` | `hermes-agents-team` | 使用的 Hermes Kanban board（保留历史兼容标识）。 |
 | `KANBAN_POLL_INTERVAL` | `2` | Kanban 同步轮询间隔。 |
 | `KANBAN_DEFAULT_WORKSPACE` | `scratch` | 默认 Kanban workspace。 |
 | `KANBAN_AUTO_DISPATCH` | `0` | 默认是否开启项目内自动 dispatch。 |
@@ -307,7 +307,7 @@ SQLite 表由 `app/db/models.py` 定义，启动时通过 `Base.metadata.create_
 
 ```text
 Hermes Kanban = 持久化任务队列 + 派工系统 + 日志系统
-Hermes Agents Team = 多 Agent 控制台 + Profile/Skill/MCP/模型管理 + Kanban 可视化层
+AgentWeave = 多 Agent 控制台 + Profile/Skill/MCP/模型管理 + Kanban 可视化层
 ```
 
 本项目侧重本地可信环境，不提供租户隔离和企业级权限模型。可选

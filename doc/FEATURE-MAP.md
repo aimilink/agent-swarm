@@ -4,7 +4,7 @@
 
 ## 1. 产品定位
 
-Hermes Agents Team 是 Hermes Agent 之上的本地编排控制台：
+AgentWeave 是 Hermes Agent 之上的本地编排与项目交付工作台：
 
 - Hermes Profile 负责持久 Agent 身份和能力。
 - Web 控制台负责团队、任务、消息、运行时与可视化。
