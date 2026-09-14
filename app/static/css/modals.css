@@ -217,6 +217,33 @@
   resize: vertical;
 }
 
+.hermes-profile-field {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.hermes-profile-field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.hermes-profile-field button {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--panel-edge-strong);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.hermes-profile-field button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .modal__form .form-hint {
   grid-column: 1 / -1;
 }

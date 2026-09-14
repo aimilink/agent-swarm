@@ -72,7 +72,9 @@ def check_hermes_ready() -> dict:
             "detail": output,
         }
 
-    profiles = _parse_profile_list(result.stdout or "")
+    profiles = sorted(
+        set(_parse_profile_list(result.stdout or "")) | set(_profile_names_on_disk())
+    )
     if not profiles:
         return {
             "ok": False,
@@ -125,7 +127,8 @@ def create_hermes_profile(profile_name: str) -> bool:
 
 
 def list_hermes_profiles() -> list[str]:
-    """Parse `hermes profile list` into a list of profile names."""
+    """Read current profile names from both Hermes CLI and Hermes Home."""
+    cli_profiles: list[str] = []
     try:
         result = subprocess.run(
             [HERMES_CLI, "profile", "list"],
@@ -134,9 +137,24 @@ def list_hermes_profiles() -> list[str]:
             timeout=15,
             env=hermes_command_env(),
         )
+        if result.returncode == 0:
+            cli_profiles = _parse_profile_list(result.stdout or "")
     except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return sorted(set(cli_profiles) | set(_profile_names_on_disk()))
+
+
+def _profile_names_on_disk() -> list[str]:
+    profiles_dir = HERMES_HOME / "profiles"
+    try:
+        children = list(profiles_dir.iterdir())
+    except OSError:
         return []
-    return _parse_profile_list(result.stdout or "")
+    return sorted(
+        child.name
+        for child in children
+        if child.is_dir() and PROFILE_NAME_RE.fullmatch(child.name)
+    )
 
 
 def _parse_profile_list(output: str) -> list[str]:

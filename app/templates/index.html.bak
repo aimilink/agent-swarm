@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Hermes Agent Workspace</title>
+    <title>AgentWeave · 多 Agent 协作工作台</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -525,7 +525,7 @@
           <p class="form-error" id="team-runtime-status" hidden></p>
         </section>
         <section class="transfer-pane" data-transfer-pane="export">
-          <p class="form-hint">选择要打包的 Agent，导出为 `hermes-agent-team-时间.zip`。</p>
+          <p class="form-hint">选择要打包的 Agent，导出为 `agentweave-时间.zip`。</p>
           <div class="transfer-agent-list" id="transfer-agent-list"></div>
           <label class="transfer-check"><span>内联 skills 文件</span><input type="checkbox" id="transfer-inline-skills" checked></label>
           <details class="transfer-advanced">
@@ -544,7 +544,7 @@
             <input type="file" id="transfer-import-file" accept=".zip,application/zip">
             <span class="transfer-file-picker__icon">ZIP</span>
             <span class="transfer-file-picker__body">
-              <strong id="transfer-file-name">选择 hermes-agent-team-时间.zip 文件</strong>
+              <strong id="transfer-file-name">选择 agentweave-时间.zip 文件</strong>
               <small>点击选择导出包，预检通过后再确认导入</small>
             </span>
           </label>

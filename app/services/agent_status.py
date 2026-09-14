@@ -25,6 +25,21 @@ def agent_dispatch_block_reason(agent: dict | None) -> str:
     return ""
 
 
+def recover_crashed_agent(runtime_store, agent: dict | None, starter) -> dict | None:
+    """Try one immediate restart for a ready Agent whose ACP runtime crashed."""
+    if not agent:
+        return None
+    if (agent.get("readiness_status") or "ready") != "ready":
+        return agent
+    if (agent.get("runtime_status") or "stopped") != "crashed":
+        return agent
+    try:
+        starter(agent)
+    except Exception:  # noqa: BLE001
+        return runtime_store.find_agent(agent.get("agent_id") or "") or agent
+    return runtime_store.find_agent(agent.get("agent_id") or "") or agent
+
+
 def find_agent_by_profile(agents: list[dict], profile_name: str) -> dict | None:
     value = (profile_name or "").strip()
     if not value:

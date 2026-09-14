@@ -1,6 +1,6 @@
-# Hermes Agents Team
+# AgentWeave
 
-基于 [Hermes Agent](https://hermes-agent.nousresearch.com/) Profile 机制构建的多团队、多 Agent 协作 Web 系统。一个 Profile 是一个持久 Agent 身份：它可以在 Hermes CLI 中独立使用，也可以被本控制台接入团队；两种模式共用人设、技能、记忆、经验、模型与工具配置。
+AgentWeave 是基于 [Hermes Agent](https://hermes-agent.nousresearch.com/) Profile 机制构建的多团队、多 Agent 协作工作台。它以项目为交付单位，将团队、Agent 对话、任务看板、工作空间和产物集中管理。一个 Profile 是一个持久 Agent 身份：它可以在 Hermes CLI 中独立使用，也可以被 AgentWeave 接入团队；两种模式共用人设、技能、记忆、经验、模型与工具配置。
 
 > 1. 本项目是社区实验项目，不是 Nous Research 或 Hermes Agent 官方项目。
 > 2. 当前仅建议在本机或可信内网环境运行，不要在未加鉴权、访问控制和 HTTPS 保护的情况下直接暴露到公网。
@@ -12,7 +12,7 @@
 - **存储**：SQLite
 - **前端**：原生 HTML/JS，实时展示多 Agent 对话、终端输出与任务流转
 
-先看 [功能地图](doc/FEATURE-MAP.md) 了解当前版本边界；安装上线见 [部署与安装教程](doc/deployment.md)。从接入已有 Agent 到派发团队任务，见 [使用指南](doc/USER-GUIDE.md)。更多设计细节见 [架构说明](doc/ARCHITECTURE.md)。
+先看 [功能地图](doc/FEATURE-MAP.md) 了解当前版本边界；后续建设目标、优先级和验收标准见 [项目路线图](doc/PROJECT-ROADMAP.md)。安装上线见 [部署与安装教程](doc/deployment.md)。从接入已有 Agent 到派发团队任务，见 [使用指南](doc/USER-GUIDE.md)。更多设计细节见 [架构说明](doc/ARCHITECTURE.md)。
 
 ## 功能
 
@@ -34,12 +34,15 @@ Agent 协作。两种入口共用 SOUL、Skill、记忆、经验、模型配置�
 - Web UI 实时观察多 Agent 对话、终端输出、工具调用与子任务流转
 - Hermes Kanban 看板任务、自动派发、状态同步与任务归档
 - Agent 初始化、批量启动 / 停止 / 重启
+- 系统健康检查：统一展示数据库、Hermes、Kanban、MCP、实时事件和终端状态
 - 模型配置管理，可为不同 Agent 应用不同模型配置
 - 团队导入 / 导出，支持迁移 Agent profile、skills 与可选 workspace
 - MCP Server 安装管理，支持 `http` / `streamable_http` / `stdio`
 - Skill 安装管理，支持从 frontmatter 解析元信息
 - SOUL.md 人设编辑
-- 单 Agent 聊天：新建会话、查看历史、携带当前会话上下文继续聊天
+- 项目与任务工作空间：统一资料和交付目录、任务产物归集、实时在线预览、产物登记与下载
+- Agent 对话：新建会话、查看历史、携带当前会话上下文继续聊天
+- A2A 对话：两个 Agent 持久讨论、在线投递、离线排队、回复回流与失败重试
 
 ## 目录结构
 
@@ -52,6 +55,7 @@ data/            SQLite 数据库（运行时生成，已 gitignore）
 doc/             架构 / 设计 / 管理文档
 tests/           pytest 测试
 run.py           本地开发启动入口
+agentweave       Web 服务 start/stop/status/restart 管理命令
 ```
 
 ## 快速开始
@@ -84,8 +88,8 @@ hermes kanban --help
 ### 3. 安装项目依赖
 
 ```bash
-git clone <REPOSITORY_URL> hermes-agent-team
-cd hermes-agent-team
+git clone <REPOSITORY_URL> agentweave
+cd agentweave
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -107,7 +111,7 @@ python -m pip install -r requirements.txt
 | `AGENT_TEAM_API_TOKEN` | 空 | `/api/*` Bearer Token；留空时不鉴权 |
 | `FLASK_DEBUG` | `0` | 调试日志开关 |
 | `AUTO_START_AGENTS` | `1` | 项目启动时自动启动所有已就绪 Agent；设为 `0` 可关闭 |
-| `KANBAN_BOARD` | `hermes-agents-team` | Hermes Kanban board 名称 |
+| `KANBAN_BOARD` | `hermes-agents-team` | Hermes Kanban board 名称（兼容现有任务） |
 | `KANBAN_POLL_INTERVAL` | `2` | Kanban 状态同步轮询间隔（秒） |
 | `KANBAN_DEFAULT_WORKSPACE` | `scratch` | Kanban 任务默认 workspace |
 | `KANBAN_AUTO_DISPATCH` | `0` | 首次无持久化设置时，自动 Dispatch 开关的默认值 |
@@ -134,16 +138,30 @@ kanban:
   dispatch_in_gateway: false
 ```
 
-### 6. 启动
+### 6. 服务管理
+
+首次使用时创建全局命令：
 
 ```bash
-python run.py
+chmod +x agentweave start.sh
+sudo ln -sf "$(pwd)/agentweave" /usr/local/bin/agentweave
 ```
 
-访问 [http://127.0.0.1:5050](http://127.0.0.1:5050)。
+随后可统一管理服务：
 
-生产环境、systemd、Nginx、升级、备份与故障排查见
-[部署与安装教程](doc/deployment.md)。
+```bash
+agentweave start
+agentweave status
+agentweave restart
+agentweave stop
+```
+
+未创建全局链接时使用 `./agentweave <command>`。命令自动读取项目根目录的
+`.env`；普通进程的 PID 和日志保存在 `.run/`。检测到
+`agentweave.service` 用户服务时，命令会自动转交给 systemd。
+
+启动后访问 [http://127.0.0.1:5050](http://127.0.0.1:5050)。生产环境、
+systemd、Nginx、升级、备份与故障排查见[部署与安装教程](doc/deployment.md)。
 
 ### 7. 运行测试
 
@@ -164,16 +182,22 @@ python -m pytest -q
 
 任务发送失败会显示原因并保留输入。删除团队前必须先移出成员；Agent Profile、技能和记忆保留。完整操作与排障见 [使用指南](doc/USER-GUIDE.md)。
 
-### 9. 单 Agent 聊天
+### 9. Agent 对话
 
-从侧栏“单 Agent 聊天”或成员卡片“聊天”进入，选择 Agent 后新建会话。聊天记录保存在数据库，可从历史列表继续；Enter 发送、Shift+Enter 换行。此入口直接调用 Hermes CLI，不自动创建看板任务。升级后重启服务以创建聊天表，详细接口与边界见 [单 Agent 聊天](doc/AGENT-CHAT.md)。
+从侧栏“Agent 对话”或成员卡片“对话”进入，选择 Agent 后新建会话。聊天记录保存在数据库，可从历史列表继续；Enter 发送、Shift+Enter 换行。此入口直接调用 Hermes CLI，不自动创建看板任务。升级后重启服务以创建聊天表，详细接口与边界见 [Agent 对话](doc/AGENT-CHAT.md)。
+
+A2A 讨论从侧栏“A2A 对话”进入，选择两个 Agent 后建立持续会话。接收 Agent 在线时立即处理，离线时消息保留到其启动后投递；详细状态与接口见 [A2A 对话](doc/A2A.md)。
 
 ## 文档
 
-- [使用指南](doc/USER-GUIDE.md)
-- [单 Agent 聊天与接口](doc/AGENT-CHAT.md)
-- [架构设计](doc/ARCHITECTURE.md)
+- [项目重规划与迭代路线图](doc/PROJECT-ROADMAP.md)
 - [当前版本功能地图](doc/FEATURE-MAP.md)
+- [使用指南](doc/USER-GUIDE.md)
+- [Agent 对话与接口](doc/AGENT-CHAT.md)
+- [A2A 对话与接口](doc/A2A.md)
+- [项目工作区与产物管理](doc/PROJECTS.md)
+- [架构设计](doc/ARCHITECTURE.md)
+- [服务管理命令](doc/SERVICE-MANAGEMENT.md)
 - [部署与安装教程](doc/deployment.md)
 - [多团队说明](doc/MULTI-TEAM.md)
 - [UX 检查与浏览器回归](doc/UX-REVIEW.md)

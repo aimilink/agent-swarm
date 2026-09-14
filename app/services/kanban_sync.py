@@ -11,6 +11,7 @@ from ..models.store import RuntimeStore, store as default_store
 from .acp.helpers import _clean_agent_reply
 from .kanban import KanbanError, KanbanService, extract_task_id, kanban_service, task_result, task_status
 from .kanban_workspace import workspace_for_agent
+from . import projects
 
 
 logger = logging.getLogger("hermes.agent_state")
@@ -529,12 +530,13 @@ class KanbanSyncWorker:
             )
             review_service = self._service_for({"metadata": {"board": review_board}}) if review_board else self.service
             task_title = f"Review 用户任务 {user_task_id} 第 {current_round} 轮"
+            project = projects.project_for_task(self.store, user_task_id=user_task_id)
             review_task = review_service.create_task(
                 task_title,
-                body=_format_review_body(user_task, assignments, current_round),
+                body=projects.instructions(project) + _format_review_body(user_task, assignments, current_round),
                 assignee=leader["profile_name"],
                 parent=[link["kanban_task_id"] for link in worker_links],
-                workspace=workspace_for_agent(leader),
+                workspace=projects.workspace(project, lambda: workspace_for_agent(leader)),
                 idempotency_key=f"review:{user_task_id}:round:{current_round}",
             )
             review_task_id = extract_task_id(review_task)
@@ -550,6 +552,7 @@ class KanbanSyncWorker:
                 metadata={
                     "user_task_id": user_task_id,
                     "round": current_round,
+                    **projects.metadata(project),
                     "kind": "review",
                     "task_title": task_title,
                     "assignee_agent_id": leader.get("agent_id") or user_task["leader_agent_id"],

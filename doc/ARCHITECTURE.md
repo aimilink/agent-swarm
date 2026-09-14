@@ -1,4 +1,4 @@
-# Hermes 多 Agent 协作系统 - 架构说明
+# AgentWeave 架构说明
 
 ## 目标
 
@@ -63,7 +63,15 @@ Agent 移出团队或从控制台解雇时，只解除编排关系，不删除 H
 
 ### 单 Agent Web 聊天路径
 
-`agent-chat.js` → `/api/agents/<agent_id>/chats` → `agent_chats` 数据表与 `services/chat.py` → `hermes -p <profile> chat -Q -q <prompt>`。发送接口先保存用户消息并原子占用会话，再等待 CLI 输出并保存回复或错误消息。每次调用携带当前会话的文本记录，不复用 ACP 会话，也不自动进入 Kanban 调度；同一 Profile 的配置与记忆继续共享。接口、恢复机制和验证范围见 [单 Agent 聊天](AGENT-CHAT.md)。
+`agent-chat.js` → `/api/agents/<agent_id>/chats` → `agent_chats` 数据表与 `services/chat.py` → `hermes -p <profile> chat -Q -q <prompt>`。发送接口先保存用户消息并原子占用会话，再等待 CLI 输出并保存回复或错误消息。每次调用携带当前会话的文本记录，不复用 ACP 会话，也不自动进入 Kanban 调度；同一 Profile 的配置与记忆继续共享。接口、恢复机制和验证范围见 [Agent 对话](AGENT-CHAT.md)。
+
+### A2A 对话路径
+
+`a2a-chat.js` → `/api/a2a/*` → `services/a2a.py` → ACP 消息队列。会话和消息先写入 `a2a_conversations` / `a2a_messages`；目标 Agent 在线时通过带 A2A 关联 ID 的 ACP 消息执行，完成回调将回复追加到原会话。离线消息保持 queued，Agent 启动时恢复投递；进程重启会把中断的 delivered 消息重新排队。A2A 不自动创建 Kanban 任务，也不自动把回复再次发送给对方。详见 [A2A 对话](A2A.md)。
+
+### 项目工作区与产物归属
+
+项目数据由 `services/projects.py` 和独立 SQLAlchemy 表管理。项目任务入口向 `send_user_task` 传递项目 ID，将项目上下文写入任务正文，并把项目目录作为 Kanban workspace。任务关联保存于 `kanban_task_links.metadata`；子任务、跨团队、复盘与人工续接按父任务或用户任务继承该关联。Worker 的正文目录约束同步改用项目目录。产物登记校验项目内现存文件和任务归属，Web 与 MCP 共用同一服务。详见 [项目工作区](PROJECTS.md)。
 
 ### 3. Agent Registry
 
@@ -119,6 +127,14 @@ Flask 后端维护 Agent Registry。Leader 通过 MCP 工具读取可调度 Work
 │ boards / tasks / logs/runs  │      │ CLI + team orchestration│
 └────────────────────────────┘      └────────────────────────┘
 ```
+
+### 服务管理入口
+
+根目录的 `agentweave` 命令是 Web 服务生命周期入口。它解析软链接定位项目目录，
+加载 `.env` 后调用 `start.sh`，并在普通进程模式下维护 `.run/` 内的 PID、
+日志和互斥锁。检测到用户级 `agentweave.service` 时，四个管理动作自动转交给
+`systemctl --user`。该命令只管理 Web 服务；页面内的 Agent 生命周期继续由
+ACP/profile 进程管理。详见[服务管理](SERVICE-MANAGEMENT.md)。
 
 ASGI 路由：
 
@@ -192,6 +208,9 @@ Leader review 可以：
 | `create_kanban_worker_tasks(assignments, from_agent_id, parent_task_id="", user_task_id="", summary_instruction="")` | Leader 创建一批 Worker Kanban 子任务。 |
 | `dispatch_parallel(assignments, from_agent_id, summary_instruction="")` | 兼容入口，内部调用 `create_kanban_worker_tasks`。 |
 | `request_human_input(question, from_agent_id, context="", options=None, parent_task_id="", user_task_id="")` | Agent 需要用户补充信息时创建人工处理 Kanban 任务。 |
+| `start_a2a_conversation(to_agent_id, content, from_agent_id, title="")` | 创建 A2A 会话并发送首条消息。 |
+| `send_a2a_message(conversation_id, content, from_agent_id)` | 以参与 Agent 身份继续 A2A 会话。 |
+| `get_a2a_conversation(conversation_id, from_agent_id)` | 读取参与的 A2A 会话及消息历史。 |
 
 跨团队工具：
 
@@ -212,6 +231,10 @@ Leader review 可以：
 |---|---|
 | `GET /api/dashboard` | 获取前端 dashboard 快照。 |
 | `POST /api/messages` | 提交用户任务，创建 Kanban 任务。 |
+| `GET/POST /api/a2a/conversations` | 筛选或创建 A2A 会话。 |
+| `GET /api/a2a/conversations/<id>` | 读取 A2A 消息历史。 |
+| `POST /api/a2a/conversations/<id>/messages` | 发送 A2A 消息并返回投递状态。 |
+| `POST /api/a2a/messages/<id>/retry` | 重试 queued/failed 消息。 |
 | `POST /api/agents` | 接入或新建 Agent，可传团队 slug 字段 `team`。 |
 | `GET/POST /api/teams` | 列出/创建团队。 |
 | `GET/PATCH/DELETE /api/teams/<slug>` | 查看/更新/删除空团队。 |
@@ -255,6 +278,9 @@ SQLite 表由 `app/db/models.py` 定义，启动时通过 `Base.metadata.create_
 - `model_configs`
 - `agent_skill_installs`
 - `agent_mcp_servers`
+- `agent_chats`
+- `a2a_conversations`
+- `a2a_messages`
 
 `agents`、`messages` 和 `user_tasks` 保存 `team_id`，用于隔离团队
 视图与任务路由；`team_id IS NULL` 保留旧版未分组兼容行为。
@@ -278,7 +304,7 @@ SQLite 表由 `app/db/models.py` 定义，启动时通过 `Base.metadata.create_
 | `AGENT_TEAM_API_TOKEN` | 空 | 可选 Bearer Token，保护 Flask `/api/*`。 |
 | `FLASK_DEBUG` | `0` | 日志级别开关，不启用 reload。 |
 | `AUTO_START_AGENTS` | `1` | 启动项目时自动启动 ready Agent。 |
-| `KANBAN_BOARD` | `hermes-agents-team` | 使用的 Hermes Kanban board。 |
+| `KANBAN_BOARD` | `hermes-agents-team` | 使用的 Hermes Kanban board（保留历史兼容标识）。 |
 | `KANBAN_POLL_INTERVAL` | `2` | Kanban 同步轮询间隔。 |
 | `KANBAN_DEFAULT_WORKSPACE` | `scratch` | 默认 Kanban workspace。 |
 | `KANBAN_AUTO_DISPATCH` | `0` | 默认是否开启项目内自动 dispatch。 |
@@ -289,7 +315,7 @@ SQLite 表由 `app/db/models.py` 定义，启动时通过 `Base.metadata.create_
 
 ```text
 Hermes Kanban = 持久化任务队列 + 派工系统 + 日志系统
-Hermes Agents Team = 多 Agent 控制台 + Profile/Skill/MCP/模型管理 + Kanban 可视化层
+AgentWeave = 多 Agent 控制台 + Profile/Skill/MCP/模型管理 + Kanban 可视化层
 ```
 
 本项目侧重本地可信环境，不提供租户隔离和企业级权限模型。可选

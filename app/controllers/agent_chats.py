@@ -75,8 +75,8 @@ def send(agent_id, chat_id):
     agent = store.find_agent(agent_id)
     if agent is None:
         return jsonify(ok=False, error="Agent 不存在"), 404
-    if agent.get("readiness_status", "ready") != "ready":
-        return jsonify(ok=False, error="Agent 尚未就绪"), 409
+    # Team readiness tracks SOUL initialization, not whether the CLI can chat.
+    # Let Hermes validate its own Profile/model configuration for direct chats.
     with SessionLocal() as db:
         row = db.get(AgentChatRecord, chat_id)
         if row is None or row.agent_id != agent_id:
@@ -94,7 +94,7 @@ def send(agent_id, chat_id):
         db.commit()
     # Each invocation is independent. Only this conversation's transcript is supplied.
     transcript = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] != "error"]
-    prompt = ("这是用户与你的单 Agent 聊天。请直接回复最后一条用户消息。\n"
+    prompt = ("这是用户与你的 Agent 对话。请直接回复最后一条用户消息。\n"
               "以下 JSON 是当前会话的聊天记录，role 表示消息来源：\n"
               + json.dumps(transcript, ensure_ascii=False))
     try:

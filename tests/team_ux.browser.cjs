@@ -29,7 +29,7 @@ assert.equal(rendered.status,0,rendered.stderr);
   const browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL || 'msedge',headless:true});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
-    const errors=[]; const writes=[]; const messages=[]; const agentCreates=[]; let failMessage=true;
+    const errors=[]; const writes=[]; const messages=[]; const agentCreates=[]; let failMessage=true; let detailReads=0; let healthCalls=0; let failHealth=false; let profileReads=0; let profileStatusReads=0;
     page.on('pageerror',e=>errors.push(e.message));
     page.on('dialog',d=>d.accept());
     await page.addInitScript(()=>localStorage.setItem('agentTeamApiToken','fixture'));
@@ -46,6 +46,44 @@ assert.equal(rendered.status,0,rendered.stderr);
       }
       if(url.pathname.includes('/events/stream')) return route.fulfill({contentType:'text/event-stream',body:''});
       let body={ok:true,settings:{},configs:[],links};
+      if(url.pathname==='/api/hermes/status') {
+        profileStatusReads += 1;
+        return route.fulfill({json:{ok:true,profiles:['status_profile'],message:'Hermes 已就绪'}});
+      }
+      if(url.pathname==='/api/profiles') {
+        profileReads += 1;
+        return route.fulfill({json:{ok:true,profiles:['live_profile_' + profileReads],fetched_at:'2026-09-13T10:00:00Z'}});
+      }
+      if(url.pathname==='/api/system/health') {
+        healthCalls += 1;
+        if(failHealth) return route.fulfill({status:503,json:{ok:false,error:'fixture health failure'}});
+        return route.fulfill({json:{
+          ok:true,checked_at:'2026-09-13T10:00:00Z',overall_status:'degraded',cached:false,
+          components:{
+            database:{status:'ready',message:'数据库连接正常',latency_ms:2,recovery_action:'无需处理',action_view:'settings'},
+            hermes_cli:{status:'ready',message:'Hermes CLI 已就绪',latency_ms:8,recovery_action:'无需处理',action_view:'members'},
+            kanban:{status:'degraded',message:'Kanban 响应较慢',latency_ms:120,recovery_action:'检查 Kanban',action_view:'board'},
+            mcp:{status:'ready',message:'MCP 会话管理器已就绪',latency_ms:1,recovery_action:'无需处理',action_view:'settings'},
+            event_stream:{status:'ready',message:'事件服务正常',latency_ms:1,recovery_action:'无需处理',action_view:'overview'},
+            terminal:{status:'ready',message:'2 个终端运行中',latency_ms:1,recovery_action:'无需处理',action_view:'members'},
+          },
+        }});
+      }
+      if(url.pathname==='/api/teams/tech/usage') return route.fulfill({json:{ok:true,usage:{total:{calls:3,in_tokens:10000,out_tokens:2345,total_tokens:12345},by_member:{tech_leader:{calls:3,in_tokens:10000,out_tokens:2345,total_tokens:12345}},by_model:[]}}});
+      if(url.pathname==='/api/teams/sales/usage') return route.fulfill({json:{ok:true,usage:{total:{calls:0,in_tokens:0,out_tokens:0,total_tokens:0},by_member:{},by_model:[]}}});
+      if(url.pathname==='/api/kanban/tasks/tech/details') {
+        detailReads += 1;
+        if(detailReads===1) return route.fulfill({json:{
+          ok:true,
+          task:{task:{id:'tech',status:'running',body:'实现技术任务',result:''},latest_summary:'正在分析需求'},
+          runs:[{id:'run-1',profile:'tech_leader',status:'running',summary:'已读取项目资料'}],
+          context:'先读取资料，再实现并测试。',
+          log:'步骤 1：读取资料\n步骤 2：实现功能',
+          link:links.find(item=>item.kanban_task_id==='tech'),
+          errors:{},
+        }});
+        return route.fulfill({status:500,json:{ok:false,error:'temporary details failure'}});
+      }
       if(url.pathname==='/api/messages') {
         messages.push(route.request().postDataJSON());
         await new Promise(r=>setTimeout(r,250));
@@ -70,6 +108,14 @@ assert.equal(rendered.status,0,rendered.stderr);
     });
     await page.goto('http://ux.local');
     await page.waitForFunction(()=>window.__HERMES_UI__ && window.__HERMES_APP__);
+    await page.waitForFunction(()=>document.querySelector('#overview-system-health-badge').textContent==='部分降级');
+    assert.equal(await page.locator('#overview-system-health-components > div').count(),6);
+    assert.match(await page.locator('#overview-system-health-components').innerText(),/Kanban 响应较慢/);
+    failHealth=true;
+    await page.locator('#overview-system-health-refresh').click();
+    await page.waitForFunction(()=>document.querySelector('#overview-system-health-notice').textContent.includes('数据可能已过期'));
+    assert.match(await page.locator('#overview-system-health-components').innerText(),/Kanban 响应较慢/);
+    assert.ok(healthCalls>=2,'system health supports manual refresh');
     await page.locator('[data-view="teams"]').click();
     await page.locator('[data-edit-team="tech"]').click();
     await page.waitForFunction(()=>document.querySelector('#create-team-form').dataset.editSlug==='tech');
@@ -99,6 +145,16 @@ assert.equal(rendered.status,0,rendered.stderr);
     await page.locator('#board-team-select').selectOption('tech');
     await page.waitForFunction(()=>document.querySelectorAll('#board-kanban-columns .kanban-ui-card').length===1);
     assert.match(await page.locator('#board-kanban-columns').innerText(),/tech task/);
+    await page.locator('#board-kanban-columns .kanban-ui-card').click();
+    await page.locator('#kanban-process-view').waitFor({state:'visible'});
+    await page.waitForFunction(()=>document.querySelector('#kanban-process-content').textContent.includes('步骤 2：实现功能'));
+    const processBeforeFailure=await page.locator('#kanban-process-content').innerText();
+    await page.waitForTimeout(3000);
+    assert.ok(detailReads>=2,'task process refreshes while running');
+    assert.equal(await page.locator('#kanban-process-content').innerText(),processBeforeFailure);
+    assert.match(await page.locator('#kanban-process-status').innerText(),/已保留上次记录/);
+    await page.keyboard.press('Escape');
+    await page.locator('#terminal-drawer').waitFor({state:'hidden'});
     await page.evaluate(()=>window.__HERMES_UI__.onAgentsUpdate(window.__BOOTSTRAP__.agents,[]));
     assert.equal(await page.locator('#board-team-select').inputValue(),'tech');
     assert.equal(await page.locator('#kanban-team-select').inputValue(),'tech');
@@ -124,11 +180,39 @@ assert.equal(rendered.status,0,rendered.stderr);
     await page.locator('#open-create-agent').click();
     await page.locator('#create-agent-team').waitFor({state:'visible'});
     assert.equal(await page.locator('#create-agent-team').inputValue(),'tech');
+    const firstProfileRead = profileReads;
+    assert.equal(
+      await page.locator('#hermes-profile-options option').first().getAttribute('value'),
+      'live_profile_' + firstProfileRead,
+    );
+    await page.locator('#refresh-hermes-profiles').click();
+    await page.waitForFunction(
+      (previous) => document.querySelector('#hermes-profile-options option')?.value !== 'live_profile_' + previous,
+      firstProfileRead,
+    );
+    const manualProfileRead = profileReads;
+    assert.match(await page.locator('#hermes-profile-status').innerText(), /已读取 1 个 Profile/);
+    await page.waitForTimeout(3200);
+    assert.equal(profileReads, manualProfileRead, 'open Agent dialog does not poll Hermes profiles');
+    assert.equal(
+      await page.locator('#hermes-profile-options option').first().getAttribute('value'),
+      'live_profile_' + manualProfileRead,
+    );
+    assert.ok(profileStatusReads >= 1);
     await page.locator('#create-agent-form [name="name"]').fill('New worker');
     await page.locator('#create-agent-form [name="profile_name"]').fill('new_worker');
     await page.locator('#create-agent-form button[type="submit"]').click();
     await page.waitForFunction(()=>document.querySelector('#create-agent-error').textContent==='fixture agent rejected');
     assert.equal(agentCreates[0].team,'tech');
+    await page.keyboard.press('Escape');
+    await page.locator('#create-agent-modal').waitFor({state:'hidden'});
+    await page.locator('#open-create-agent').click();
+    await page.locator('#create-agent-team').waitFor({state:'visible'});
+    assert.ok(profileReads > firstProfileRead, 'reopening Agent dialog refetches Hermes profiles');
+    assert.equal(
+      await page.locator('#hermes-profile-options option').first().getAttribute('value'),
+      'live_profile_' + profileReads,
+    );
     await page.keyboard.press('Escape');
     await page.locator('#create-agent-modal').waitFor({state:'hidden'});
     await page.evaluate(()=>{
@@ -139,6 +223,26 @@ assert.equal(rendered.status,0,rendered.stderr);
     await page.locator('#members-filter-bar [data-filter="tech"]').click();
     assert.equal(await page.locator('#members-grid [data-session-action]').count(),2);
     assert.equal(await page.locator('#members-grid [data-session-action][data-agent-id^="sales"]').count(),0);
+    const memberConfigButtons = page.locator('#members-grid [data-agent-config]');
+    await memberConfigButtons.nth(0).click();
+    const firstMenuPosition = await page.evaluate(() => {
+      const trigger = document.querySelectorAll('#members-grid [data-agent-config]')[0].getBoundingClientRect();
+      const menu = document.querySelector('.agent-context-menu:not([hidden])').getBoundingClientRect();
+      return {triggerRight: trigger.right, menuRight: menu.right, menuLeft: menu.left};
+    });
+    assert.ok(Math.abs(firstMenuPosition.triggerRight - firstMenuPosition.menuRight) < 2, 'member menu aligns to visible trigger');
+    await page.keyboard.press('Escape');
+    await memberConfigButtons.nth(1).click();
+    const secondMenuPosition = await page.locator('.agent-context-menu:not([hidden])').boundingBox();
+    assert.notEqual(Math.round(firstMenuPosition.menuLeft), Math.round(secondMenuPosition.x), 'member menu follows the clicked member');
+    await page.locator('[data-view="stats"]').click();
+    await page.waitForFunction(()=>document.querySelector('#stats-content').textContent.includes('12.3K'));
+    assert.match(await page.locator('#stats-content').innerText(),/技术|tech/i);
+    assert.match(await page.locator('#stats-content').innerText(),/3 次调用/);
+    const usagePanel=page.locator('#stats-content h3').filter({hasText:'团队 Token 用量'}).locator('..');
+    assert.equal(await usagePanel.locator('.rounded-xl.bg-surface-container-low').count(),2);
+    assert.match(await usagePanel.innerText(),/0\s+0 次调用/);
+    assert.doesNotMatch(await usagePanel.innerText(),/暂无用量数据/);
     await page.locator('[data-view="board"]').click();
     await page.setViewportSize({width:390,height:844});
     await page.locator('#kanban-task-form button[type="submit"]').scrollIntoViewIfNeeded();
@@ -155,6 +259,6 @@ assert.equal(rendered.status,0,rendered.stderr);
     const duplicateIds=await page.evaluate(()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);return ids.filter((id,i)=>ids.indexOf(id)!==i)});
     assert.deepEqual(duplicateIds,[]);
     assert.deepEqual(errors,[]);
-    console.log('PASS: edit/create reset, single submit, member controls, team filtering, realtime selection, unique IDs, send failure/retry, draft preservation, Agent team selection, mobile layout, no page errors');
+    console.log('PASS: edit/create reset, single submit, member controls, anchored member menu, team filtering, realtime selection, persistent task process, retained system health, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, initial and manual Hermes profile refresh, mobile layout, no page errors');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

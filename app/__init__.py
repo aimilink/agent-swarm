@@ -7,7 +7,7 @@ from .db import init_database
 from .mcp_server import start_session_manager
 from .models.store import store
 from .services.autostart import start_ready_agents_on_boot
-from .services import registry
+from .services import a2a, registry
 from .services.kanban_dispatch import dispatch_worker
 from .services.kanban_sync import sync_worker
 
@@ -39,6 +39,7 @@ def create_app() -> Flask:
 
     store.load_persisted_state()
     registry.bootstrap(store)
+    a2a.recover_interrupted_deliveries()
     register_api_auth(app)
     register_blueprints(app)
     start_ready_agents_on_boot()

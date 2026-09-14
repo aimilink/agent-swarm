@@ -203,3 +203,74 @@
     align-items: stretch;
   }
 }
+
+.kanban-process-view {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: #0f172a;
+  color: #dbeafe;
+}
+.kanban-process-view[hidden] {
+  display: none;
+}
+.kanban-process-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  color: #93c5fd;
+  font-size: 12px;
+}
+#kanban-process-status[data-kind="error"] {
+  color: #fbbf24;
+}
+#kanban-process-refresh {
+  flex: 0 0 auto;
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  border-radius: 7px;
+  padding: 4px 9px;
+  background: rgba(30, 64, 175, 0.18);
+  color: #bfdbfe;
+  cursor: pointer;
+}
+#kanban-process-refresh:hover {
+  border-color: #60a5fa;
+  color: #fff;
+}
+#kanban-process-refresh:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+#kanban-process-content {
+  min-height: 0;
+  margin: 0;
+  padding: 14px 16px 24px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #dbeafe;
+  background: #0f172a;
+  font: 12px/1.65 "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  scrollbar-width: thin;
+  scrollbar-color: #475569 #0f172a;
+}
+#kanban-process-content:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
+}
+#kanban-process-content::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+}
+#kanban-process-content::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #475569;
+}
+#kanban-process-content::-webkit-scrollbar-track {
+  background: #0f172a;
+}

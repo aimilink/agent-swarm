@@ -14,15 +14,28 @@ from mcp.server.fastmcp import FastMCP
 
 from .config import DEFAULT_MAX_TASK_ROUNDS
 from .models.store import store
-from .services.agent_status import agent_dispatch_block_reason, is_agent_dispatchable
+from .services.agent_status import (
+    agent_dispatch_block_reason,
+    is_agent_dispatchable,
+    recover_crashed_agent,
+)
 from .services.kanban import extract_task_id, kanban_service, kanban_service_for_board, task_status
 from .services.kanban_dispatch import dispatch_worker
 from .services.kanban_workspace import workspace_for_agent
 from .services.human_input import create_human_input_task
 from .services.settings import settings_service
+from .services import a2a, projects
 
 mcp = FastMCP("hermes-agents", streamable_http_path="/")
 logger = logging.getLogger("hermes.agent_state")
+
+
+def _refresh_dispatch_target(agent: dict | None) -> dict | None:
+    if not agent or (agent.get("runtime_status") or "stopped") != "crashed":
+        return agent
+    from .services.acp import pool as session_pool
+
+    return recover_crashed_agent(store, agent, session_pool.start)
 
 
 def _resolve_sender_agent_id(from_agent_id: str) -> str:
@@ -63,6 +76,7 @@ def list_workers(team: str = "") -> list[dict]:
 
     workers = []
     for agent in store.snapshot()["agents"]:
+        agent = _refresh_dispatch_target(agent) or agent
         if agent.get("role") != "worker":
             continue
         if team_id is not None and agent.get("team_id") != team_id:
@@ -186,6 +200,8 @@ def delegate_to_team(
         if parent_link:
             parent_task_id = parent_link["kanban_task_id"]
 
+    project = projects.project_for_task(store, parent_task_id, resolved_user_task_id)
+    projects.ensure_team_in_project(project, target_team["team_id"])
     title = (task_title or "").strip() or content[:60]
     body_parts = [
         f"local_user_task_id: {resolved_user_task_id or '-'}",
@@ -205,9 +221,9 @@ def delegate_to_team(
     board_service = kanban_service_for_board(target_team["board_name"])
     kanban_task = board_service.create_task(
         f"跨团队：{title}",
-        body="\n".join(body_parts),
+        body=projects.instructions(project) + "\n".join(body_parts),
         assignee=target_lead.get("profile_name") or "",
-        workspace=workspace_for_agent(target_lead),
+        workspace=projects.workspace(project, lambda: workspace_for_agent(target_lead)),
         idempotency_key=f"cross_team:{resolved_user_task_id or 'adhoc'}:{sender_agent_id}:{title[:40]}",
     )
     kanban_task_id = extract_task_id(kanban_task)
@@ -220,6 +236,7 @@ def delegate_to_team(
         assignee_profile=target_lead.get("profile_name") or "",
         parent_local_id=resolved_user_task_id or None,
         metadata={
+            **projects.metadata(project),
             "kind": "cross_team_delegation",
             "from_agent_id": sender_agent_id,
             "from_team": (store.find_team(sender.get("team_id") or '') or {}).get("slug"),
@@ -346,16 +363,18 @@ def create_kanban_worker_tasks(
     if settings_service.get_kanban_idempotent_protection_enabled():
         existing_dispatch = _existing_worker_dispatch(resolved_user_task_id, parent_task_id, target_round)
     if existing_dispatch:
-        unavailable = [
-            item
-            for item in existing_dispatch["assignments"]
-            if not is_agent_dispatchable(store.find_agent(item.get("to_agent_id") or ""))
-        ]
+        unavailable = []
+        for item in existing_dispatch["assignments"]:
+            target = _refresh_dispatch_target(
+                store.find_agent(item.get("to_agent_id") or "")
+            )
+            if not is_agent_dispatchable(target):
+                unavailable.append((item, target))
         if unavailable:
             details = ", ".join(
                 f"{item.get('to_agent_id') or item.get('to_name')}: "
-                f"{agent_dispatch_block_reason(store.find_agent(item.get('to_agent_id') or ''))}"
-                for item in unavailable
+                f"{agent_dispatch_block_reason(target)}"
+                for item, target in unavailable
             )
             raise ValueError(f"existing worker dispatch contains unavailable agents: {details}")
         return {
@@ -375,13 +394,15 @@ def create_kanban_worker_tasks(
             "assignments": existing_dispatch["assignments"],
             "note": "同一用户任务已存在 Kanban worker 子任务；已返回现有派发结果，避免重复创建。",
         }
+    project = projects.project_for_task(store, parent_task_id, resolved_user_task_id)
     for assignment in assignments:
         worker_id = (assignment.get("to_agent_id") or "").strip()
         if not worker_id:
             raise ValueError("assignment.to_agent_id is required")
-        worker = store.find_agent(worker_id)
+        worker = _refresh_dispatch_target(store.find_agent(worker_id))
         if worker is None:
             raise ValueError(f"target agent not found: {worker_id}")
+        projects.ensure_agent_in_project(store, project, worker)
         reason = agent_dispatch_block_reason(worker)
         if reason:
             raise ValueError(f"target agent is not dispatchable: {worker_id} ({reason})")
@@ -413,16 +434,16 @@ def create_kanban_worker_tasks(
         task_title = _assignment_title(assignments, assignment)
         kanban_task = board_service.create_task(
             task_title,
-            body=_format_worker_kanban_body(
+            body=projects.instructions(project) + _format_worker_kanban_body(
                 assignment=assignment,
                 delegation=delegation,
                 user_task_id=resolved_user_task_id,
                 leader_agent_id=sender_agent_id,
-                worker=worker,
+                worker={**worker, "workspace_path": project["workspace_path"]} if project else worker,
             ),
             assignee=worker["profile_name"],
             parent=parent_task_id or None,
-            workspace=workspace_for_agent(worker),
+            workspace=projects.workspace(project, lambda: workspace_for_agent(worker)),
             priority=_assignment_priority(assignments, assignment),
             idempotency_key=_worker_idempotency_key(
                 user_task_id=resolved_user_task_id,
@@ -441,6 +462,7 @@ def create_kanban_worker_tasks(
             assignee_profile=worker["profile_name"],
             parent_local_id=resolved_user_task_id or delegation["delegation_id"],
             metadata={
+                **projects.metadata(project),
                 "delegation_id": delegation["delegation_id"],
                 "task_title": task_title,
                 "parent_task_id": parent_task_id,
@@ -740,11 +762,84 @@ def _format_worker_kanban_body(
     )
 
 
+@mcp.tool()
+def start_a2a_conversation(
+    to_agent_id: str,
+    content: str,
+    from_agent_id: str,
+    title: str = "",
+) -> dict:
+    """向另一个已注册 Agent 发起持久 A2A 对话，并发送首条消息。
+
+    接收 Agent 在线时立即处理；离线时消息保留为 queued，待其启动后自动投递。
+    本工具只用于直接讨论，不创建 Kanban 任务。
+    """
+    sender_id = _resolve_sender_agent_id(from_agent_id)
+    conversation = a2a.create_conversation(sender_id, to_agent_id, title=title)
+    return {
+        "ok": True,
+        **a2a.send_message(
+            conversation["conversation_id"],
+            sender_id,
+            content,
+        ),
+    }
+
+
+@mcp.tool()
+def send_a2a_message(
+    conversation_id: str,
+    content: str,
+    from_agent_id: str,
+) -> dict:
+    """在已有 A2A 会话中发送下一条消息；发送者必须是会话参与者。"""
+    sender_id = _resolve_sender_agent_id(from_agent_id)
+    return {
+        "ok": True,
+        **a2a.send_message(conversation_id, sender_id, content),
+    }
+
+
+@mcp.tool()
+def get_a2a_conversation(
+    conversation_id: str,
+    from_agent_id: str,
+) -> dict:
+    """读取当前 Agent 参与的 A2A 会话和完整消息历史。"""
+    sender_id = _resolve_sender_agent_id(from_agent_id)
+    return {
+        "ok": True,
+        "conversation": a2a.get_conversation(
+            conversation_id,
+            viewer_agent_id=sender_id,
+        ),
+    }
+
+
+@mcp.tool()
+def get_project(project_id: str) -> dict:
+    """读取项目目标、统一工作目录、关联任务和已登记产物。"""
+    return {"ok": True, **projects.detail(store, project_id)}
+
+
+@mcp.tool()
+def register_project_artifact(project_id: str, path: str, title: str, task_id: str,
+                              agent_id: str = "", summary: str = "", validation: str = "") -> dict:
+    """登记项目目录内已存在的交付文件；path 为相对路径，task_id 为当前 Kanban 任务 ID。
+
+    summary 说明变更，validation 说明验证方法及结果。登记不是验收通过，同路径再次登记更新记录。
+    """
+    return {"ok": True, "artifact": projects.register_artifact(store, project_id, path, title,
+                                                               task_id, agent_id, summary, validation)}
+
+
 mcp_asgi_app = mcp.streamable_http_app()
 
 # a2wsgi does not dispatch ASGI lifespan events, so FastMCP's session manager
 # would never start. Run it in a dedicated background thread with its own loop.
 _started = threading.Event()
+_session_manager_lock = threading.Lock()
+_session_manager_thread: threading.Thread | None = None
 
 
 def _run_session_manager() -> None:
@@ -753,11 +848,27 @@ def _run_session_manager() -> None:
             _started.set()
             await asyncio.Event().wait()
 
-    asyncio.run(runner())
+    try:
+        asyncio.run(runner())
+    finally:
+        _started.clear()
+
+
+def session_manager_started() -> bool:
+    thread = _session_manager_thread
+    return _started.is_set() and thread is not None and thread.is_alive()
 
 
 def start_session_manager() -> None:
-    if _started.is_set():
-        return
-    threading.Thread(target=_run_session_manager, daemon=True).start()
+    global _session_manager_thread
+    with _session_manager_lock:
+        if _session_manager_thread is not None and _session_manager_thread.is_alive():
+            return
+        _started.clear()
+        _session_manager_thread = threading.Thread(
+            target=_run_session_manager,
+            name="hermes-mcp-session-manager",
+            daemon=True,
+        )
+        _session_manager_thread.start()
     _started.wait(timeout=5)

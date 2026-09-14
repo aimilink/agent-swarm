@@ -93,6 +93,12 @@ class ACPPool:
             None,
             {"text": f"Hermes session 已启动（profile={profile_name}）"},
         )
+        try:
+            from ..a2a import dispatch_queued_for_agent
+
+            dispatch_queued_for_agent(agent_id)
+        except Exception as exc:  # noqa: BLE001
+            _log_state("a2a_queue_restore_failed", agent_id, error_type=type(exc).__name__)
         return True
 
     def stop(self, agent_id: str) -> None:
@@ -132,6 +138,8 @@ class ACPPool:
         user_task_id: str | None = None,
         summarize_delegation_id: str | None = None,
         summarize_user_task_id: str | None = None,
+        a2a_message_id: str | None = None,
+        a2a_conversation_id: str | None = None,
     ) -> None:
         with self._lock:
             session = self.clients.get(agent_id)
@@ -144,6 +152,8 @@ class ACPPool:
             assignment_id=assignment_id,
             user_task_id=user_task_id,
             summarize_user_task_id=summarize_user_task_id,
+            a2a_message_id=a2a_message_id,
+            a2a_conversation_id=a2a_conversation_id,
         )
         session.enqueue_message(
             content,
@@ -153,6 +163,8 @@ class ACPPool:
             user_task_id=user_task_id,
             summarize_delegation_id=summarize_delegation_id,
             summarize_user_task_id=summarize_user_task_id,
+            a2a_message_id=a2a_message_id,
+            a2a_conversation_id=a2a_conversation_id,
         )
 
     def current_user_task_id(self, agent_id: str) -> str | None:
@@ -218,7 +230,14 @@ class ACPPool:
         summarize_delegation_id: str | None,
         summarize_user_task_id: str | None,
         failed: bool = False,
+        a2a_message_id: str | None = None,
+        a2a_conversation_id: str | None = None,
     ) -> None:
+        if a2a_message_id:
+            from ..a2a import complete_delivery
+
+            complete_delivery(a2a_message_id, agent_id, reply, failed=failed)
+            return
         if summarize_user_task_id:
             _log_state("summary_final", agent_id, user_task_id=summarize_user_task_id, reply_len=len(reply or ""))
             try:

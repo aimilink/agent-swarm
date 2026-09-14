@@ -220,3 +220,65 @@ class AgentChatRecord(Base):
     messages_json: Mapped[str] = mapped_column(Text, default="[]")
     busy: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[str] = mapped_column(String(40))
+
+
+class A2AConversationRecord(Base):
+    __tablename__ = "a2a_conversations"
+
+    conversation_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    participant_a_id: Mapped[str] = mapped_column(String(120), index=True)
+    participant_b_id: Mapped[str] = mapped_column(String(120), index=True)
+    title: Mapped[str] = mapped_column(String(200), default="A2A 对话")
+    status: Mapped[str] = mapped_column(String(40), default="active", index=True)
+    created_at: Mapped[str] = mapped_column(String(40), index=True)
+    updated_at: Mapped[str] = mapped_column(String(40), index=True)
+
+
+class A2AMessageRecord(Base):
+    __tablename__ = "a2a_messages"
+
+    message_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(String(80), index=True)
+    sender_agent_id: Mapped[str] = mapped_column(String(120), index=True)
+    recipient_agent_id: Mapped[str] = mapped_column(String(120), index=True)
+    content: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(40), default="queued", index=True)
+    reply_to_message_id: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    created_at: Mapped[str] = mapped_column(String(40), index=True)
+    delivered_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    completed_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    error: Mapped[str] = mapped_column(Text, default="")
+
+
+class ProjectRecord(Base):
+    __tablename__ = "projects"
+
+    project_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    workspace_path: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(String(40))
+
+
+class ProjectTeamRecord(Base):
+    __tablename__ = "project_teams"
+
+    project_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    team_id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[str] = mapped_column(String(40))
+
+
+class ProjectArtifactRecord(Base):
+    __tablename__ = "project_artifacts"
+    __table_args__ = (UniqueConstraint("project_id", "path"),)
+
+    artifact_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(80), index=True)
+    path: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(String(200))
+    task_id: Mapped[str] = mapped_column(String(120))
+    agent_id: Mapped[str] = mapped_column(String(120), default="")
+    summary: Mapped[str] = mapped_column(Text, default="")
+    validation: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[str] = mapped_column(String(40))

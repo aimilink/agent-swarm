@@ -4,7 +4,7 @@
 
 ## 1. 项目概述
 
-Hermes Agents Team 是一个本地 Web 控制台，用于创建、管理、观察和驱动多个 Hermes Profile Agent。
+AgentWeave 是一个本地 Web 协作工作台，用于创建、管理、观察和驱动多个 Hermes Profile Agent。
 
 当前实现具备：
 
@@ -103,7 +103,8 @@ Hermes
   └─ kanban CLI / dispatcher / gateway
 ```
 
-启动入口是 `run.py`，默认监听 `127.0.0.1:5050`。
+服务管理入口是 `agentweave`，它在普通进程模式下通过 `start.sh` 启动
+`run.py`；`run.py` 默认监听 `127.0.0.1:5050`。
 
 ---
 

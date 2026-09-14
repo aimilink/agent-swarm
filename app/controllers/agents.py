@@ -9,6 +9,7 @@ from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
+from ..config import now_iso
 from ..models.store import store
 from ..services import registry
 from ..services import agents as agents_service
@@ -30,7 +31,15 @@ def dashboard():
 
 @bp.get("/profiles")
 def list_profiles():
-    return jsonify({"profiles": list_hermes_profiles()})
+    response = jsonify(
+        {
+            "ok": True,
+            "profiles": list_hermes_profiles(),
+            "fetched_at": now_iso(),
+        }
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @bp.get("/hermes/status")

@@ -47,3 +47,26 @@ def test_hermes_status_not_found(monkeypatch):
     data = response.get_json()
     assert data["ok"] is False
     assert data["reason"] == "not_found"
+
+
+
+def test_profiles_endpoint_is_fresh_and_not_cached(monkeypatch):
+    client = _client(monkeypatch)
+    reads = []
+
+    def live_profiles():
+        reads.append(True)
+        return ["new_profile"]
+
+    monkeypatch.setattr(agents_controller, "list_hermes_profiles", live_profiles)
+
+    first = client.get("/api/profiles")
+    second = client.get("/api/profiles")
+
+    assert first.status_code == 200
+    assert first.get_json()["ok"] is True
+    assert first.get_json()["profiles"] == ["new_profile"]
+    assert first.get_json()["fetched_at"]
+    assert first.headers["Cache-Control"] == "no-store"
+    assert second.get_json()["profiles"] == ["new_profile"]
+    assert len(reads) == 2

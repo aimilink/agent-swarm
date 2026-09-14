@@ -96,3 +96,5 @@ main > .view {
   background: #fff; color: #172033;
 }
 .teams-manage__create input:read-only { background: #f1f5f9; color: #64748b; }
+/* Keep the global team-task composer out of project/chat/settings views. */
+.view-dock:not(.is-visible) { display: none !important; }

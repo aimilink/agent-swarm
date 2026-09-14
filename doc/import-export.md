@@ -55,10 +55,10 @@ created_at/updated_at/deleted_at/db_*  (DB 自动生成)
 
 ## 3. 打包格式
 
-单一 `.zip`，当前文件名形如 `hermes-agent-team-<timestamp>.zip`，结构：
+单一 `.zip`，当前文件名形如 `agentweave-<timestamp>.zip`，结构：
 
 ```
-hermes-agent-team-<timestamp>.zip
+agentweave-<timestamp>.zip
 ├── manifest.json            # schema_version、导出时间、源主机信息、agent 清单、checksum
 ├── agents/
 │   └── <profile_name>/

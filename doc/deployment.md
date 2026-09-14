@@ -10,7 +10,7 @@
 ```text
 浏览器
   -> HTTPS / 反向代理（可选）
-  -> Hermes Agents Team :5050
+  -> AgentWeave :5050
        -> ~/.hermes/profiles/*       # SOUL、Skill、记忆、模型、MCP
        -> data/hermes_agent_team.db  # 团队、成员、任务、消息、编排状态
        -> workspace/*                # 团队任务工作区
@@ -63,15 +63,15 @@ Hermes 的模型或凭据配置，再继续安装控制台。
 - [Hermes Quickstart](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart/)
 - [Hermes Agent GitHub](https://github.com/NousResearch/hermes-agent)
 
-## 4. 安装 Hermes Agents Team
+## 4. 安装 AgentWeave
 
 将 `<REPOSITORY_URL>` 替换为实际仓库地址：
 
 ```bash
 mkdir -p ~/apps
 cd ~/apps
-git clone <REPOSITORY_URL> hermes-agent-team
-cd hermes-agent-team
+git clone <REPOSITORY_URL> agentweave
+cd agentweave
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -121,8 +121,8 @@ KANBAN_AUTO_DISPATCH=0
 
 ```dotenv
 HERMES_CONTROL_MODE=isolated
-HERMES_HOME=/home/your-user/apps/hermes-agent-team/hermes-home
-AGENT_TEAM_WORKSPACE_ROOT=/home/your-user/apps/hermes-agent-team/workspace
+HERMES_HOME=/home/your-user/apps/agentweave/hermes-home
+AGENT_TEAM_WORKSPACE_ROOT=/home/your-user/apps/agentweave/workspace
 ```
 
 `HERMES_HOME` 必须使用绝对路径。切换模式不会自动迁移 Profile 或数据库。
@@ -167,21 +167,26 @@ kanban:
   dispatch_in_gateway: false
 ```
 
-## 6. 前台启动与首次验证
+## 6. 服务管理与首次验证
+
+安装项目自带的管理命令：
 
 ```bash
-set -a
-source .env
-set +a
-./start.sh
+chmod +x agentweave start.sh
+sudo ln -sf "$(pwd)/agentweave" /usr/local/bin/agentweave
 ```
 
-也可以在虚拟环境中直接运行：
+启动并检查状态：
 
 ```bash
-source .venv/bin/activate
-python run.py
+agentweave start
+agentweave status
 ```
+
+命令自动读取项目根目录的 `.env`，并支持 `start`、`stop`、`status`
+和 `restart`。普通进程的 PID 与日志保存在 `.run/`；未创建全局链接时可执行
+`./agentweave <command>`。命令细节、退出码和故障处理见
+[服务管理](SERVICE-MANAGEMENT.md)。
 
 浏览器打开 `http://127.0.0.1:5050`。然后：
 
@@ -204,25 +209,25 @@ curl -fsS -H "Authorization: Bearer $AGENT_TEAM_API_TOKEN" http://127.0.0.1:5050
 ## 7. systemd 用户服务
 
 用户服务能确保 `HOME`、Hermes Profile 所有者和 CLI 用户保持一致。假设项目位于
-`~/apps/hermes-agent-team`：
+`~/apps/agentweave`：
 
 ```bash
 mkdir -p ~/.config/systemd/user
 ```
 
-创建 `~/.config/systemd/user/hermes-agent-team.service`：
+创建 `~/.config/systemd/user/agentweave.service`：
 
 ```ini
 [Unit]
-Description=Hermes Agents Team
+Description=AgentWeave
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/apps/hermes-agent-team
-EnvironmentFile=%h/apps/hermes-agent-team/.env
-ExecStart=%h/apps/hermes-agent-team/start.sh
+WorkingDirectory=%h/apps/agentweave
+EnvironmentFile=%h/apps/agentweave/.env
+ExecStart=%h/apps/agentweave/start.sh
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
@@ -234,12 +239,15 @@ WantedBy=default.target
 启用：
 
 ```bash
-chmod +x ~/apps/hermes-agent-team/start.sh
+chmod +x ~/apps/agentweave/start.sh
 systemctl --user daemon-reload
-systemctl --user enable --now hermes-agent-team
-systemctl --user status hermes-agent-team
-journalctl --user -u hermes-agent-team -f
+systemctl --user enable --now agentweave
+systemctl --user status agentweave
+journalctl --user -u agentweave -f
 ```
+
+安装用户服务后，`agentweave start|stop|status|restart` 会自动转交给
+`systemctl --user`，无需维护另一份 PID。
 
 如需退出登录后仍保持运行，可由管理员执行：
 
@@ -286,24 +294,24 @@ location / {
 
 ```bash
 stamp=$(date +%Y%m%d-%H%M%S)
-mkdir -p "$HOME/backups/hermes-agent-team-$stamp"
-cp data/hermes_agent_team.db "$HOME/backups/hermes-agent-team-$stamp/"
-cp .env "$HOME/backups/hermes-agent-team-$stamp/env"
-tar -czf "$HOME/backups/hermes-agent-team-$stamp/profiles.tar.gz" -C "$HOME/.hermes" profiles
+mkdir -p "$HOME/backups/agentweave-$stamp"
+cp data/hermes_agent_team.db "$HOME/backups/agentweave-$stamp/"
+cp .env "$HOME/backups/agentweave-$stamp/env"
+tar -czf "$HOME/backups/agentweave-$stamp/profiles.tar.gz" -C "$HOME/.hermes" profiles
 ```
 
 ### 9.2 升级
 
 ```bash
-cd ~/apps/hermes-agent-team
-systemctl --user stop hermes-agent-team
+cd ~/apps/agentweave
+systemctl --user stop agentweave
 git status --short
 git pull --ff-only
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 python -m pytest -q
-systemctl --user start hermes-agent-team
-systemctl --user status hermes-agent-team
+systemctl --user start agentweave
+systemctl --user status agentweave
 ```
 
 如 `git status` 显示本地改动，先提交或备份，不要强制覆盖。
@@ -328,3 +336,26 @@ systemctl --user status hermes-agent-team
 停止服务后可删除项目目录和 systemd 用户服务。`shared` 模式下，
 `~/.hermes/profiles` 是 Hermes 的持久数据，不属于控制台临时文件，不应随控制台
 一起删除。移除团队成员同样只解除编排关系，不删除 Profile。
+
+## 系统健康检查
+
+服务启动后，从工作台顶部查看数据库、Hermes CLI、Kanban、MCP、实时事件和
+Agent 终端状态，也可以调用：
+
+```bash
+curl http://127.0.0.1:5050/api/system/health
+curl "http://127.0.0.1:5050/api/system/health?refresh=1"
+```
+
+配置 `AGENT_TEAM_API_TOKEN` 时需按其他 API 的方式携带 Bearer Token。普通请求使用
+30 秒服务端缓存；`refresh=1` 会执行新的只读检查。整体状态含义：
+
+- `ready`：全部组件可用。
+- `degraded`：控制台仍可访问，但一个或多个执行组件需要处理。
+- `unavailable`：数据库不可用，核心数据读写不能保证。
+
+页面刷新失败时保留上次成功结果并显示“数据可能已过期”。组件卡片提供固定的恢复建议，
+不会返回 API Key、Header、完整命令或本机隐私路径。Hermes/Kanban 不可用时，先确认
+`hermes profile list` 和 `hermes kanban boards list --json` 能在服务用户环境中运行。
+MCP 显示未就绪时，重启服务并检查启动日志。终端状态不一致时，从“Agent 与团队”页面重启
+对应 Agent。

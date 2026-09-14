@@ -1,10 +1,10 @@
 # 当前版本功能地图
 
-本文描述当前代码已经具备的能力、数据归属和兼容边界。规划中的能力不列为已完成。
+本文描述当前代码已经具备的能力、数据归属和兼容边界。规划中的能力不列为已完成；后续目标、优先级和统一验收口径见 [项目重规划与迭代路线图](PROJECT-ROADMAP.md)。
 
 ## 1. 产品定位
 
-Hermes Agents Team 是 Hermes Agent 之上的本地编排控制台：
+AgentWeave 是 Hermes Agent 之上的本地编排与项目交付工作台：
 
 - Hermes Profile 负责持久 Agent 身份和能力。
 - Web 控制台负责团队、任务、消息、运行时与可视化。
@@ -38,8 +38,10 @@ Hermes CLI 单 Agent ─┐
 
 | 功能域 | 当前能力 | 主要入口 |
 |---|---|---|
-| Profile 接管 | 列出已有 Profile；原地接入；新名称按 active Profile 克隆创建 | 新员工弹窗、`GET /api/profiles` |
-| Agent 生命周期 | 创建、初始化、批量启动/停止/重启、运行状态、终端输入与尺寸同步 | Agent 列表、终端抽屉、`/api/agents/*` |
+| Profile 接管 | 打开新员工弹窗时读取最新 Profile，支持按需手动刷新；原地接入；新名称按 active Profile 克隆创建 | 新员工弹窗、`GET /api/profiles` |
+| Agent 生命周期 | 创建、初始化、批量启动/停止/重启、crashed 派发前恢复、运行状态、终端输入与尺寸同步 | Agent 列表、终端抽屉、`/api/agents/*` |
+| 系统健康 | 数据库、Hermes CLI、Kanban、MCP、SSE 与终端统一检查；缓存、手动重检、降级提示和恢复入口 | 工作台、`GET /api/system/health` |
+| 服务管理 | Web 服务 start/stop/status/restart、PID 与日志管理、并发锁、systemd 用户服务自动接管 | `agentweave` 命令、[服务管理](SERVICE-MANAGEMENT.md) |
 | SOUL 人设 | 查看、编辑、重新生成；保存在 Profile 内 | SOUL 抽屉 |
 | Skill | 列表、详情、Git 安装、重装、卸载；团队和单 Agent 共用 | Skill 抽屉 |
 | MCP | HTTP、Streamable HTTP、stdio；增删改查、连通测试、敏感字段脱敏 | MCP 管理 |
@@ -51,7 +53,9 @@ Hermes CLI 单 Agent ─┐
 | 跨团队协作 | Leader 向另一团队 Leader 委派并查询回执 | MCP `delegate_to_team`、`list_team_delegations` |
 | Kanban | 任务列表、详情、运行记录、日志、派发、解阻、回答人工问题、删除与归档 | 看板页、`/api/kanban/*` |
 | 人工介入 | Agent 创建需要用户回答的任务，用户从页面响应 | MCP `request_human_input` |
-| 单 Agent 聊天 | 新建、历史查看、会话上下文续聊、数据库持久化 | 侧栏、成员卡片、`/api/agents/<agent_id>/chats` |
+| 项目与任务工作空间 | 统一目录、任务与子任务继承、任务产物归集、实时在线预览、下载与产物登记 | 项目工作区、`/api/projects` |
+| Agent 对话 | 新建、历史查看、会话上下文续聊、数据库持久化 | 侧栏、成员卡片、`/api/agents/<agent_id>/chats` |
+| A2A 对话 | 双 Agent 持久会话、在线投递、离线排队、回复关联、失败重试；支持跨团队直接讨论 | 侧栏、`/api/a2a/*`、MCP A2A 工具 |
 | 消息与事件 | 用户消息、Agent 输出、SSE 实时刷新、团队维度持久化 | 对话区、`/api/events/stream` |
 | 用量统计 | 团队级 Token 用量聚合，支持 1–30 天窗口 | `GET /api/teams/<slug>/usage` |
 | 导入导出 | Profile 白名单文件、Skill、MCP 元数据与可选工作区；校验 checksum | 团队设置 |
@@ -98,7 +102,9 @@ Hermes CLI 单 Agent ─┐
 - `teams`：团队、slug、独立 board、设置。
 - `agents`：Profile 与运行时映射、`team_id`。
 - `messages`、`user_tasks`：团队消息和用户任务。
-- `agent_chats`：单 Agent Web 会话、消息 JSON 与回复状态；详见 [单 Agent 聊天](AGENT-CHAT.md)。
+- `projects`、`project_artifacts`：项目目录和产物登记；任务元数据保存项目关联。
+- `agent_chats`：单 Agent Web 会话、消息 JSON 与回复状态；详见 [Agent 对话](AGENT-CHAT.md)。
+- `a2a_conversations`、`a2a_messages`：Agent 双方、消息投递状态和回复关联；详见 [A2A 对话](A2A.md)。
 - `delegations`、`assignments`：团队内拆解批次与 Worker 分工。
 - 跨团队委派来源、目标与结果关联保存于 `kanban_task_links.metadata`。
 - `kanban_task_links`：本地实体与 Hermes Kanban 任务映射。
@@ -188,7 +194,9 @@ RuntimeStore、终端订阅、进程句柄和高频终端事件只在进程内�
 
 ## 10. 相关文档
 
+- [项目重规划与迭代路线图](PROJECT-ROADMAP.md)
 - [使用指南](USER-GUIDE.md)
+- [A2A 对话与接口](A2A.md)
 - [UX 检查与浏览器回归](UX-REVIEW.md)
 - [部署与安装教程](deployment.md)
 - [架构说明](ARCHITECTURE.md)
