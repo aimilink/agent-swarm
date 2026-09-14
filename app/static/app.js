@@ -171,7 +171,6 @@ let confirmModal = null;
 let resizeTimer = 0;
 let hermesStatusPromise = null;
 let hermesProfilesPromise = null;
-let hermesProfilesPollTimer = 0;
 const overlayAnimationMs = 220;
 const overlayCloseTimers = new WeakMap();
 const overlayReturnFocus = new WeakMap();
@@ -4148,19 +4147,6 @@ async function refreshHermesProfiles({ silent = false } = {}) {
   return request;
 }
 
-function startHermesProfilePolling() {
-  window.clearInterval(hermesProfilesPollTimer);
-  hermesProfilesPollTimer = window.setInterval(() => {
-    if (modal && !modal.hidden) void refreshHermesProfiles({ silent: true }).catch(() => {});
-  }, 3000);
-}
-
-function stopHermesProfilePolling() {
-  window.clearInterval(hermesProfilesPollTimer);
-  hermesProfilesPollTimer = 0;
-}
-
-
 async function ensureHermesReadyForAgentCreation(button) {
   if (button) button.disabled = true;
   try {
@@ -4205,12 +4191,10 @@ function openModal(returnTarget = null) {
     teamSelect.value = selectedKanbanTeam || "";
   }
   openAnimatedLayer(modal, createAgentForm?.querySelector('input[name="name"]'), returnTarget);
-  startHermesProfilePolling();
 }
 
 function closeModal() {
   if (!modal) return;
-  stopHermesProfilePolling();
   closeAnimatedLayer(modal, () => createAgentForm?.reset());
 }
 

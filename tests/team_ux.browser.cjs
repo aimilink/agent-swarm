@@ -193,10 +193,10 @@ assert.equal(rendered.status,0,rendered.stderr);
     const manualProfileRead = profileReads;
     assert.match(await page.locator('#hermes-profile-status').innerText(), /已读取 1 个 Profile/);
     await page.waitForTimeout(3200);
-    assert.ok(profileReads > manualProfileRead, 'open Agent dialog polls live Hermes profiles');
+    assert.equal(profileReads, manualProfileRead, 'open Agent dialog does not poll Hermes profiles');
     assert.equal(
       await page.locator('#hermes-profile-options option').first().getAttribute('value'),
-      'live_profile_' + profileReads,
+      'live_profile_' + manualProfileRead,
     );
     assert.ok(profileStatusReads >= 1);
     await page.locator('#create-agent-form [name="name"]').fill('New worker');
@@ -259,6 +259,6 @@ assert.equal(rendered.status,0,rendered.stderr);
     const duplicateIds=await page.evaluate(()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);return ids.filter((id,i)=>ids.indexOf(id)!==i)});
     assert.deepEqual(duplicateIds,[]);
     assert.deepEqual(errors,[]);
-    console.log('PASS: edit/create reset, single submit, member controls, anchored member menu, team filtering, realtime selection, persistent task process, retained system health, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, live and polling Hermes profiles, mobile layout, no page errors');
+    console.log('PASS: edit/create reset, single submit, member controls, anchored member menu, team filtering, realtime selection, persistent task process, retained system health, nested team usage response, unique IDs, send failure/retry, draft preservation, Agent team selection, initial and manual Hermes profile refresh, mobile layout, no page errors');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
