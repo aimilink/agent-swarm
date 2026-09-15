@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 
 from .kanban import extract_task_id, kanban_service, task_status
 from .kanban_dispatch import dispatch_worker
 from .kanban_workspace import workspace_for_agent
 from . import projects
+from .settings import settings_service
+
+logger = logging.getLogger("hermes.human_input")
 
 
 def create_human_input_task(
@@ -21,6 +25,12 @@ def create_human_input_task(
     question = (question or "").strip()
     if not question:
         raise ValueError("question is required")
+    if not settings_service.get_kanban_block_human_input_enabled():
+        logger.info("[human-input] blocked by settings")
+        return {
+            "blocked": True,
+            "reason": "人工输入通道已禁用（block_human_input_enabled=false），请基于现有信息自行决策并继续",
+        }
     requester = runtime_store.find_agent((from_agent_id or "").strip())
     if requester is None:
         raise ValueError("from_agent_id not found")

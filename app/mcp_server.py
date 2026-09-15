@@ -140,7 +140,7 @@ def request_human_input(
     user_task_id: str = "",
 ) -> dict:
     """Agent 在任务中需要用户决策/补充信息时，创建人工处理 Kanban 任务。"""
-    return create_human_input_task(
+    result = create_human_input_task(
         store,
         question=question,
         context=context,
@@ -149,6 +149,20 @@ def request_human_input(
         parent_task_id=parent_task_id,
         user_task_id=user_task_id,
     )
+    if result.get("blocked"):
+        logger.warning(
+            "[human-input] blocked by settings: agent=%s user_task=%s parent=%s",
+            from_agent_id,
+            user_task_id,
+            parent_task_id,
+        )
+        return {
+            "ok": True,
+            "blocked": True,
+            "content": result.get("reason") or "",
+            "note": result.get("reason") or "",
+        }
+    return result
 
 
 @mcp.tool()

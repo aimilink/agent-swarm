@@ -11,6 +11,7 @@ from ..models.store import RuntimeStore, store as default_store
 from .acp.helpers import _clean_agent_reply
 from .kanban import KanbanError, KanbanService, extract_task_id, kanban_service, task_result, task_status
 from .kanban_workspace import workspace_for_agent
+from .settings import settings_service
 from . import projects
 
 
@@ -512,6 +513,11 @@ class KanbanSyncWorker:
                 continue
             if cross_links and any((l.get("kanban_status") or "").lower() not in TERMINAL_STATUSES for l in cross_links):
                 continue
+            # multi_review_enabled=false：跳过 leader 复审，直接定稿
+            # （摘要拼接该轮 worker 结果，落 latest_summary + auto_finalized 事件）。
+            if not settings_service.get_kanban_multi_review_enabled():
+                self._auto_finalize_user_task(user_task, assignments)
+                continue
             leader = self.store.find_agent(user_task["leader_agent_id"]) or {}
             from .messages import _kanban_service_for_leader
 
@@ -571,6 +577,45 @@ class KanbanSyncWorker:
 
     def _create_ready_summary_tasks(self) -> None:
         self._create_ready_review_tasks()
+
+    def _auto_finalize_user_task(self, user_task: dict, assignments: list[dict]) -> None:
+        """multi_review_enabled=false：不建 review/summary 任务，直接把 user_task 推进到 completed。
+
+        摘要用该轮 worker 结果拼接，随 auto_finalized 事件落 latest_summary，
+        并同步到 parent Kanban link 的 last_summary 供 UI 展示。
+        """
+        user_task_id = user_task["user_task_id"]
+        results = [
+            f"- {item.get('worker_agent_id') or item.get('worker_name') or 'worker'}: {item.get('result') or '(无结果)'}"
+            for item in assignments
+            if item.get("status") in {"completed", "failed"}
+        ]
+        latest_summary = (
+            f"已因关闭 multi_review 自动定稿，本轮共 {len(assignments)} 个 worker 结果：\n" + "\n".join(results)
+            if results
+            else "已因关闭 multi_review 自动定稿（本轮无 worker 结果）。"
+        )
+        parent_link = self.store.find_kanban_task_link(
+            local_type="user_task",
+            local_id=user_task_id,
+            kanban_role="parent",
+        )
+        if parent_link:
+            self.store.update_kanban_task_link(parent_link["kanban_task_id"], last_summary=latest_summary)
+        self.store.mark_user_task_completed(user_task_id)
+        self.store.push_event(
+            "user_task.auto_finalized",
+            user_task.get("leader_agent_id"),
+            user_task_id,
+            {
+                "text": "已因关闭 multi_review_enabled 自动定稿，跳过 leader 复审",
+                "latest_summary": latest_summary,
+            },
+        )
+        logger.info(
+            "[kanban-sync] multi_review disabled, auto-finalized user_task=%s",
+            user_task_id,
+        )
 
     def _sync_agent_kanban_state(self) -> None:
         snapshot = self.store.snapshot()
