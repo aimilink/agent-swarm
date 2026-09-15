@@ -30,10 +30,12 @@ sudo ln -sf "$(pwd)/agentswarm" /usr/local/bin/agentswarm
 |---|---|
 | `start` | 加载 `.env`，后台启动服务并写入 PID；服务已经运行时直接返回成功。 |
 | `stop` | 发送 TERM 并等待最多 15 秒；超时后强制结束；服务未运行时直接返回成功。 |
-| `status` | 显示运行状态、PID、访问地址和日志路径。 |
+| `status` | 显示运行状态、PID、监听地址、可访问 URL 和日志路径。 |
 | `restart` | 在同一把管理锁内依次停止和启动，避免并发命令产生重复进程。 |
 
 `status` 在运行时返回 0，停止时返回 3。参数错误返回 2，启动失败返回 1。
+当 `HOST=0.0.0.0` 时，状态同时显示 `Listen`、回环 `Local URL`，以及探测到的
+每个局域网 `Network URL`；`HOST=::` 时使用带方括号的 IPv6 本机地址。
 
 ## 3. 普通进程模式
 

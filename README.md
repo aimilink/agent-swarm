@@ -159,7 +159,8 @@ agentswarm stop
 未创建全局链接时使用 `./agentswarm <command>`。命令自动读取项目根目录的
 `.env`；普通进程的 PID 和日志保存在 `.run/`。检测到
 `agentswarm.service` 用户服务时，命令会自动转交给 systemd。升级前安装的
-`agentweave` 命令仍可使用，但会提示并转发到 `agentswarm`。
+`agentweave` 命令仍可使用，但会提示并转发到 `agentswarm`。当
+`HOST=0.0.0.0` 时，`status` 会列出本机和局域网访问地址。
 
 启动后访问 [http://127.0.0.1:5050](http://127.0.0.1:5050)。生产环境、
 systemd、Nginx、升级、备份与故障排查见[部署与安装教程](doc/deployment.md)。
