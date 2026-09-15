@@ -2,9 +2,9 @@
 
 ## 1. 接入前确认
 
-按 [部署教程](deployment.md) 安装控制台，使用 `agentweave start` 启动，并以
-`agentweave status` 检查状态。停止和重启分别使用 `agentweave stop`、
-`agentweave restart`；完整行为、日志位置和 systemd 模式见
+按 [部署教程](deployment.md) 安装控制台，使用 `agentswarm start` 启动，并以
+`agentswarm status` 检查状态。停止和重启分别使用 `agentswarm stop`、
+`agentswarm restart`；完整行为、日志位置和 systemd 模式见
 [服务管理](SERVICE-MANAGEMENT.md)。服务需要与日常 Hermes 使用同一系统用户；
 默认 shared 模式读取该用户的 Hermes Home，显式设置 HERMES_HOME 时以该路径为准。
 

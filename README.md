@@ -1,6 +1,6 @@
-# AgentWeave
+# AgentSwarm
 
-AgentWeave 是基于 [Hermes Agent](https://hermes-agent.nousresearch.com/) Profile 机制构建的多团队、多 Agent 协作工作台。它以项目为交付单位，将团队、Agent 对话、任务看板、工作空间和产物集中管理。一个 Profile 是一个持久 Agent 身份：它可以在 Hermes CLI 中独立使用，也可以被 AgentWeave 接入团队；两种模式共用人设、技能、记忆、经验、模型与工具配置。
+AgentSwarm 是基于 [Hermes Agent](https://hermes-agent.nousresearch.com/) Profile 机制构建的多团队、多 Agent 协作工作台。它以项目为交付单位，将团队、Agent 对话、任务看板、工作空间和产物集中管理。一个 Profile 是一个持久 Agent 身份：它可以在 Hermes CLI 中独立使用，也可以被 AgentSwarm 接入团队；两种模式共用人设、技能、记忆、经验、模型与工具配置。
 
 > 1. 本项目是社区实验项目，不是 Nous Research 或 Hermes Agent 官方项目。
 > 2. 当前仅建议在本机或可信内网环境运行，不要在未加鉴权、访问控制和 HTTPS 保护的情况下直接暴露到公网。
@@ -55,7 +55,7 @@ data/            SQLite 数据库（运行时生成，已 gitignore）
 doc/             架构 / 设计 / 管理文档
 tests/           pytest 测试
 run.py           本地开发启动入口
-agentweave       Web 服务 start/stop/status/restart 管理命令
+agentswarm       Web 服务 start/stop/status/restart 管理命令
 ```
 
 ## 快速开始
@@ -88,8 +88,8 @@ hermes kanban --help
 ### 3. 安装项目依赖
 
 ```bash
-git clone <REPOSITORY_URL> agentweave
-cd agentweave
+git clone <REPOSITORY_URL> agentswarm
+cd agentswarm
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -143,22 +143,23 @@ kanban:
 首次使用时创建全局命令：
 
 ```bash
-chmod +x agentweave start.sh
-sudo ln -sf "$(pwd)/agentweave" /usr/local/bin/agentweave
+chmod +x agentswarm start.sh
+sudo ln -sf "$(pwd)/agentswarm" /usr/local/bin/agentswarm
 ```
 
 随后可统一管理服务：
 
 ```bash
-agentweave start
-agentweave status
-agentweave restart
-agentweave stop
+agentswarm start
+agentswarm status
+agentswarm restart
+agentswarm stop
 ```
 
-未创建全局链接时使用 `./agentweave <command>`。命令自动读取项目根目录的
+未创建全局链接时使用 `./agentswarm <command>`。命令自动读取项目根目录的
 `.env`；普通进程的 PID 和日志保存在 `.run/`。检测到
-`agentweave.service` 用户服务时，命令会自动转交给 systemd。
+`agentswarm.service` 用户服务时，命令会自动转交给 systemd。升级前安装的
+`agentweave` 命令仍可使用，但会提示并转发到 `agentswarm`。
 
 启动后访问 [http://127.0.0.1:5050](http://127.0.0.1:5050)。生产环境、
 systemd、Nginx、升级、备份与故障排查见[部署与安装教程](doc/deployment.md)。

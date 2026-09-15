@@ -22,7 +22,7 @@
 
 ```text
 Hermes Kanban = 持久化任务队列 + 派工系统 + 日志系统
-AgentWeave = 多 Agent Dashboard + Profile/Skills/MCP 管理台 + Kanban 状态可视化层
+AgentSwarm = 多 Agent Dashboard + Profile/Skills/MCP 管理台 + Kanban 状态可视化层
 ```
 
 ## 2. 核心概念映射
