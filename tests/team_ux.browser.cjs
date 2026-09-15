@@ -107,6 +107,8 @@ assert.equal(rendered.status,0,rendered.stderr);
       return route.fulfill({json:body});
     });
     await page.goto('http://ux.local');
+    assert.match(await page.title(), /AgentSwarm/);
+    assert.doesNotMatch(await page.title(), /AgentWeave/);
     await page.waitForFunction(()=>window.__HERMES_UI__ && window.__HERMES_APP__);
     await page.waitForFunction(()=>document.querySelector('#overview-system-health-badge').textContent==='部分降级');
     assert.equal(await page.locator('#overview-system-health-components > div').count(),6);

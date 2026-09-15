@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AgentWeave - production-friendly launcher.
+# AgentSwarm - production-friendly launcher.
 # This script reads exported environment variables; it does not parse .env itself.
 set -euo pipefail
 

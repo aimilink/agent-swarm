@@ -4,7 +4,7 @@
 
 ## 1. 项目概述
 
-AgentWeave 是一个本地 Web 协作工作台，用于创建、管理、观察和驱动多个 Hermes Profile Agent。
+AgentSwarm 是一个本地 Web 协作工作台，用于创建、管理、观察和驱动多个 Hermes Profile Agent。
 
 当前实现具备：
 
@@ -103,7 +103,7 @@ Hermes
   └─ kanban CLI / dispatcher / gateway
 ```
 
-服务管理入口是 `agentweave`，它在普通进程模式下通过 `start.sh` 启动
+服务管理入口是 `agentswarm`，它在普通进程模式下通过 `start.sh` 启动
 `run.py`；`run.py` 默认监听 `127.0.0.1:5050`。
 
 ---

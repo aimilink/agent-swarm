@@ -1,4 +1,4 @@
-# AgentWeave 架构说明
+# AgentSwarm 架构说明
 
 ## 目标
 
@@ -130,9 +130,9 @@ Flask 后端维护 Agent Registry。Leader 通过 MCP 工具读取可调度 Work
 
 ### 服务管理入口
 
-根目录的 `agentweave` 命令是 Web 服务生命周期入口。它解析软链接定位项目目录，
+根目录的 `agentswarm` 命令是 Web 服务生命周期入口。它解析软链接定位项目目录，
 加载 `.env` 后调用 `start.sh`，并在普通进程模式下维护 `.run/` 内的 PID、
-日志和互斥锁。检测到用户级 `agentweave.service` 时，四个管理动作自动转交给
+日志和互斥锁。检测到用户级 `agentswarm.service` 时，四个管理动作自动转交给
 `systemctl --user`。该命令只管理 Web 服务；页面内的 Agent 生命周期继续由
 ACP/profile 进程管理。详见[服务管理](SERVICE-MANAGEMENT.md)。
 
@@ -315,7 +315,7 @@ SQLite 表由 `app/db/models.py` 定义，启动时通过 `Base.metadata.create_
 
 ```text
 Hermes Kanban = 持久化任务队列 + 派工系统 + 日志系统
-AgentWeave = 多 Agent 控制台 + Profile/Skill/MCP/模型管理 + Kanban 可视化层
+AgentSwarm = 多 Agent 控制台 + Profile/Skill/MCP/模型管理 + Kanban 可视化层
 ```
 
 本项目侧重本地可信环境，不提供租户隔离和企业级权限模型。可选

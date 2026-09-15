@@ -4,7 +4,7 @@
 
 ## 1. 产品定位
 
-AgentWeave 是 Hermes Agent 之上的本地编排与项目交付工作台：
+AgentSwarm 是 Hermes Agent 之上的本地编排与项目交付工作台：
 
 - Hermes Profile 负责持久 Agent 身份和能力。
 - Web 控制台负责团队、任务、消息、运行时与可视化。
@@ -41,7 +41,7 @@ Hermes CLI 单 Agent ─┐
 | Profile 接管 | 打开新员工弹窗时读取最新 Profile，支持按需手动刷新；原地接入；新名称按 active Profile 克隆创建 | 新员工弹窗、`GET /api/profiles` |
 | Agent 生命周期 | 创建、初始化、批量启动/停止/重启、crashed 派发前恢复、运行状态、终端输入与尺寸同步 | Agent 列表、终端抽屉、`/api/agents/*` |
 | 系统健康 | 数据库、Hermes CLI、Kanban、MCP、SSE 与终端统一检查；缓存、手动重检、降级提示和恢复入口 | 工作台、`GET /api/system/health` |
-| 服务管理 | Web 服务 start/stop/status/restart、PID 与日志管理、并发锁、systemd 用户服务自动接管 | `agentweave` 命令、[服务管理](SERVICE-MANAGEMENT.md) |
+| 服务管理 | Web 服务 start/stop/status/restart、PID 与日志管理、并发锁、systemd 用户服务自动接管 | `agentswarm` 命令、[服务管理](SERVICE-MANAGEMENT.md) |
 | SOUL 人设 | 查看、编辑、重新生成；保存在 Profile 内 | SOUL 抽屉 |
 | Skill | 列表、详情、Git 安装、重装、卸载；团队和单 Agent 共用 | Skill 抽屉 |
 | MCP | HTTP、Streamable HTTP、stdio；增删改查、连通测试、敏感字段脱敏 | MCP 管理 |

@@ -10,7 +10,7 @@
 ```text
 浏览器
   -> HTTPS / 反向代理（可选）
-  -> AgentWeave :5050
+  -> AgentSwarm :5050
        -> ~/.hermes/profiles/*       # SOUL、Skill、记忆、模型、MCP
        -> data/hermes_agent_team.db  # 团队、成员、任务、消息、编排状态
        -> workspace/*                # 团队任务工作区
@@ -63,15 +63,15 @@ Hermes 的模型或凭据配置，再继续安装控制台。
 - [Hermes Quickstart](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart/)
 - [Hermes Agent GitHub](https://github.com/NousResearch/hermes-agent)
 
-## 4. 安装 AgentWeave
+## 4. 安装 AgentSwarm
 
 将 `<REPOSITORY_URL>` 替换为实际仓库地址：
 
 ```bash
 mkdir -p ~/apps
 cd ~/apps
-git clone <REPOSITORY_URL> agentweave
-cd agentweave
+git clone <REPOSITORY_URL> agentswarm
+cd agentswarm
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -121,8 +121,8 @@ KANBAN_AUTO_DISPATCH=0
 
 ```dotenv
 HERMES_CONTROL_MODE=isolated
-HERMES_HOME=/home/your-user/apps/agentweave/hermes-home
-AGENT_TEAM_WORKSPACE_ROOT=/home/your-user/apps/agentweave/workspace
+HERMES_HOME=/home/your-user/apps/agentswarm/hermes-home
+AGENT_TEAM_WORKSPACE_ROOT=/home/your-user/apps/agentswarm/workspace
 ```
 
 `HERMES_HOME` 必须使用绝对路径。切换模式不会自动迁移 Profile 或数据库。
@@ -172,20 +172,20 @@ kanban:
 安装项目自带的管理命令：
 
 ```bash
-chmod +x agentweave start.sh
-sudo ln -sf "$(pwd)/agentweave" /usr/local/bin/agentweave
+chmod +x agentswarm start.sh
+sudo ln -sf "$(pwd)/agentswarm" /usr/local/bin/agentswarm
 ```
 
 启动并检查状态：
 
 ```bash
-agentweave start
-agentweave status
+agentswarm start
+agentswarm status
 ```
 
 命令自动读取项目根目录的 `.env`，并支持 `start`、`stop`、`status`
 和 `restart`。普通进程的 PID 与日志保存在 `.run/`；未创建全局链接时可执行
-`./agentweave <command>`。命令细节、退出码和故障处理见
+`./agentswarm <command>`。命令细节、退出码和故障处理见
 [服务管理](SERVICE-MANAGEMENT.md)。
 
 浏览器打开 `http://127.0.0.1:5050`。然后：
@@ -209,25 +209,25 @@ curl -fsS -H "Authorization: Bearer $AGENT_TEAM_API_TOKEN" http://127.0.0.1:5050
 ## 7. systemd 用户服务
 
 用户服务能确保 `HOME`、Hermes Profile 所有者和 CLI 用户保持一致。假设项目位于
-`~/apps/agentweave`：
+`~/apps/agentswarm`：
 
 ```bash
 mkdir -p ~/.config/systemd/user
 ```
 
-创建 `~/.config/systemd/user/agentweave.service`：
+创建 `~/.config/systemd/user/agentswarm.service`：
 
 ```ini
 [Unit]
-Description=AgentWeave
+Description=AgentSwarm
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/apps/agentweave
-EnvironmentFile=%h/apps/agentweave/.env
-ExecStart=%h/apps/agentweave/start.sh
+WorkingDirectory=%h/apps/agentswarm
+EnvironmentFile=%h/apps/agentswarm/.env
+ExecStart=%h/apps/agentswarm/start.sh
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
@@ -239,15 +239,16 @@ WantedBy=default.target
 启用：
 
 ```bash
-chmod +x ~/apps/agentweave/start.sh
+chmod +x ~/apps/agentswarm/start.sh
 systemctl --user daemon-reload
-systemctl --user enable --now agentweave
-systemctl --user status agentweave
-journalctl --user -u agentweave -f
+systemctl --user enable --now agentswarm
+systemctl --user status agentswarm
+journalctl --user -u agentswarm -f
 ```
 
-安装用户服务后，`agentweave start|stop|status|restart` 会自动转交给
-`systemctl --user`，无需维护另一份 PID。
+安装用户服务后，`agentswarm start|stop|status|restart` 会自动转交给
+`systemctl --user`，无需维护另一份 PID。升级前的 `agentweave.service`
+仍可被新命令识别，可在维护窗口再迁移单元名称。
 
 如需退出登录后仍保持运行，可由管理员执行：
 
@@ -294,24 +295,24 @@ location / {
 
 ```bash
 stamp=$(date +%Y%m%d-%H%M%S)
-mkdir -p "$HOME/backups/agentweave-$stamp"
-cp data/hermes_agent_team.db "$HOME/backups/agentweave-$stamp/"
-cp .env "$HOME/backups/agentweave-$stamp/env"
-tar -czf "$HOME/backups/agentweave-$stamp/profiles.tar.gz" -C "$HOME/.hermes" profiles
+mkdir -p "$HOME/backups/agentswarm-$stamp"
+cp data/hermes_agent_team.db "$HOME/backups/agentswarm-$stamp/"
+cp .env "$HOME/backups/agentswarm-$stamp/env"
+tar -czf "$HOME/backups/agentswarm-$stamp/profiles.tar.gz" -C "$HOME/.hermes" profiles
 ```
 
 ### 9.2 升级
 
 ```bash
-cd ~/apps/agentweave
-systemctl --user stop agentweave
+cd ~/apps/agentswarm
+systemctl --user stop agentswarm
 git status --short
 git pull --ff-only
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 python -m pytest -q
-systemctl --user start agentweave
-systemctl --user status agentweave
+systemctl --user start agentswarm
+systemctl --user status agentswarm
 ```
 
 如 `git status` 显示本地改动，先提交或备份，不要强制覆盖。

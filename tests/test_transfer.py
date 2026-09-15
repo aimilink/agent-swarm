@@ -136,8 +136,11 @@ def test_export_redacts_runtime_fields_and_secrets(transfer_env):
         meta = json.loads(zf.read("agents/leader/meta.json"))
         config = zf.read("agents/leader/profile/config.yaml").decode()
         secrets = zf.read("SECRETS.md").decode()
+        readme = zf.read("README.txt").decode()
         manifest = json.loads(zf.read("manifest.json"))
 
+    assert archive.name.startswith("agentswarm-")
+    assert "AgentSwarm export." in readme
     assert "agents/leader/profile/SOUL.md" in names
     assert "agents/leader/profile/skills/demo/SKILL.md" in names
     assert meta["profile_name"] == "leader"

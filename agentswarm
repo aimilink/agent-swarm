@@ -1,0 +1,207 @@
+#!/usr/bin/env bash
+# AgentSwarm service manager.
+set -euo pipefail
+
+resolve_script_dir() {
+  local source_path="${BASH_SOURCE[0]}"
+  local source_dir
+  local link_target
+  while [[ -L "$source_path" ]]; do
+    source_dir="$(cd -P -- "$(dirname -- "$source_path")" && pwd)"
+    link_target="$(readlink -- "$source_path")"
+    if [[ "$link_target" == /* ]]; then
+      source_path="$link_target"
+    else
+      source_path="$source_dir/$link_target"
+    fi
+  done
+  cd -P -- "$(dirname -- "$source_path")" && pwd
+}
+
+service_home="${AGENTSWARM_HOME:-${AGENTWEAVE_HOME:-}}"
+if [[ -n "$service_home" ]]; then
+  APP="$(cd -P -- "$service_home" && pwd)"
+else
+  APP="$(resolve_script_dir)"
+fi
+RUN_DIR="${AGENTSWARM_RUN_DIR:-${AGENTWEAVE_RUN_DIR:-$APP/.run}}"
+PID_FILE="$RUN_DIR/agentswarm.pid"
+LEGACY_PID_FILE="$RUN_DIR/agentweave.pid"
+LOG_FILE="${AGENTSWARM_LOG_FILE:-${AGENTWEAVE_LOG_FILE:-$RUN_DIR/agentswarm.log}}"
+LOCK_DIR="$RUN_DIR/control.lock"
+
+if [[ ! -e "$PID_FILE" && -f "$LEGACY_PID_FILE" ]]; then
+  if ! mv "$LEGACY_PID_FILE" "$PID_FILE" 2>/dev/null; then
+    PID_FILE="$LEGACY_PID_FILE"
+  fi
+fi
+
+usage() {
+  echo "Usage: agentswarm {start|stop|status|restart}"
+}
+
+fail() {
+  echo "AgentSwarm: $*" >&2
+  exit 1
+}
+
+load_env() {
+  if [[ -f "$APP/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$APP/.env"
+    set +a
+  fi
+  export APP_DIR="$APP"
+}
+
+read_pid() {
+  [[ -f "$PID_FILE" ]] || return 1
+  local pid
+  pid="$(tr -d "[:space:]" < "$PID_FILE")"
+  [[ "$pid" =~ ^[1-9][0-9]*$ ]] || return 1
+  printf "%s" "$pid"
+}
+
+is_running() {
+  local pid="${1:-}"
+  [[ -n "$pid" ]] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  local state
+  state="$(ps -p "$pid" -o stat= 2>/dev/null || true)"
+  [[ "$state" != *Z* ]]
+}
+
+acquire_lock() {
+  mkdir -p "$RUN_DIR"
+  local attempt
+  for attempt in {1..50}; do
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+      trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+      return 0
+    fi
+    sleep 0.1
+  done
+  fail "another service command is still running"
+}
+
+start_service() {
+  local pid=""
+  pid="$(read_pid || true)"
+  if is_running "$pid"; then
+    echo "AgentSwarm is already running (PID $pid)."
+    return 0
+  fi
+  rm -f "$PID_FILE"
+  [[ -f "$APP/start.sh" ]] || fail "start.sh was not found in $APP"
+  [[ -x "$APP/.venv/bin/python" ]] || fail "Python environment was not found at $APP/.venv; install dependencies first"
+  load_env
+  mkdir -p "$RUN_DIR" "$(dirname -- "$LOG_FILE")"
+  (
+    cd "$APP"
+    nohup bash "$APP/start.sh" >> "$LOG_FILE" 2>&1 &
+    printf "%s\n" "$!" > "$PID_FILE.tmp"
+    mv -f "$PID_FILE.tmp" "$PID_FILE"
+  )
+  pid="$(read_pid || true)"
+  local attempt
+  for attempt in {1..20}; do
+    if is_running "$pid"; then
+      echo "AgentSwarm started (PID $pid)."
+      echo "Log: $LOG_FILE"
+      return 0
+    fi
+    sleep 0.1
+  done
+  rm -f "$PID_FILE"
+  echo "AgentSwarm failed to start. Recent log output:" >&2
+  tail -n 20 "$LOG_FILE" >&2 2>/dev/null || true
+  return 1
+}
+
+stop_service() {
+  local pid=""
+  pid="$(read_pid || true)"
+  if ! is_running "$pid"; then
+    rm -f "$PID_FILE"
+    echo "AgentSwarm is stopped."
+    return 0
+  fi
+  kill "$pid"
+  local attempt
+  for attempt in {1..150}; do
+    if ! is_running "$pid"; then
+      rm -f "$PID_FILE"
+      echo "AgentSwarm stopped."
+      return 0
+    fi
+    sleep 0.1
+  done
+  echo "AgentSwarm did not stop gracefully; terminating PID $pid." >&2
+  kill -KILL "$pid" 2>/dev/null || true
+  rm -f "$PID_FILE"
+  echo "AgentSwarm stopped."
+}
+
+status_service() {
+  local pid=""
+  pid="$(read_pid || true)"
+  if ! is_running "$pid"; then
+    rm -f "$PID_FILE"
+    echo "AgentSwarm is stopped."
+    return 3
+  fi
+  load_env
+  local host="${HOST:-127.0.0.1}"
+  local port="${PORT:-5050}"
+  [[ "$host" == "0.0.0.0" ]] && host="127.0.0.1"
+  [[ "$host" == "::" ]] && host="[::1]"
+  echo "AgentSwarm is running (PID $pid)."
+  echo "URL: http://$host:$port/"
+  echo "Log: $LOG_FILE"
+}
+
+command_name="${1:-}"
+[[ $# -le 1 ]] || { usage >&2; exit 2; }
+
+systemd_unit=""
+if command -v systemctl >/dev/null 2>&1; then
+  if systemctl --user cat agentswarm.service >/dev/null 2>&1; then
+    systemd_unit="agentswarm.service"
+  elif systemctl --user cat agentweave.service >/dev/null 2>&1; then
+    systemd_unit="agentweave.service"
+  fi
+fi
+if [[ -n "$systemd_unit" ]]; then
+  case "$command_name" in
+    start|stop|restart)
+      exec systemctl --user "$command_name" "$systemd_unit"
+      ;;
+    status)
+      exec systemctl --user --no-pager status "$systemd_unit"
+      ;;
+  esac
+fi
+
+case "$command_name" in
+  start)
+    acquire_lock
+    start_service
+    ;;
+  stop)
+    acquire_lock
+    stop_service
+    ;;
+  status)
+    status_service
+    ;;
+  restart)
+    acquire_lock
+    stop_service
+    start_service
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
