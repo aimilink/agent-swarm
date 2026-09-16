@@ -224,9 +224,8 @@ function switchProj(key){
   document.getElementById("wsGit").textContent = d.git;
   document.getElementById("wsArts").innerHTML = d.arts;
   document.getElementById("teamBadge").textContent = d.team;
-  document.getElementById("syncText").textContent = d.sync;
   document.getElementById("syncBadge").className = "badge " + (d.syncOk ? "badge-green" : "badge-orange");
-  document.getElementById("syncBadge").innerHTML = '<span class="dot ' + (d.syncOk ? "dot-green" : "dot-amber") + '"></span>' + esc(d.sync);
+  document.getElementById("syncBadge").innerHTML = '<span class="dot ' + (d.syncOk ? "dot-green" : "dot-amber") + '"></span><span id="syncText">' + esc(d.sync) + '</span>';
   document.getElementById("gitSub").textContent = d.gitSub;
 
   // file tree
