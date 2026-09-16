@@ -3,10 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%230053db'/%3E%3Cstop offset='1' stop-color='%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Ctext x='16' y='22.5' font-family='Arial,Helvetica,sans-serif' font-size='17' font-weight='700' fill='%23ffffff' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
 <title>AgentSwarm - 任务板</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Plus Jakarta Sans',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:#fafafa;color:#212121}
+html{scroll-behavior:smooth}
+:focus-visible{outline:2px solid #0053db;outline-offset:2px;border-radius:4px}
 .layout{display:flex;min-height:100vh}
 .sidebar{width:232px;background:#fff;border-right:1px solid #e5e7eb;position:fixed;top:0;bottom:0;left:0;display:flex;flex-direction:column;z-index:100}
 .logo{height:64px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid #f3f4f6}
@@ -73,9 +76,12 @@ textarea{min-height:70px;resize:vertical;width:100%}
 .kb-col{background:#f3f4f6;border-radius:14px;padding:12px;min-height:300px}
 .kb-head{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 12px;font-size:13px;font-weight:600}
 .kb-count{background:#e5e7eb;color:#6b7280;border-radius:10px;padding:1px 9px;font-size:12px}
-.kb-card{background:#fff;border:1px solid #e5e7eb;border-radius:11px;padding:13px;margin-bottom:10px;border-left:3px solid #d7dce5}
+.kb-card{background:#fff;border:1px solid #e5e7eb;border-radius:11px;padding:13px;margin-bottom:10px;border-left:3px solid #d7dce5;transition:box-shadow .15s}
+.kb-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .kb-card.b-blue{border-left-color:#0053db}.kb-card.b-green{border-left-color:#22c55e}.kb-card.b-amber{border-left-color:#f59e0b}
 .kb-title{font-size:13.5px;font-weight:600;line-height:1.45;margin-bottom:8px}
+.kb-proj{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;margin-bottom:8px;text-decoration:none;cursor:pointer}
+.kb-proj:hover{filter:brightness(.95);text-decoration:underline}
 .kb-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:#9ca3af}
 .avatar{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#0053db,#7c3aed);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
 .tabs{display:flex;gap:4px;border-bottom:1px solid #e5e7eb;margin-bottom:16px}
@@ -175,13 +181,13 @@ textarea{min-height:70px;resize:vertical;width:100%}
 <div class="kanban">
 <div class="kb-col"><div class="kb-head">待执行 <span class="kb-count">0</span></div><div class="empty" style="padding:40px 10px">暂无任务</div></div>
 <div class="kb-col"><div class="kb-head">执行中 <span class="kb-count">1</span></div>
-<div class="kb-card b-blue"><div class="kb-title">用户任务：目录 /vue-msf/data/www/lrcms — 目标：</div><div class="kb-meta"><span class="avatar">孙</span>孙强 · 09/15 16:02</div></div>
+<div class="kb-card b-blue"><span class="kb-proj" style="background:#eff6ff;color:#0053db" onclick="location.href='workspace.html#hat'">📦 hermes-agent-team</span><div class="kb-title">用户任务：目录 /vue-msf/data/www/lrcms — 目标：</div><div class="kb-meta"><span class="avatar">孙</span>孙强 · 09/15 16:02</div></div>
 </div>
 <div class="kb-col"><div class="kb-head">阻塞 <span class="kb-count">0</span></div><div class="empty" style="padding:40px 10px">暂无任务</div></div>
 <div class="kb-col"><div class="kb-head">已完成 <span class="kb-count">44</span></div>
-<div class="kb-card b-green"><div class="kb-title">Review 用户任务 ut_0016 第 1 轮 — 验收通过</div><div class="kb-meta"><span class="avatar">孙</span>孙强 · 09/15</div></div>
-<div class="kb-card b-green"><div class="kb-title">Worker 子任务：迭代完善 hermes-agent-team 平台功能</div><div class="kb-meta"><span class="avatar">王</span>王春一 · 09/14</div></div>
-<div class="kb-card b-green"><div class="kb-title">Worker 子任务：代码审查与交付清单核对</div><div class="kb-meta"><span class="avatar">赵</span>赵哲 · 09/14</div></div>
+<div class="kb-card b-green"><span class="kb-proj" style="background:#eff6ff;color:#0053db" onclick="location.href='workspace.html#hat'">📦 hermes-agent-team</span><div class="kb-title">Review 用户任务 ut_0016 第 1 轮 — 验收通过</div><div class="kb-meta"><span class="avatar">孙</span>孙强 · 09/15</div></div>
+<div class="kb-card b-green"><span class="kb-proj" style="background:#eff6ff;color:#0053db" onclick="location.href='workspace.html#hat'">📦 hermes-agent-team</span><div class="kb-title">Worker 子任务：迭代完善 hermes-agent-team 平台功能</div><div class="kb-meta"><span class="avatar">王</span>王春一 · 09/14</div></div>
+<div class="kb-card b-green"><span class="kb-proj" style="background:#eff6ff;color:#0053db" onclick="location.href='workspace.html#hat'">📦 hermes-agent-team</span><div class="kb-title">Worker 子任务：代码审查与交付清单核对</div><div class="kb-meta"><span class="avatar">赵</span>赵哲 · 09/14</div></div>
 <div style="text-align:center;padding:8px"><a class="link" href="#" style="color:#0053db;font-size:13px;text-decoration:none">查看全部 44 →</a></div>
 </div>
 </div>
