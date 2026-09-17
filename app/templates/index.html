@@ -236,9 +236,13 @@
 </div>
 <div class="grid grid-cols-4 gap-md">
 <div id="overview-stats-grid" class="contents"></div></div>
+<div class="swarm-quick-grid">
+<button type="button" class="swarm-quick" data-quick-view="projects"><span class="swarm-quick__icon">📦</span><span><b>项目管理</b><small>创建项目并管理团队归属</small></span><span>前往 →</span></button>
+<button type="button" class="swarm-quick" data-quick-view="workspace"><span class="swarm-quick__icon swarm-quick__icon--purple">🗂️</span><span><b>工作空间</b><small>文件树、在线预览与任务产物</small></span><span>前往 →</span></button>
 </div>
-<div class="flex-1 min-h-0 overflow-y-auto p-md grid grid-cols-5 gap-md">
-<div id="overview-system-health" class="col-span-5 bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
+</div>
+<div class="swarm-overview-grid flex-1 min-h-0 overflow-y-auto p-md">
+<div id="overview-system-health" class="swarm-card bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
 <div class="p-4 border-b border-outline-variant/30 flex flex-wrap items-center justify-between gap-3">
 <div class="flex items-center gap-3">
 <span id="overview-system-health-dot" class="w-2.5 h-2.5 rounded-full bg-outline inline-block"></span>
@@ -250,15 +254,15 @@
 <button id="overview-system-health-refresh" type="button" class="px-3 py-2 rounded-lg border border-outline-variant/50 text-primary font-label-md hover:bg-primary-container/20 disabled:opacity-50">重新检测</button>
 </div>
 <div id="overview-system-health-notice" hidden class="mx-4 mt-3 px-3 py-2 rounded-lg bg-tertiary-container/30 text-on-tertiary-container font-label-md"></div>
-<div id="overview-system-health-components" class="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+<div id="overview-system-health-components" class="swarm-health-list"></div>
 </div>
-<div class="col-span-3 flex flex-col gap-md">
+<div class="swarm-overview-column">
 <div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm">
 <div class="p-4 border-b border-outline-variant/30 flex justify-between items-center">
 <h3 class="font-title-lg text-title-lg text-on-surface">团队健康度</h3>
 <span class="font-label-sm text-secondary flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>实时状态</span>
 </div>
-<div id="overview-team-health" class="p-4 grid grid-cols-3 gap-3"></div></div>
+<div id="overview-team-health" class="swarm-team-list"></div></div>
 <div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
 <div class="p-4 border-b border-outline-variant/30 flex justify-between items-center">
 <h3 class="font-title-lg text-title-lg text-on-surface">最新动态</h3>
@@ -268,7 +272,7 @@
 <div id="overview-activity-feed" class="px-4 divide-y divide-outline-variant/10"></div></div>
 </div>
 </div>
-<div class="col-span-2 flex flex-col gap-md">
+<div class="swarm-overview-column swarm-overview-column--wide">
 <div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
 <div class="p-4 border-b border-outline-variant/30">
 <h3 class="font-title-lg text-title-lg text-on-surface">今日任务状态</h3>
@@ -301,15 +305,11 @@
 <!-- ========== VIEW: 任务板 ========== -->
 <section id="view-board" class="view hidden flex-1 flex flex-col overflow-hidden">
 <div class="board-layout flex-1 min-h-0 flex flex-col p-md gap-md">
-<div class="flex items-center justify-between shrink-0">
-<div>
-<h2 class="font-headline-md text-headline-md font-bold text-on-surface">团队任务</h2>
-<p class="font-label-md text-on-surface-variant mt-1">AGENTS TEAM TASKS · 各团队独立看板，Leader 负责验收</p>
-</div>
-<div class="flex items-center gap-3">
+<div class="swarm-toolbar shrink-0">
 <select id="board-team-select" aria-label="筛选团队看板" class="bg-surface border border-outline-variant/50 rounded-lg px-3 py-2 text-on-surface font-label-md outline-none focus:border-primary"><option value="">全部团队</option><option>销售团队</option><option>技术团队</option><option>市场团队</option></select>
+<span class="swarm-toolbar__spacer"></span>
+<button id="board-refresh-visible" type="button" class="swarm-button swarm-button--outline">刷新</button>
 <button id="btn-create-task-board" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-xl font-label-md shadow-sm hover:bg-primary/90">+ 新建任务</button>
-</div>
 </div>
 <div class="board-scroll-region flex-1 min-h-0 overflow-x-auto overflow-y-hidden pb-2">
 <div id="board-kanban-columns" class="board-columns"></div></div>
@@ -352,25 +352,16 @@
 <!-- ========== VIEW: 成员列表 ========== -->
 <section id="view-members" class="view hidden flex-1 flex flex-col overflow-hidden">
 <div class="p-md pb-0 shrink-0">
-<div class="flex items-center justify-between mb-4">
-<div>
-<h2 class="font-headline-md text-headline-md font-bold text-on-surface">成员列表</h2>
-<p class="font-label-md text-on-surface-variant mt-1"><span id="members-subtitle">加载中…</span></p>
-</div>
+<div class="swarm-toolbar mb-4">
+<span id="members-subtitle" class="swarm-muted">加载中…</span>
+<span class="swarm-toolbar__spacer"></span>
+<div id="members-filter-bar" class="swarm-chips"></div>
+<input id="member-search" class="swarm-search" placeholder="搜索成员…" type="search"/>
 <button id="btn-create-agent-members" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-xl font-label-md shadow-sm hover:bg-primary/90 flex items-center gap-2"><span class="material-symbols-outlined msr text-[18px]" aria-hidden="true"></span>新员工</button>
-</div>
-<div class="flex items-center gap-2 mb-4">
-<div id="members-filter-bar" class="flex gap-1 bg-surface-container rounded-xl p-1"></div></div>
-<div class="flex-1"></div>
-<div class="relative">
-<span class="material-symbols-outlined msr absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-[18px]" aria-hidden="true"></span>
-<input id="member-search" class="w-56 pl-9 pr-3 py-2 bg-surface border border-outline-variant/50 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none font-body-md" placeholder="搜索成员…" type="text"/>
-</div>
 </div>
 </div>
 <div class="flex-1 overflow-y-auto p-md">
-<div class="grid grid-cols-2 xl:grid-cols-3 gap-3">
-<div id="members-grid" class="contents"></div></div>
+<div id="members-grid" class="swarm-member-list"></div>
 </div>
 </section>
 
@@ -414,7 +405,7 @@
 <p class="font-label-md text-on-surface-variant mt-1">团队协作 · 模型 · 任务编排配置</p>
 </div>
 </div>
-<div class="flex-1 overflow-y-auto p-md max-w-4xl">
+<div class="swarm-settings-grid flex-1 overflow-y-auto p-md">
 <div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden mb-4">
 <div class="p-4 border-b border-outline-variant/30"><h3 class="font-title-lg text-title-lg text-on-surface">协作编排</h3></div>
 <div class="divide-y divide-outline-variant/10">
@@ -483,14 +474,16 @@
 </form>
 <section id="view-chat" class="view hidden flex-1 flex flex-col overflow-hidden">
 <div class="chat-layout">
-<aside class="chat-sidebar"><label for="chat-agent">选择 Agent</label><select id="chat-agent"></select><button id="chat-new" type="button">＋ 新建对话</button><h2>历史对话</h2><div id="chat-history" class="chat-history"></div></aside>
+<aside class="chat-sidebar chat-agent-sidebar"><h2>选择 Agent</h2><label class="sr-only" for="chat-agent">选择 Agent</label><select id="chat-agent" class="sr-only"></select><div id="chat-agent-list" class="chat-agent-list"></div></aside>
 <div class="chat-main"><h2 id="chat-title">Agent 对话</h2><div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div><p id="chat-status" role="alert"></p><form id="chat-form" class="chat-compose"><textarea id="chat-input" aria-label="对话消息" placeholder="输入消息，Enter 发送，Shift+Enter 换行" rows="3" maxlength="20000" disabled></textarea><button id="chat-send" type="submit" disabled>发送</button></form></div>
+<aside class="chat-history-sidebar"><div class="chat-history-head"><h2>历史对话</h2><button id="chat-new" type="button">＋ 新建</button></div><div id="chat-history" class="chat-history"></div></aside>
 </div></section>
 <section id="view-projects" class="view hidden flex-1 flex flex-col overflow-hidden">
 <p id="project-error" role="alert"></p>
+<div id="project-summary" class="project-summary"></div>
 <div class="project-layout"><aside><h2>项目管理</h2><button id="project-refresh" type="button">刷新项目</button><div id="project-list"></div>
 <h3 class="project-portfolio-title">团队参与项目</h3><div id="project-team-portfolio"></div>
-<details><summary>＋ 新建项目</summary><form id="project-create"><label>项目名称<input name="name" maxlength="200" required></label><label>目标、交付清单与验收标准<textarea name="description" rows="4" maxlength="20000"></textarea></label><fieldset><legend>参与团队（可多选）</legend><div id="project-create-teams" class="project-team-options"></div></fieldset><button type="submit">创建项目</button></form></details></aside>
+<details class="project-create-details" open><summary>＋ 新建项目</summary><form id="project-create"><label>项目名称<input name="name" maxlength="200" required></label><label>目标、交付清单与验收标准<textarea name="description" rows="4" maxlength="20000"></textarea></label><fieldset><legend>参与团队（可多选）</legend><div id="project-create-teams" class="project-team-options"></div></fieldset><button type="submit">创建项目</button></form></details></aside>
 <section id="project-detail" hidden><div class="project-title-row"><div><h2 id="project-title"></h2><div id="project-iteration" class="project-iteration"></div></div><div id="project-team-badges" class="project-team-badges"></div></div><div class="swarm-project-toolbar" role="group" aria-label="项目视图"><button type="button" data-project-mode="projects">项目管理</button><button type="button" data-project-mode="workspace">工作空间</button></div><p id="project-description"></p><p>统一工作目录：<span id="project-workspace"></span></p>
 <details class="project-team-editor"><summary>管理参与团队</summary><form id="project-team-form"><p>一个项目可由多个团队协作，同一团队也可参与多个项目。</p><div id="project-edit-teams" class="project-team-options"></div><button type="submit">保存参与团队</button></form></details>
 <section class="project-workspace-panel" aria-labelledby="project-workspace-heading">
@@ -999,7 +992,7 @@
       </div>
     </div>
 
-    
+
     <script>
       window.__BOOTSTRAP__ = {{ {"agents": agents, "teams": teams or [], "events": events, "kanban_task_links": kanban_task_links, "stats": stats}|tojson }};
     </script>

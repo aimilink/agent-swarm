@@ -228,13 +228,13 @@
     els.overviewStats.innerHTML = cards
       .map(
         (card) => `
-      <div class="bg-surface rounded-xl p-4 shadow-sm border border-outline-variant/30 flex items-center gap-4">
-        <div class="w-12 h-12 rounded-full bg-${card.tone}-container/20 text-${card.tone} flex items-center justify-center">
+      <div class="swarm-stat">
+        <div class="swarm-stat__icon swarm-stat__icon--${card.tone}">
           <span class="material-symbols-outlined msr" aria-hidden="true">${card.icon}</span>
         </div>
         <div>
-          <div class="font-label-md text-on-surface-variant mb-1">${esc(card.label)}</div>
-          <div class="font-headline-md text-headline-md font-bold text-on-surface">${esc(card.value)}</div>
+          <div class="swarm-stat__label">${esc(card.label)}</div>
+          <div class="swarm-stat__value">${esc(card.value)}</div>
         </div>
       </div>`,
       )
@@ -253,17 +253,11 @@
           ).length;
           const color = palette[index % palette.length];
           return `
-          <div class="rounded-xl border border-outline-variant/30 p-4 bg-surface-container-lowest">
-            <div class="flex items-center gap-2 mb-3">
-              <span class="w-2.5 h-2.5 rounded-full bg-${color} inline-block"></span>
-              <span class="font-title-lg text-[15px] font-bold text-on-surface">${esc(team.name)}</span>
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-surface-container text-on-surface-variant">${esc(team.slug)}</span>
-            </div>
-            <div class="font-label-sm text-on-surface-variant mb-1">负责人：${esc(leader?.name || "—")}</div>
-            <div class="font-label-sm text-on-surface-variant mb-3">成员 ${members.length} · 运行中 ${running}</div>
-            <div class="flex gap-2">
-              <span class="px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px]">${members.length} 人</span>
-            </div>
+          <div class="swarm-team-row">
+            <span class="swarm-team-avatar swarm-team-avatar--${index % 4}">${esc(agentInitial(team.name))}</span>
+            <span class="swarm-team-copy"><b>${esc(team.name)}</b><small>${esc(team.slug)} · 负责人：${esc(leader?.name || "—")}</small></span>
+            <span class="swarm-team-count">成员 ${members.length}</span>
+            <span class="swarm-badge ${running ? "swarm-badge--green" : "swarm-badge--gray"}">${running ? `运行中 ${running}` : "空闲"}</span>
           </div>`;
         })
       : [
@@ -456,61 +450,33 @@
     if (!els.membersGrid) return;
     const displayStatus = app().getAgentDisplayStatus || (() => ({ label: "未知", className: "idle" }));
     const filtered = agents.filter((agent) => {
-      const teamLabel = teamNameForAgent(agent, teams);
       const matchesTeam = memberFilter === "全部" || (memberFilter === "__ungrouped__" ? !agent.team_id : agent.team_id === memberFilter);
       const matchesSearch = !memberSearch || [agent.name, agent.profile_name, agent.role].join(" ").toLowerCase().includes(memberSearch.toLowerCase());
       return matchesTeam && matchesSearch;
     });
-    if (els.membersSubtitle) {
-      els.membersSubtitle.textContent = `${agents.length} 名 Agent · ${teams.length || 0} 个团队`;
-    }
+    if (els.membersSubtitle) els.membersSubtitle.textContent = `${agents.length} 名 Agent · ${teams.length || 0} 个团队`;
     if (!filtered.length) {
-      els.membersGrid.innerHTML = `<p class="col-span-full text-on-surface-variant font-label-md py-8 text-center">没有匹配的成员</p>`;
+      els.membersGrid.innerHTML = `<p class="swarm-empty">没有匹配的成员</p>`;
       return;
     }
-    els.membersGrid.innerHTML = filtered
-      .map((agent) => {
-        const teamLabel = teamNameForAgent(agent, teams);
-        const status = displayStatus(agent);
-        const runtime = agent.runtime_status || "stopped";
-        const modelName = agent.model_summary?.default || agent.model_summary?.model || "—";
-        const isRunning = runtime === "running";
-        const actionLabel = isRunning ? "停止" : "启动";
-        const actionClass = isRunning
-          ? "bg-error-container/30 text-error hover:bg-error-container/50"
-          : "bg-secondary-container/20 text-secondary hover:bg-secondary-container/40";
-        return `
-        <div class="bg-surface rounded-xl p-4 shadow-sm border border-outline-variant/30 flex flex-col gap-3 hover:border-primary/50 transition-colors" data-team="${esc(teamLabel)}" data-name="${esc(agent.name || "")}" data-agent-id="${esc(agent.agent_id)}">
-          <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-full bg-primary-container/20 text-primary flex items-center justify-center font-bold text-base">${esc(agentInitial(agent.name))}</div>
-            <div class="flex-1 min-w-0">
-              <div class="font-title-lg text-[15px] font-bold text-on-surface truncate">${esc(agent.name)}</div>
-              <div class="font-label-sm text-on-surface-variant truncate">${esc(agent.role)} · ${esc(agent.profile_name)}</div>
-            </div>
-            <button type="button" class="text-on-surface-variant hover:text-primary p-1 rounded-full" data-agent-config data-agent-id="${esc(agent.agent_id)}" aria-label="配置 Agent">
-              <span class="material-symbols-outlined msr" aria-hidden="true">more_vert</span>
-            </button>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-container/10 text-primary border border-primary/20">${esc(teamLabel)}</span>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container/20 text-secondary border border-secondary/20 flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>${esc(status.label)}
-            </span>
-          </div>
-          <div class="text-[11px] font-mono text-on-surface-variant bg-surface-container-low rounded-lg px-2 py-1.5 truncate">${esc(modelName)}</div>
-          <div class="flex items-center justify-between pt-1 border-t border-outline-variant/20">
-            <span class="font-label-sm text-on-surface-variant">任务 ${agent.queue_depth || 0}</span>
-            <div class="flex gap-2">
-              <button type="button" class="text-[11px] px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high" data-agent-config data-agent-id="${esc(agent.agent_id)}">配置</button>
-              <button type="button" class="text-[11px] px-2 py-1 rounded-lg bg-primary-container/20 text-primary" data-agent-chat data-agent-id="${esc(agent.agent_id)}">对话</button>
-              <button type="button" class="text-[11px] px-2 py-1 rounded-lg ${actionClass}" data-session-action="${isRunning ? "stop" : "start"}" data-agent-id="${esc(agent.agent_id)}">${actionLabel}</button>
-            </div>
-          </div>
-        </div>`;
-      })
-      .join("");
+    els.membersGrid.innerHTML = filtered.map((agent, index) => {
+      const teamLabel = teamNameForAgent(agent, teams);
+      const status = displayStatus(agent);
+      const isRunning = (agent.runtime_status || "stopped") === "running";
+      return `<article class="swarm-member-row" data-team="${esc(teamLabel)}" data-name="${esc(agent.name || "")}" data-agent-id="${esc(agent.agent_id)}">
+        <span class="swarm-member-avatar swarm-member-avatar--${index % 6}">${esc(agentInitial(agent.name))}</span>
+        <span class="swarm-member-identity"><b>${esc(agent.name)} <em>${agent.role === "leader" ? "Leader" : "Worker"}</em></b><small>@${esc(agent.profile_name)}</small></span>
+        <span class="swarm-badge swarm-badge--gray">${esc(teamLabel)}</span>
+        <span class="swarm-member-tasks">任务 ${agent.queue_depth || 0}</span>
+        <span class="swarm-badge ${isRunning ? "swarm-badge--green" : "swarm-badge--gray"}">${esc(status.label)}</span>
+        <span class="swarm-member-actions">
+          <button type="button" data-agent-config data-agent-id="${esc(agent.agent_id)}">配置</button>
+          <button type="button" data-agent-chat data-agent-id="${esc(agent.agent_id)}">对话</button>
+          <button type="button" class="${isRunning ? "is-danger" : "is-success"}" data-session-action="${isRunning ? "stop" : "start"}" data-agent-id="${esc(agent.agent_id)}">${isRunning ? "停止" : "启动"}</button>
+        </span>
+      </article>`;
+    }).join("");
   }
-
   function statsRangeLabel(days) {
     if (days <= 1) return "最近 24 小时";
     if (days <= 7) return "最近 7 天";
@@ -882,68 +848,31 @@
         return;
       }
 
-      const teamsGrid = teams
-        .map(
-          (team) => {
-            const stats = teamStats.get(team.team_id) || { task_count: 0, completion_rate: 0 };
-            return `
-          <div class="bg-surface rounded-xl p-4 shadow-sm border border-outline-variant/30 flex flex-col gap-4 hover:border-primary/50 transition-colors" data-team-id="${esc(team.team_id)}">
-            <div class="flex items-start gap-4">
-              <div class="w-12 h-12 rounded-full bg-primary-container/20 text-primary flex items-center justify-center font-bold text-sm">
-                ${esc(team.name.slice(0, 2).toUpperCase())}
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="font-title-lg text-[18px] font-bold text-on-surface mb-1">${esc(team.name)}</div>
-                <div class="font-label-sm text-on-surface-variant mb-1">${esc(team.description || "暂无描述")}</div>
-                <div class="flex items-center gap-4 text-sm">
-                  <span class="flex items-center gap-1">
-                    <span class="material-symbols-outlined msr text-[14px]">people</span>
-                    <span class="font-label-sm text-on-surface-variant">${team.member_count || 0} 人</span>
-                  </span>
-                  <span class="flex items-center gap-1">
-                    <span class="material-symbols-outlined msr text-[14px]">assessment</span>
-                    <span class="font-label-sm text-on-surface-variant">${stats.completion_rate}% 任务完成</span>
-                  </span>
-                  <span class="flex items-center gap-1">
-                    <span class="material-symbols-outlined msr text-[14px]">schedule</span>
-                    <span class="font-label-sm text-on-surface-variant">${stats.task_count} 任务</span>
-                  </span>
-                </div>
-                ${team.lead_name ? `<div class="font-label-sm text-on-surface-variant">负责人：${esc(team.lead_name)}</div>` : ""}
-              </div>
-            </div>
-            <div class="flex justify-between items-center pt-3 border-t border-outline-variant/20">
-              <span class="font-label-sm text-on-surface-variant">slug: ${esc(team.slug)}</span>
-              <div class="flex gap-2">
-                <button type="button" class="px-3 py-1.5 rounded-lg font-label-md bg-surface-container text-on-surface hover:bg-surface-container-high" data-view-team="${esc(team.slug)}">
-                  查看成员
-                </button>
-                <button type="button" class="px-3 py-1.5 rounded-lg font-label-md bg-surface-container text-on-surface hover:bg-surface-container-high" data-edit-team="${esc(team.slug)}">
-                  编辑
-                </button>
-                <button type="button" class="px-3 py-1.5 rounded-lg font-label-md bg-error-container/30 text-error hover:bg-error-container/50" data-delete-team="${esc(team.team_id)}">
-                  删除
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-          }
-        )
-        .join("");
-
+      const teamsGrid = teams.map((team, index) => {
+        const stats = teamStats.get(team.team_id) || { task_count: 0, completion_rate: 0 };
+        return `<article class="swarm-team-manage-row" data-team-id="${esc(team.team_id)}">
+          <span class="swarm-team-avatar swarm-team-avatar--${index % 4}">${esc(agentInitial(team.name))}</span>
+          <span class="swarm-team-copy"><b>${esc(team.name)}</b><small>${esc(team.slug)} · ${team.member_count || 0} 成员 · ${stats.task_count} 任务 · ${stats.completion_rate}% 完成</small></span>
+          <span class="swarm-team-lead">${team.lead_name ? `负责人：${esc(team.lead_name)}` : "暂无负责人"}</span>
+          <span class="swarm-member-actions">
+            <button type="button" data-view-team="${esc(team.slug)}">管理</button>
+            <button type="button" data-edit-team="${esc(team.slug)}">编辑</button>
+            <button type="button" class="is-danger" data-delete-team="${esc(team.team_id)}">删除</button>
+          </span>
+        </article>`;
+      }).join("");
       els.teamsContent.innerHTML = `
-        <div class="space-y-4">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="font-headline-md text-headline-md font-bold text-on-surface">团队管理</h2>
-            <button type="button" id="btn-create-team" class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-md hover:bg-primary/90">
-              + 新建团队
-            </button>
-          </div>
-          <div class="grid gap-4">${teamsGrid}</div>
+        <div class="swarm-teams-layout">
+          <section class="swarm-card swarm-team-create-card">
+            <div class="swarm-card-head"><div><b>创建团队</b><small>创建团队后可添加已有 Agent</small></div></div>
+            <div class="swarm-card-body"><p>设置团队标识、显示名称与职责说明，并在创建后管理成员。</p><button type="button" id="btn-create-team" class="swarm-button swarm-button--primary">＋ 创建团队</button></div>
+          </section>
+          <section class="swarm-card swarm-team-list-card">
+            <div class="swarm-card-head"><div><b>现有团队</b><small>${teams.length} 个团队 · ${agents.length} 名成员</small></div></div>
+            <div class="swarm-team-manage-list">${teamsGrid}</div>
+          </section>
         </div>
-      `;
-
+        <div class="swarm-toolbar swarm-team-transfer"><button type="button" id="teams-export-visible" class="swarm-button swarm-button--outline">导出团队配置</button><button type="button" id="teams-import-visible" class="swarm-button swarm-button--outline">导入团队配置</button></div>`;
       document.getElementById("btn-create-team")?.addEventListener("click", () => {
         openTeamCreateModal();
       });

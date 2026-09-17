@@ -49,6 +49,14 @@
   document.querySelectorAll('[data-project-mode]').forEach(button => {
     button.addEventListener('click', () => window.navigateSwarm(button.dataset.projectMode));
   });
+  document.querySelectorAll('[data-quick-view]').forEach(button => {
+    button.addEventListener('click', () => window.navigateSwarm(button.dataset.quickView));
+  });
+  document.getElementById('board-refresh-visible')?.addEventListener('click', () => document.getElementById('kanban-refresh')?.click());
+  document.addEventListener('click', event => {
+    if (event.target.closest('#teams-export-visible')) document.getElementById('settings-export-team')?.click();
+    if (event.target.closest('#teams-import-visible')) document.getElementById('settings-import-team')?.click();
+  });
   const help = document.getElementById('swarm-help');
   document.getElementById('swarm-open-help').addEventListener('click', () => help.showModal());
   help.addEventListener('click', event => {

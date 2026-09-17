@@ -1,6 +1,7 @@
 (function () {
   const byId = id => document.getElementById(id);
   const agentSelect = byId('chat-agent');
+  const agentList = byId('chat-agent-list');
   const history = byId('chat-history');
   const messages = byId('chat-messages');
   const input = byId('chat-input');
@@ -26,6 +27,7 @@
     byId('chat-send').disabled = !selected || selected.busy || sending;
     input.disabled = !selected || selected.busy || sending;
     history.querySelectorAll('button').forEach(button => button.classList.toggle('is-selected', button.dataset.chatId === selected?.chat_id));
+    agentList?.querySelectorAll('[data-chat-agent]').forEach(button => button.classList.toggle('is-selected', button.dataset.chatAgent === agentId));
     messages.scrollTop = messages.scrollHeight;
   }
   async function loadHistory() {
@@ -37,6 +39,7 @@
       `<button type="button" data-chat-id="${esc(chat.chat_id)}"><span>${esc(chat.title)}</span><small>${esc(new Date(chat.updated_at).toLocaleString())}</small></button>`
     ).join('') : '<p class="chat-empty">暂无历史对话</p>';
     history.querySelectorAll('button').forEach(button => button.classList.toggle('is-selected', button.dataset.chatId === selected?.chat_id));
+    agentList?.querySelectorAll('[data-chat-agent]').forEach(button => button.classList.toggle('is-selected', button.dataset.chatAgent === agentId));
   }
   async function selectChat(id) {
     const token = ++generation;
@@ -52,6 +55,7 @@
     const agents = window.__BOOTSTRAP__.agents || [];
     agentSelect.innerHTML = '<option value="">选择 Agent</option>' + agents.map(a =>
       `<option value="${esc(a.agent_id)}">${esc(a.name)} · ${esc(a.profile_name)}</option>`).join('');
+    if (agentList) agentList.innerHTML = agents.map((a, index) => `<button type="button" data-chat-agent="${esc(a.agent_id)}"><span class="swarm-member-avatar swarm-member-avatar--${index % 6}">${esc((a.name || '?').slice(0, 1))}</span><span><b>${esc(a.name)}</b><small>${esc(a.role)} · @${esc(a.profile_name)}</small></span><em>${(a.runtime_status || 'stopped') === 'running' ? '运行中' : '空闲'}</em></button>`).join('');
     const next = id || agentId || agents[0]?.agent_id || '';
     agentSelect.value = next;
     if (next !== agentId) { ++generation; agentId = next; selected = null; input.value = ''; }
@@ -60,6 +64,7 @@
     try { await loadHistory(); } catch (error) { report(error); }
   };
   agentSelect.addEventListener('change', () => window.openAgentChat(agentSelect.value));
+  agentList?.addEventListener('click', event => { const button = event.target.closest('[data-chat-agent]'); if (button) window.openAgentChat(button.dataset.chatAgent); });
   byId('chat-new').addEventListener('click', async () => {
     const token = ++generation;
     byId('chat-new').disabled = true;

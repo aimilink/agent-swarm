@@ -230,13 +230,13 @@ assert.equal(rendered.status,0,rendered.stderr);
     const firstMenuPosition = await page.evaluate(() => {
       const trigger = document.querySelectorAll('#members-grid [data-agent-config]')[0].getBoundingClientRect();
       const menu = document.querySelector('.agent-context-menu:not([hidden])').getBoundingClientRect();
-      return {triggerRight: trigger.right, menuRight: menu.right, menuLeft: menu.left};
+      return {triggerRight: trigger.right, menuRight: menu.right, menuLeft: menu.left, menuTop: menu.top};
     });
     assert.ok(Math.abs(firstMenuPosition.triggerRight - firstMenuPosition.menuRight) < 2, 'member menu aligns to visible trigger');
     await page.keyboard.press('Escape');
     await memberConfigButtons.nth(1).click();
     const secondMenuPosition = await page.locator('.agent-context-menu:not([hidden])').boundingBox();
-    assert.notEqual(Math.round(firstMenuPosition.menuLeft), Math.round(secondMenuPosition.x), 'member menu follows the clicked member');
+    assert.notEqual(Math.round(firstMenuPosition.menuTop), Math.round(secondMenuPosition.y), 'member menu follows the clicked member row');
     await page.locator('[data-view="stats"]').click();
     await page.waitForFunction(()=>document.querySelector('#stats-content').textContent.includes('12.3K'));
     assert.match(await page.locator('#stats-content').innerText(),/技术|tech/i);
@@ -263,6 +263,14 @@ assert.equal(rendered.status,0,rendered.stderr);
       await page.screenshot({path:process.env.SWARM_SCREENSHOT});
       await page.locator('[data-view="board"]').click();
     }
+    const pageViews=['overview','board','members','stats','teams','settings'];
+    for (const view of pageViews) {
+      await page.locator('[data-view="'+view+'"]').click();
+      await page.waitForFunction(name=>document.body.dataset.view===name,view);
+      assert.ok(await page.locator('#view-'+view).isVisible(),view+' page is visible');
+      if(process.env.SWARM_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.SWARM_SCREENSHOT_DIR,view+'.png'),fullPage:true});
+    }
+    await page.locator('[data-view="board"]').click();
     await page.setViewportSize({width:390,height:844});
     await page.locator('#kanban-task-form button[type="submit"]').scrollIntoViewIfNeeded();
     const submitRect=await page.locator('#kanban-task-form button[type="submit"]').boundingBox();

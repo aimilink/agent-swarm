@@ -13,6 +13,7 @@
   let previewObjectUrl = "";
   let workspaceTimer = 0;
   let workspaceFiles = [];
+  let projectItems = [];
   let workspaceFilter = "";
   let workspaceTreeSignature = "";
   const collapsedDirectories = new Set();
@@ -115,6 +116,23 @@
       : "<p>尚未创建团队。</p>";
   }
 
+  function renderProjectSummary(items, detail = null) {
+    const target = $("project-summary");
+    if (!target) return;
+    if (document.body.dataset.view === "workspace" && detail) {
+      const project = detail.project;
+      target.innerHTML = `<div class="swarm-stat"><div><div class="swarm-stat__label">当前项目</div><div class="swarm-stat__value swarm-stat__value--name">${esc(project.name)}</div></div></div>
+        <div class="swarm-stat"><div><div class="swarm-stat__label">工作区路径</div><div class="swarm-stat__path">${esc(project.workspace_path)}</div></div></div>
+        <div class="swarm-stat"><div><div class="swarm-stat__label">任务与产物</div><div class="swarm-stat__value">${detail.tasks.length}<small> 任务 · ${detail.artifacts.length} 产物</small></div></div></div>`;
+      return;
+    }
+    const teamIds = new Set(items.flatMap(item => item.team_ids || []));
+    const iterations = items.reduce((sum, item) => sum + Number(item.current_iteration || item.iteration_count || 0), 0);
+    target.innerHTML = `<div class="swarm-stat"><span class="swarm-stat__icon">📦</span><div><div class="swarm-stat__label">项目总数</div><div class="swarm-stat__value">${items.length}<small> 个</small></div></div></div>
+      <div class="swarm-stat"><span class="swarm-stat__icon swarm-stat__icon--purple">🧩</span><div><div class="swarm-stat__label">参与团队</div><div class="swarm-stat__value">${teamIds.size}<small> / ${teams().length} 个团队</small></div></div></div>
+      <div class="swarm-stat"><span class="swarm-stat__icon swarm-stat__icon--green">🔄</span><div><div class="swarm-stat__label">累计迭代</div><div class="swarm-stat__value">${iterations}<small> 次</small></div></div></div>`;
+  }
+
   function renderOverview(items) {
     const target = $("overview-projects");
     if (!target) return;
@@ -129,6 +147,8 @@
 
   async function refreshList() {
     const data = await api("/api/projects");
+    projectItems = data.projects || [];
+    renderProjectSummary(projectItems, document.body.dataset.view === "workspace" ? currentDetail : null);
     $("project-list").innerHTML = data.projects.length
       ? data.projects.map(project => `
           <button type="button" data-project="${esc(project.project_id)}" aria-pressed="${project.project_id === current}">
@@ -182,6 +202,7 @@
   function renderDetail(data) {
     currentDetail = data;
     const project = data.project;
+    renderProjectSummary(projectItems, data);
     $("project-detail").hidden = false;
     $("project-title").textContent = project.name;
     $("project-team-badges").innerHTML = teamBadges(project);
