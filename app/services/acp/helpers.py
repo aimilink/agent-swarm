@@ -224,8 +224,14 @@ def _terminal_control_codes(text: str) -> list[int]:
 
 
 def _terminal_preview(text: str, limit: int = 180) -> str:
-    snippet = text[:limit]
-    return snippet.encode("unicode_escape", "backslashreplace").decode("ascii")
+    """Keep printable Unicode readable while escaping log-breaking controls."""
+    parts: list[str] = []
+    for char in text[:limit]:
+        if char.isprintable():
+            parts.append(char)
+        else:
+            parts.append(char.encode("unicode_escape", "backslashreplace").decode("ascii"))
+    return "".join(parts)
 
 
 def _is_suspicious_terminal_text(text: str) -> bool:

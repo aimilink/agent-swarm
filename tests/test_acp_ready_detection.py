@@ -3,7 +3,9 @@ from app.services.acp import (
     _extract_selection,
     _is_non_interaction_text,
     _looks_ready_for_next_input,
+    _log_terminal_debug,
     _should_show_stuck_hint,
+    _terminal_preview,
 )
 
 
@@ -90,3 +92,20 @@ Welcome to Hermes Agent! Type your message or /help for commands.
 """
 
     assert _is_non_interaction_text(text)
+
+def test_terminal_preview_keeps_printable_unicode_and_escapes_controls():
+    preview = _terminal_preview("\x1b[38;5;173m│⠀⠀⣿ 中文\x1b[0m\n")
+
+    assert "│⠀⠀⣿ 中文" in preview
+    assert "\\u2800" not in preview
+    assert "\\u2502" not in preview
+    assert "\\x1b" in preview
+    assert preview.endswith("\\n")
+
+
+def test_terminal_debug_log_keeps_braille_unicode(caplog):
+    _log_terminal_debug("chunk_sample", "agent_demo", "\x1b[0m⠀⣿\n")
+
+    message = caplog.records[-1].getMessage()
+    assert "⠀⣿" in message
+    assert "\\u2800" not in message
