@@ -279,6 +279,11 @@
     return `${(size / 1024 / 1024).toFixed(1)} MB`;
   }
 
+  const workspaceTree = new window.WorkspaceTree({
+    escapeHtml: esc,
+    formatSize: fileSize,
+  });
+
   function fileSignature(file) {
     return `${file.path}:${file.size}:${file.modified_ns}`;
   }
@@ -488,30 +493,10 @@
     }
   }
   function renderFileTree(files) {
-    const root = {directories: new Map(), files: []};
-    files.forEach(file => {
-      const parts = file.path.split("/");
-      let node = root;
-      parts.slice(0, -1).forEach(part => {
-        if (!node.directories.has(part)) node.directories.set(part, {directories: new Map(), files: []});
-        node = node.directories.get(part);
-      });
-      node.files.push(file);
+    return workspaceTree.render(files, {
+      selectedPath: selectedFile,
+      collapsedDirectories,
     });
-    const renderNode = (node, parents = []) => {
-      const directories = [...node.directories.entries()].sort(([a], [b]) => a.localeCompare(b));
-      const entries = directories.map(([name, child]) => {
-        const directoryPath = [...parents, name].join("/");
-        const open = !collapsedDirectories.has(directoryPath);
-        return `<details class="project-tree-directory" data-directory-path="${esc(directoryPath)}" ${open ? "open" : ""}><summary><span aria-hidden="true">▾</span><strong>${esc(name)}</strong></summary><div>${renderNode(child, [...parents, name])}</div></details>`;
-      });
-      entries.push(...node.files.sort((a, b) => a.name.localeCompare(b.name)).map(file => `<div class="project-file-row" data-preview-type="${esc(file.preview_type)}">
-        <button type="button" data-workspace-open="${esc(file.path)}" aria-pressed="${file.path === selectedFile}" title="${esc(file.path)}"><span aria-hidden="true">◇</span><span>${esc(file.name)}</span><small>${file.is_artifact ? "产物 · " : ""}${esc(fileSize(file.size))}</small></button>
-        <button type="button" data-workspace-download="${esc(file.path)}" aria-label="下载 ${esc(file.path)}" title="下载">↓</button>
-      </div>`));
-      return entries.join("");
-    };
-    return `<div class="project-tree-root"><div class="project-tree-root-label"><span aria-hidden="true">▾</span><strong>workspace</strong></div><div class="project-tree-children">${renderNode(root)}</div></div>`;
   }
 
   function renderCurrentFileTree(emptyMessage = "工作空间暂无文件。", truncated = false) {

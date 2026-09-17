@@ -389,3 +389,194 @@ body[data-view=workspace] .project-workspace-browser { height: calc(100dvh - 250
   .project-create-form > label { grid-template-columns: 1fr; }
   body[data-view=workspace] .project-workspace-browser { height: auto; min-height: 0; }
 }
+
+/* Friendly workspace tree plugin. */
+.project-tree-toolbar { position: relative; display: flex; gap: 3px; }
+.project-file-head .project-tree-toolbar button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 6px;
+  color: #64748b;
+  background: transparent;
+}
+.project-file-head .project-tree-toolbar button:hover,
+.project-file-head .project-tree-toolbar button:focus-visible { border-color: #dbe4f0; color: #1d4ed8; background: #eef4ff; }
+.project-tree-toolbar button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.project-tree-toolbar button::after {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 7px);
+  right: 0;
+  padding: 4px 7px;
+  border-radius: 5px;
+  color: #fff;
+  background: #172033;
+  content: attr(data-tooltip);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+.project-tree-toolbar button:hover::after,
+.project-tree-toolbar button:focus-visible::after { opacity: 1; transform: translateY(0); }
+
+#project-files { padding: 7px 6px 16px; scrollbar-gutter: stable; }
+.workspace-tree { min-width: 0; color: #334155; font-size: 12px; }
+.workspace-tree__root,
+.workspace-tree__directory > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 31px;
+  padding: 3px 7px;
+  border-radius: 6px;
+}
+.workspace-tree__root { color: #1e293b; }
+.workspace-tree__root strong,
+.workspace-tree__directory > summary strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-tree__root small { margin-left: auto; color: #94a3b8; font-size: 10px; }
+.workspace-tree__directory > summary:hover { background: #edf3fa; }
+.workspace-tree__chevron {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: #7c8da6;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(90deg);
+  transition: transform .15s ease;
+}
+.workspace-tree__directory:not([open]) > summary .workspace-tree__chevron { transform: rotate(0); }
+.workspace-tree__folder-icon {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  fill: #dbeafe;
+  stroke: #3b82f6;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.workspace-tree__directory[open] > summary .workspace-tree__folder-icon { fill: #bfdbfe; }
+.workspace-tree__children {
+  position: relative;
+  padding-left: 15px;
+}
+.workspace-tree__directory > .workspace-tree__children::before {
+  position: absolute;
+  top: 0;
+  bottom: 5px;
+  left: 8px;
+  width: 1px;
+  background: #e2e8f0;
+  content: "";
+}
+.project-file-row.workspace-tree__file {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 27px;
+  gap: 1px;
+  align-items: center;
+  min-width: 0;
+  border-radius: 6px;
+}
+.project-file-row.workspace-tree__file:hover { background: #f0f5fb; }
+.project-file-row.workspace-tree__file:has(.workspace-tree__open[aria-pressed=true]) { background: #e8f0ff; box-shadow: inset 2px 0 #2563eb; }
+.project-file-row.workspace-tree__file > .workspace-tree__open {
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 6px;
+  color: #334155;
+  background: transparent;
+  text-align: left;
+}
+.project-file-row.workspace-tree__file > .workspace-tree__open:hover,
+.project-file-row.workspace-tree__file > .workspace-tree__open[aria-pressed=true] { border: 0; background: transparent; }
+.workspace-tree__file-icon {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 21px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  color: #64748b;
+  background: #f8fafc;
+  font: 700 7px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: -.25px;
+}
+.workspace-tree__file-icon--markdown { color: #2563eb; background: #eff6ff; }
+.workspace-tree__file-icon--json,
+.workspace-tree__file-icon--config { color: #b45309; background: #fffbeb; }
+.workspace-tree__file-icon--table { color: #047857; background: #ecfdf5; }
+.workspace-tree__file-icon--html { color: #c2410c; background: #fff7ed; }
+.workspace-tree__file-icon--image { color: #7e22ce; background: #faf5ff; font-size: 6px; }
+.workspace-tree__file-icon--pdf { color: #dc2626; background: #fef2f2; }
+.workspace-tree__file-icon--code { color: #0f766e; background: #f0fdfa; font-size: 6px; }
+.workspace-tree__name {
+  min-width: 0;
+  overflow: hidden;
+  color: #334155;
+  font: 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-tree__open[aria-pressed=true] .workspace-tree__name { color: #1d4ed8; font-weight: 650 !important; }
+.workspace-tree__artifact {
+  padding: 1px 5px;
+  border-radius: 999px;
+  color: #047857;
+  background: #dcfce7;
+  font-size: 9px;
+  line-height: 1.4;
+}
+.project-file-row.workspace-tree__file > .workspace-tree__open small {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.project-file-row.workspace-tree__file > .workspace-tree__download {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 5px;
+  color: #64748b;
+  background: transparent;
+  opacity: 0;
+}
+.project-file-row.workspace-tree__file:hover > .workspace-tree__download,
+.project-file-row.workspace-tree__file:focus-within > .workspace-tree__download { opacity: 1; }
+.project-file-row.workspace-tree__file > .workspace-tree__download:hover { color: #1d4ed8; background: #fff; }
+.workspace-tree__download svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 767px) {
+  .project-file-row.workspace-tree__file > .workspace-tree__download { opacity: 1; }
+  .workspace-tree__artifact,
+  .project-file-row.workspace-tree__file > .workspace-tree__open small { display: none; }
+  .project-file-row.workspace-tree__file > .workspace-tree__open { grid-template-columns: 25px minmax(0, 1fr); }
+}
