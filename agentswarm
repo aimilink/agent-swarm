@@ -2,6 +2,14 @@
 # AgentSwarm service manager.
 set -euo pipefail
 
+# --- hostile-env guard -------------------------------------------------------
+# Agent-framework shells can preset PORT (e.g. Hermes gateway port 8648) which
+# would override AgentSwarm's own port defaults and break start/restart.
+# Drop it early; explicit overrides still work via `PORT=5050 agentswarm restart`.
+if [[ -z "${AGENTSWARM_KEEP_ENV:-}" ]]; then
+  unset PORT || true
+fi
+
 resolve_script_dir() {
   local source_path="${BASH_SOURCE[0]}"
   local source_dir
@@ -122,12 +130,24 @@ start_service() {
 stop_service() {
   local pid=""
   pid="$(read_pid || true)"
+  # Also catch orphan instances: run.py procs from this APP dir that the pidfile
+  # lost track of (e.g. after a manual launch). Otherwise they keep serving an
+  # old codebase and the next start dies with "address already in use".
+  local orphans=""
+  orphans="$(pgrep -f "$APP/.venv/bin/python run.py" 2>/dev/null || true)"
   if ! is_running "$pid"; then
     rm -f "$PID_FILE"
-    echo "AgentSwarm is stopped."
+    if [[ -n "$orphans" ]]; then
+      echo "AgentSwarm is stopped, but orphan instance(s) found: $orphans — stopping them."
+      kill $orphans 2>/dev/null || true
+      sleep 2
+      kill -KILL $orphans 2>/dev/null || true
+    else
+      echo "AgentSwarm is stopped."
+    fi
     return 0
   fi
-  kill "$pid"
+  kill "$pid" $orphans 2>/dev/null || true
   local attempt
   for attempt in {1..150}; do
     if ! is_running "$pid"; then
@@ -138,7 +158,7 @@ stop_service() {
     sleep 0.1
   done
   echo "AgentSwarm did not stop gracefully; terminating PID $pid." >&2
-  kill -KILL "$pid" 2>/dev/null || true
+  kill -KILL "$pid" $orphans 2>/dev/null || true
   rm -f "$PID_FILE"
   echo "AgentSwarm stopped."
 }

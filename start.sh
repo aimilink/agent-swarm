@@ -3,6 +3,13 @@
 # This script reads exported environment variables; it does not parse .env itself.
 set -euo pipefail
 
+# --- hostile-env guard -------------------------------------------------------
+# Shells managed by agent frameworks may leak PORT/HERMES_* into the environment
+# (e.g. Hermes terminal presets PORT=8648 for its own gateway). That would make
+# uvicorn bind the wrong port (or die with "address already in use"). Unset the
+# known-hostile vars BEFORE applying defaults, so ${VAR:-default} actually works.
+unset PORT HERMES_DIR HERMES_AGENT_ROOT || true
+
 APP="${APP_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
 export HERMES_CONTROL_MODE="${HERMES_CONTROL_MODE:-shared}"
 if [[ "$HERMES_CONTROL_MODE" == "shared" ]]; then
