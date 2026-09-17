@@ -109,7 +109,7 @@ select:focus{border-color:#0053db}
 <div class="proj-switch">
 <label for="projpick">当前项目</label>
 <select id="projpick" onchange="switchProj(this.value)">
-<option value="hat">hermes-agent-team</option>
+<option value="hat">agentswarm</option>
 <option value="geo">geo-system</option>
 <option value="lrcms">lrcms 企业站SAAS系统</option>
 </select>
@@ -118,8 +118,8 @@ select:focus{border-color:#0053db}
 </div>
 
 <div class="grid g3" style="margin-bottom:16px">
-<div class="card card-pad"><div style="font-size:13px;color:#6b7280;margin-bottom:8px">工作区路径</div><div style="font-size:13px;font-weight:600;word-break:break-all" id="wsPath">/opt/hermes-agent-team/workspace/projects/ff8937cb…</div></div>
-<div class="card card-pad"><div style="font-size:13px;color:#6b7280;margin-bottom:8px">Git 远端</div><div style="font-size:13px;font-weight:600;word-break:break-all" id="wsGit">hk101.x3322.net:3000/lesoft/hermes-agent-team</div></div>
+<div class="card card-pad"><div style="font-size:13px;color:#6b7280;margin-bottom:8px">工作区路径</div><div style="font-size:13px;font-weight:600;word-break:break-all" id="wsPath">/opt/agent-swarm/workspace/projects/ff8937cb…</div></div>
+<div class="card card-pad"><div style="font-size:13px;color:#6b7280;margin-bottom:8px">Git 远端</div><div style="font-size:13px;font-weight:600;word-break:break-all" id="wsGit">hk101.x3322.net:3000/lesoft/agentswarm</div></div>
 <div class="card card-pad"><div style="font-size:13px;color:#6b7280;margin-bottom:8px">任务产物</div><div style="font-size:24px;font-weight:700" id="wsArts">2<small style="font-size:13px;color:#9ca3af;font-weight:500"> 份文档 · 已登记</small></div></div>
 </div>
 
@@ -152,11 +152,11 @@ select:focus{border-color:#0053db}
 <script>
 const DATA = {
   hat: {
-    name: "hermes-agent-team",
+    name: "agentswarm",
     team: "技术团队",
     sync: "15:59 已同步", syncOk: true,
-    path: "/opt/hermes-agent-team/workspace/projects/ff8937cb…",
-    git: "hk101.x3322.net:3000/lesoft/hermes-agent-team",
+    path: "/opt/agent-swarm/workspace/projects/ff8937cb…",
+    git: "hk101.x3322.net:3000/lesoft/agentswarm",
     arts: "2<small style=\"font-size:13px;color:#9ca3af;font-weight:500\"> 份文档 · 已登记</small>",
     gitSub: "main 分支 · 工作区干净",
     gitRows: [
@@ -182,7 +182,7 @@ const DATA = {
     name: "geo-system",
     team: "技术团队",
     sync: "静态站点 · 无 git", syncOk: true,
-    path: "/opt/hermes-agent-team/workspace/projects/44382773…",
+    path: "/opt/agent-swarm/workspace/projects/44382773…",
     git: "未配置远端（静态站点 · nginx 8091）",
     arts: "1<small style=\"font-size:13px;color:#9ca3af;font-weight:500\"> 份站点地图 · 已登记</small>",
     gitSub: "纯静态目录 · 不在 git 管理内",
@@ -207,7 +207,7 @@ const DATA = {
     name: "lrcms 企业站SAAS系统",
     team: "技术团队",
     sync: "尚未初始化", syncOk: false,
-    path: "/opt/hermes-agent-team/workspace/projects/dae7d54e…",
+    path: "/opt/agent-swarm/workspace/projects/dae7d54e…",
     git: "暂无",
     arts: "0<small style=\"font-size:13px;color:#9ca3af;font-weight:500\"> 份 · 暂无任务产物</small>",
     gitSub: "工作区已创建，尚未同步任何代码",

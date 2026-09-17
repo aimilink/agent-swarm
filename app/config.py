@@ -21,7 +21,7 @@ HERMES_HOME = Path(
     os.environ.get("HERMES_HOME", str(_default_hermes_home))
 ).expanduser().resolve(strict=False)
 HERMES_CLI = os.environ.get("HERMES_CLI", "hermes").strip() or "hermes"
-HERMES_MANAGED_BY = "hermes-agent-team"
+HERMES_MANAGED_BY = "agentswarm"
 AGENT_TEAM_WORKSPACE_ROOT = Path(
     os.environ.get("AGENT_TEAM_WORKSPACE_ROOT", str(Path.home() / "agent_team"))
 ).expanduser().resolve(strict=False)
