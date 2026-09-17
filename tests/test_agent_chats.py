@@ -52,6 +52,9 @@ def test_invalid_busy_and_failure(client, monkeypatch):
     for payload in ({}, {'content': []}, {'content': '  '}, {'content': 'x' * 20001}, []):
         assert client.post(url + '/messages', json=payload).status_code == 400
     def fail(profile, prompt):
+        progress = client.get(url).json["chat"]["progress"]
+        assert progress["title"] == "Agent 正在思考"
+        assert [step["status"] for step in progress["steps"]] == ["complete", "complete", "active", "pending"]
         assert client.post(url + '/messages', json={'content': '重复'}).status_code == 409
         raise RuntimeError('private configuration')
     monkeypatch.setattr(controller, '_run_hermes_chat', fail)

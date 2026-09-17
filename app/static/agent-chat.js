@@ -9,6 +9,7 @@
   const status = byId('chat-status');
   let agentId = '', selected = null, generation = 0, sending = false;
   let availableAgents = [], agentQuery = '';
+  let thinkingTimer = 0;
   const esc = value => window.__HERMES_APP__.escapeHtml(String(value ?? ''));
   const path = () => `/api/agents/${encodeURIComponent(agentId)}/chats`;
   async function api(url, body) {
@@ -32,12 +33,61 @@
     return data;
   }
   function report(error) { status.textContent = error.message || String(error); }
+  function defaultProgress(startedAt = new Date().toISOString()) {
+    return {
+      title: 'Agent 正在思考',
+      started_at: startedAt,
+      steps: [
+        {label: '接收用户消息', detail: '消息已进入当前会话', status: 'complete'},
+        {label: '整理会话上下文', detail: '已载入本次对话记录', status: 'complete'},
+        {label: '分析请求并生成回复', detail: '正在等待 Hermes 模型返回', status: 'active'},
+        {label: '保存并展示回复', detail: '模型返回后自动完成', status: 'pending'},
+      ],
+    };
+  }
+  function elapsedText(startedAt) {
+    const start = new Date(startedAt || Date.now()).getTime();
+    const seconds = Math.max(0, Math.floor((Date.now() - (Number.isFinite(start) ? start : Date.now())) / 1000));
+    if (seconds < 60) return '已等待 ' + seconds + ' 秒';
+    const minutes = Math.floor(seconds / 60);
+    return '已等待 ' + minutes + ' 分 ' + String(seconds % 60).padStart(2, '0') + ' 秒';
+  }
+  function updateThinkingElapsed() {
+    const elapsed = messages.querySelector('[data-chat-elapsed]');
+    const panel = elapsed?.closest('[data-thinking-started]');
+    if (elapsed && panel) elapsed.textContent = elapsedText(panel.dataset.thinkingStarted);
+  }
+  function syncThinkingClock(active) {
+    if (!active) {
+      if (thinkingTimer) window.clearInterval(thinkingTimer);
+      thinkingTimer = 0;
+      return;
+    }
+    updateThinkingElapsed();
+    if (!thinkingTimer) thinkingTimer = window.setInterval(updateThinkingElapsed, 1000);
+  }
+  function renderThinking(progress) {
+    const value = progress || defaultProgress(selected?.updated_at);
+    const states = new Set(['complete', 'active', 'pending']);
+    const steps = Array.isArray(value.steps) ? value.steps : defaultProgress(value.started_at).steps;
+    const stepHtml = steps.map(step => {
+      const state = states.has(step.status) ? step.status : 'pending';
+      const marker = state === 'complete' ? '✓' : state === 'active' ? '<i aria-hidden="true"></i>' : '·';
+      return '<li data-state="' + state + '"><span class="chat-thinking-marker">' + marker + '</span><span><strong>' +
+        esc(step.label || '处理中') + '</strong><small>' + esc(step.detail || '') + '</small></span></li>';
+    }).join('');
+    return '<aside class="chat-thinking" role="status" data-thinking-started="' + esc(value.started_at || new Date().toISOString()) + '">' +
+      '<div class="chat-thinking-head"><span class="chat-thinking-spinner" aria-hidden="true"></span><span><strong>' +
+      esc(value.title || 'Agent 正在思考') + '</strong><small data-chat-elapsed>' + esc(elapsedText(value.started_at)) +
+      '</small></span></div><ol>' + stepHtml + '</ol><p>显示可观测的处理阶段，不包含模型内部推理文本。</p></aside>';
+  }
   function render() {
     byId('chat-title').textContent = selected?.title || 'Agent 对话';
     messages.innerHTML = selected?.messages?.length ? selected.messages.map(m =>
       `<article class="chat-message chat-message--${esc(m.role)}"><strong>${m.role === 'user' ? '你' : m.role === 'error' ? '提示' : esc(agentSelect.selectedOptions[0]?.textContent || 'Agent')}</strong><div>${esc(m.content)}</div><small>${esc(new Date(m.created_at).toLocaleString())}</small></article>`
     ).join('') : '<p class="chat-empty">选择 Agent，新建对话，开始一对一交流。历史会话会自动保存。</p>';
-    if (selected?.busy) messages.insertAdjacentHTML('beforeend', '<p class="chat-empty">Agent 正在回复…</p>');
+    if (selected?.busy) messages.insertAdjacentHTML('beforeend', renderThinking(selected.progress));
+    syncThinkingClock(Boolean(selected?.busy));
     byId('chat-send').disabled = !selected || selected.busy || sending;
     input.disabled = !selected || selected.busy || sending;
     history.querySelectorAll('button').forEach(button => button.classList.toggle('is-selected', button.dataset.chatId === selected?.chat_id));
@@ -113,8 +163,9 @@
     if (!content || !selected || selected.busy || sending) return;
     const token = generation, url = `${path()}/${selected.chat_id}/messages`;
     sending = true; status.textContent = ''; input.value = '';
-    selected.messages.push({role: 'user', content, created_at: new Date().toISOString()});
-    selected.busy = true; render();
+    const startedAt = new Date().toISOString();
+    selected.messages.push({role: 'user', content, created_at: startedAt});
+    selected.busy = true; selected.updated_at = startedAt; selected.progress = defaultProgress(startedAt); render();
     try {
       const data = await api(url, {content});
       if (token === generation) { selected = data.chat; render(); await loadHistory(); }

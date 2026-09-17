@@ -18,6 +18,17 @@ bp = Blueprint("agent_chats", __name__, url_prefix="/api/agents/<agent_id>/chats
 
 def serialize(row, detail=False):
     data = {key: getattr(row, key) for key in ("chat_id", "agent_id", "title", "busy", "updated_at")}
+    if row.busy:
+        data["progress"] = {
+            "title": "Agent 正在思考",
+            "started_at": row.updated_at,
+            "steps": [
+                {"label": "接收用户消息", "detail": "消息已进入当前会话", "status": "complete"},
+                {"label": "整理会话上下文", "detail": "已载入本次对话记录", "status": "complete"},
+                {"label": "分析请求并生成回复", "detail": "正在等待 Hermes 模型返回", "status": "active"},
+                {"label": "保存并展示回复", "detail": "模型返回后自动完成", "status": "pending"},
+            ],
+        }
     if detail:
         data["messages"] = json.loads(row.messages_json)
     return data
