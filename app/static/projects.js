@@ -458,6 +458,133 @@
     return article;
   }
 
+  function detectDelimitedSeparator(content, suffix) {
+    if (suffix === "tsv") return "\t";
+    const counts = {",": 0, ";": 0, "\t": 0};
+    let quoted = false;
+    const source = String(content || "");
+    for (let index = 0; index < source.length; index += 1) {
+      const character = source[index];
+      if (character === '"') {
+        if (quoted && source[index + 1] === '"') index += 1;
+        else quoted = !quoted;
+        continue;
+      }
+      if (!quoted && (character === "\n" || character === "\r")) break;
+      if (!quoted && Object.hasOwn(counts, character)) counts[character] += 1;
+    }
+    return Object.entries(counts).sort((left, right) => right[1] - left[1])[0][1] ? Object.entries(counts).sort((left, right) => right[1] - left[1])[0][0] : ",";
+  }
+
+  function parseDelimitedText(content, delimiter) {
+    const source = String(content || "").replace(/^\uFEFF/, "");
+    const rows = [];
+    let row = [];
+    let field = "";
+    let quoted = false;
+    for (let index = 0; index < source.length; index += 1) {
+      const character = source[index];
+      if (quoted) {
+        if (character === '"' && source[index + 1] === '"') {
+          field += '"';
+          index += 1;
+        } else if (character === '"') {
+          quoted = false;
+        } else {
+          field += character;
+        }
+        continue;
+      }
+      if (character === '"' && field === "") {
+        quoted = true;
+      } else if (character === delimiter) {
+        row.push(field);
+        field = "";
+      } else if (character === "\r" || character === "\n") {
+        if (character === "\r" && source[index + 1] === "\n") index += 1;
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = "";
+      } else {
+        field += character;
+      }
+    }
+    if (field || row.length) {
+      row.push(field);
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  function renderDelimitedTable(content, suffix) {
+    const delimiter = detectDelimitedSeparator(content, suffix);
+    const rows = parseDelimitedText(content, delimiter);
+    const root = document.createElement("section");
+    root.className = "project-csv-preview";
+    if (!rows.length) {
+      const empty = document.createElement("p");
+      empty.className = "project-csv-empty";
+      empty.textContent = "CSV 文件为空。";
+      root.append(empty);
+      return root;
+    }
+
+    const maxRows = 1000;
+    const maxColumns = 100;
+    const actualColumns = rows.reduce((count, row) => Math.max(count, row.length), 0);
+    const columnCount = Math.min(actualColumns, maxColumns);
+    const dataRows = rows.slice(1, maxRows + 1);
+    const summary = document.createElement("div");
+    summary.className = "project-csv-summary";
+    const delimiterName = delimiter === "\t" ? "Tab" : delimiter === ";" ? "分号" : "逗号";
+    summary.textContent = Math.max(rows.length - 1, 0) + " 行数据 · " + actualColumns + " 列 · " + delimiterName + "分隔";
+    if (rows.length - 1 > maxRows || actualColumns > maxColumns) {
+      const notice = document.createElement("span");
+      notice.textContent = "大型文件仅展示前 " + maxRows + " 行、" + maxColumns + " 列，可切换源码查看完整内容。";
+      summary.append(notice);
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "project-csv-table-wrap";
+    const table = document.createElement("table");
+    table.className = "project-csv-table";
+    const head = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    const corner = document.createElement("th");
+    corner.className = "project-csv-row-number";
+    corner.scope = "col";
+    corner.textContent = "#";
+    headRow.append(corner);
+    for (let column = 0; column < columnCount; column += 1) {
+      const cell = document.createElement("th");
+      cell.scope = "col";
+      cell.textContent = rows[0][column] || "列 " + (column + 1);
+      headRow.append(cell);
+    }
+    head.append(headRow);
+
+    const body = document.createElement("tbody");
+    dataRows.forEach((values, rowIndex) => {
+      const tableRow = document.createElement("tr");
+      const rowNumber = document.createElement("th");
+      rowNumber.className = "project-csv-row-number";
+      rowNumber.scope = "row";
+      rowNumber.textContent = String(rowIndex + 1);
+      tableRow.append(rowNumber);
+      for (let column = 0; column < columnCount; column += 1) {
+        const cell = document.createElement("td");
+        cell.textContent = values[column] || "";
+        tableRow.append(cell);
+      }
+      body.append(tableRow);
+    });
+    table.append(head, body);
+    wrapper.append(table);
+    root.append(summary, wrapper);
+    return root;
+  }
+
   function setPreviewMode(mode) {
     previewMode = mode === "source" ? "source" : "preview";
     document.querySelectorAll("[data-preview-mode]").forEach(button => {
@@ -472,6 +599,8 @@
       target.replaceChildren(pre);
     } else if (["md", "markdown"].includes(suffix)) {
       target.replaceChildren(renderMarkdown(previewPayload.content, previewFile.path));
+    } else if (["csv", "tsv"].includes(suffix)) {
+      target.replaceChildren(renderDelimitedTable(previewPayload.content, suffix));
     } else if (["html", "htm"].includes(suffix)) {
       const frame = document.createElement("iframe");
       frame.title = `${previewFile.name || previewFile.path} HTML 预览`;
@@ -491,7 +620,7 @@
     previewMode = "preview";
     $("project-preview-modes").hidden = true;
     $("project-preview-title").textContent = "选择文件在线查看";
-    $("project-preview-meta").textContent = "支持 Markdown、图片、HTML、代码和 PDF";
+    $("project-preview-meta").textContent = "支持 Markdown、CSV、图片、HTML、代码和 PDF";
     $("project-preview-download").hidden = true;
     $("project-preview-content").innerHTML = `<p>${esc(message)}</p>`;
   }
@@ -531,7 +660,7 @@
         if (projectId !== current || selectedFile !== file.path || selectedSignature !== signature) return;
         previewPayload = data;
         const suffix = file.path.split(".").pop().toLowerCase();
-        const formatted = ["md", "markdown", "html", "htm"].includes(suffix);
+        const formatted = ["md", "markdown", "csv", "tsv", "html", "htm"].includes(suffix);
         $("project-preview-modes").hidden = !formatted;
         $("project-preview-meta").textContent = `${fileSize(file.size)} · ${file.mime_type || "文本"} · ${data.encoding || "utf-8"}`;
         setPreviewMode(formatted ? previewMode : "source");

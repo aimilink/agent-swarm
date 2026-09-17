@@ -322,6 +322,22 @@
 .project-markdown .project-markdown-cell--center { text-align: center; }
 .project-markdown .project-markdown-cell--right { text-align: right; }
 .project-markdown .project-markdown-cell--left { text-align: left; }
+.project-csv-preview { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; height: 100%; background: #fff; }
+.project-csv-summary { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 7px 12px; border-bottom: 1px solid #dce2ec; color: #475569; background: #f8fafc; font-size: 11px; }
+.project-csv-summary span { margin-left: auto; color: #b45309; }
+.project-csv-table-wrap { min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.project-csv-table { min-width: 100%; border-spacing: 0; border-collapse: separate; color: #334155; background: #fff; font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.project-csv-table th,.project-csv-table td { min-width: 110px; max-width: 420px; padding: 8px 10px; border-right: 1px solid #e5eaf1; border-bottom: 1px solid #e5eaf1; overflow-wrap: anywhere; text-align: left; vertical-align: top; white-space: pre-wrap; }
+.project-csv-table thead th { position: sticky; z-index: 2; top: 0; color: #1e293b; background: #eef3f8; font-weight: 700; white-space: nowrap; }
+.project-csv-table tbody tr:nth-child(even) td,.project-csv-table tbody tr:nth-child(even) th { background: #fafbfc; }
+.project-csv-table tbody tr:hover td,.project-csv-table tbody tr:hover th { background: #eef6ff; }
+.project-csv-table .project-csv-row-number { position: sticky; z-index: 1; left: 0; min-width: 48px; width: 48px; color: #94a3b8; background: #f8fafc; text-align: right; user-select: none; }
+.project-csv-table thead .project-csv-row-number { z-index: 3; background: #e8eef5; }
+.project-csv-empty { padding: 24px; color: #64748b; }
+@media (max-width: 767px) {
+  .project-csv-summary { align-items: flex-start; flex-direction: column; }
+  .project-csv-summary span { margin-left: 0; }
+}
 .project-markdown-image { display: block; max-width: 100%; height: auto; margin: 18px auto; padding: 0 !important; border-radius: 8px; }
 .terminal-drawer { z-index: 130; }
 .workspace-terminal-drawer .terminal-drawer__panel { width: min(1180px, calc(100vw - 28px)); }
