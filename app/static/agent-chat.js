@@ -192,5 +192,5 @@
       const data = await api(`${path()}/${selected.chat_id}`);
       if (token === generation) { selected = data.chat; render(); await loadHistory(); }
     } catch (error) { if (token === generation) report(error); }
-  }, 3000);
+  }, 1200);
 })();

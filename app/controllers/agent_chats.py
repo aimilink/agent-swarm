@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -76,6 +77,37 @@ def chat_detail(agent_id, chat_id):
         return jsonify(ok=True, chat=serialize(row, True))
 
 
+def _complete_chat_reply(profile_name, chat_id, prompt):
+    try:
+        reply = _run_hermes_chat(profile_name, prompt)
+        message = {"role": "assistant", "content": reply or "（空响应）", "created_at": now_iso()}
+    except Exception:
+        message = {
+            "role": "error",
+            "content": "Agent 回复失败，请检查 Hermes CLI 与模型配置后重试。",
+            "created_at": now_iso(),
+        }
+    with SessionLocal() as db:
+        row = db.get(AgentChatRecord, chat_id)
+        if row is None:
+            return
+        messages = json.loads(row.messages_json)
+        messages.append(message)
+        row.messages_json = json.dumps(messages, ensure_ascii=False)
+        row.busy = False
+        row.updated_at = now_iso()
+        db.commit()
+
+
+def _dispatch_chat_reply(profile_name, chat_id, prompt):
+    threading.Thread(
+        target=_complete_chat_reply,
+        args=(profile_name, chat_id, prompt),
+        daemon=True,
+        name=f"agent-chat-{chat_id[:8]}",
+    ).start()
+
+
 @bp.post("/<chat_id>/messages")
 def send(agent_id, chat_id):
     payload = request.get_json(silent=True)
@@ -92,9 +124,10 @@ def send(agent_id, chat_id):
         row = db.get(AgentChatRecord, chat_id)
         if row is None or row.agent_id != agent_id:
             return jsonify(ok=False, error="聊天不存在"), 404
+        started_at = now_iso()
         claimed = db.execute(update(AgentChatRecord).where(
             AgentChatRecord.chat_id == chat_id, AgentChatRecord.busy.is_(False)
-        ).values(busy=True, updated_at=now_iso()))
+        ).values(busy=True, updated_at=started_at))
         if not claimed.rowcount:
             return jsonify(ok=False, error="正在回复，请稍候"), 409
         messages = json.loads(row.messages_json)
@@ -102,22 +135,14 @@ def send(agent_id, chat_id):
         row.messages_json = json.dumps(messages, ensure_ascii=False)
         if row.title == "新聊天":
             row.title = content[:60]
+        row.busy = True
+        row.updated_at = started_at
         db.commit()
+        queued_chat = serialize(row, True)
     # Each invocation is independent. Only this conversation's transcript is supplied.
     transcript = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] != "error"]
     prompt = ("这是用户与你的 Agent 对话。请直接回复最后一条用户消息。\n"
               "以下 JSON 是当前会话的聊天记录，role 表示消息来源：\n"
               + json.dumps(transcript, ensure_ascii=False))
-    try:
-        reply = _run_hermes_chat(agent["profile_name"], prompt)
-        message = {"role": "assistant", "content": reply or "（空响应）", "created_at": now_iso()}
-    except Exception:
-        message = {"role": "error", "content": "Agent 回复失败，请检查 Hermes CLI 与模型配置后重试。", "created_at": now_iso()}
-    with SessionLocal() as db:
-        row = db.get(AgentChatRecord, chat_id)
-        messages.append(message)
-        row.messages_json = json.dumps(messages, ensure_ascii=False)
-        row.busy = False
-        row.updated_at = now_iso()
-        db.commit()
-        return jsonify(ok=True, chat=serialize(row, True))
+    _dispatch_chat_reply(agent["profile_name"], chat_id, prompt)
+    return jsonify(ok=True, chat=queued_chat), 202

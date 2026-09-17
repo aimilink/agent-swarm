@@ -20,9 +20,10 @@ const {chromium} = require('playwright');
      chat.title=content;
      chat.messages.push({role:'user',content,created_at:chat.updated_at});
      chat.busy=true;
-     await new Promise(resolve=>setTimeout(resolve,350));
-     chat.messages.push({role:'assistant',content:'回复 <script>安全</script>',created_at:chat.updated_at});
-     chat.busy=false;
+     setTimeout(()=>{
+      chat.messages.push({role:'assistant',content:'回复 <script>安全</script>',created_at:chat.updated_at});
+      chat.busy=false;
+     },350);
     }
    }
    return route.fulfill({json:{ok:true,chat,chats:chats.filter(c=>c.agent_id===agent)}});

@@ -1,4 +1,6 @@
 import json
+import time
+from threading import Event
 from types import SimpleNamespace
 
 import pytest
@@ -30,19 +32,35 @@ def create(client, agent='a'):
     return response.json['chat']['chat_id']
 
 
+def wait_for_chat(client, url, timeout=2):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        chat = client.get(url).json["chat"]
+        if not chat["busy"]:
+            return chat
+        time.sleep(0.01)
+    raise AssertionError("Agent chat did not finish in time")
+
+
 def test_history_context_and_isolation(client, monkeypatch):
     calls = []
     monkeypatch.setattr(controller, '_run_hermes_chat', lambda profile, prompt: calls.append((profile, prompt)) or '回答')
     first, second = create(client), create(client)
     url = f'/api/agents/a/chats/{first}'
-    assert client.post(url + '/messages', json={'content': '你好'}).status_code == 200
-    assert client.post(url + '/messages', json={'content': '继续'}).status_code == 200
+    response = client.post(url + '/messages', json={'content': '你好'})
+    assert response.status_code == 202
+    assert response.json['chat']['busy']
+    wait_for_chat(client, url)
+    assert client.post(url + '/messages', json={'content': '继续'}).status_code == 202
+    chat = wait_for_chat(client, url)
     assert '你好' in calls[1][1] and '回答' in calls[1][1] and '继续' in calls[1][1]
-    assert client.get(url).json['chat']['messages'][-1]['content'] == '回答'
+    assert chat['messages'][-1]['content'] == '回答'
     assert len(client.get('/api/agents/a/chats').json['chats']) == 2
     assert client.get(f'/api/agents/b/chats/{first}').status_code == 404
     assert client.post(f'/api/agents/b/chats/{first}/messages', json={'content': 'x'}).status_code == 404
-    client.post(f'/api/agents/a/chats/{second}/messages', json={'content': '全新问题'})
+    second_url = f'/api/agents/a/chats/{second}'
+    assert client.post(second_url + '/messages', json={'content': '全新问题'}).status_code == 202
+    wait_for_chat(client, second_url)
     assert '你好' not in calls[-1][1]
 
 
@@ -51,15 +69,24 @@ def test_invalid_busy_and_failure(client, monkeypatch):
     url = f'/api/agents/a/chats/{chat_id}'
     for payload in ({}, {'content': []}, {'content': '  '}, {'content': 'x' * 20001}, []):
         assert client.post(url + '/messages', json=payload).status_code == 400
+    started, release = Event(), Event()
+
     def fail(profile, prompt):
-        progress = client.get(url).json["chat"]["progress"]
-        assert progress["title"] == "Agent 正在思考"
-        assert [step["status"] for step in progress["steps"]] == ["complete", "complete", "active", "pending"]
-        assert client.post(url + '/messages', json={'content': '重复'}).status_code == 409
+        started.set()
+        release.wait(2)
         raise RuntimeError('private configuration')
+
     monkeypatch.setattr(controller, '_run_hermes_chat', fail)
-    data = client.post(url + '/messages', json={'content': '测试'}).json['chat']
-    assert not data['busy']
+    response = client.post(url + '/messages', json={'content': '测试'})
+    assert response.status_code == 202
+    assert response.json['chat']['busy']
+    assert started.wait(1)
+    progress = client.get(url).json["chat"]["progress"]
+    assert progress["title"] == "Agent 正在思考"
+    assert [step["status"] for step in progress["steps"]] == ["complete", "complete", "active", "pending"]
+    assert client.post(url + '/messages', json={'content': '重复'}).status_code == 409
+    release.set()
+    data = wait_for_chat(client, url)
     assert data['messages'][-1]['role'] == 'error'
     assert 'private' not in json.dumps(data)
     assert client.post('/api/agents/missing/chats', json={}).status_code == 404
@@ -86,9 +113,12 @@ def test_direct_chat_does_not_require_team_readiness(client, monkeypatch, readin
     monkeypatch.setattr(controller, "_run_hermes_chat",
                         lambda profile, prompt: calls.append(profile) or "正常回复")
     chat_id = create(client)
-    response = client.post(f"/api/agents/a/chats/{chat_id}/messages", json={"content": "你好"})
-    assert response.status_code == 200
+    url = f"/api/agents/a/chats/{chat_id}"
+    response = client.post(url + "/messages", json={"content": "你好"})
+    assert response.status_code == 202
+    assert response.json["chat"]["busy"] is True
+    chat = wait_for_chat(client, url)
     assert calls == ["a"]
-    assert response.json["chat"]["messages"][-1]["content"] == "正常回复"
-    assert response.json["chat"]["busy"] is False
+    assert chat["messages"][-1]["content"] == "正常回复"
+    assert chat["busy"] is False
     assert agent["readiness_status"] == readiness
