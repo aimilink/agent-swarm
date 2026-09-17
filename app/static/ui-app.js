@@ -2,7 +2,7 @@
   const app = () => window.__HERMES_APP__ || {};
   const boot = () => window.__BOOTSTRAP__ || {};
 
-  const VIEWS = ["overview", "board", "members", "stats", "settings", "teams", "chat", "a2a", "projects"];
+  const VIEWS = ["overview", "board", "members", "stats", "settings", "teams", "chat", "a2a", "projects", "workspace"];
   let currentView = "overview";
   let memberFilter = "全部";
   let memberSearch = "";
@@ -77,8 +77,10 @@
     if (ev) ev.preventDefault();
     if (!VIEWS.includes(name)) return;
     currentView = name;
+    document.body.dataset.view = name;
+    document.dispatchEvent(new CustomEvent("swarm:view", {detail: name}));
     document.querySelectorAll(".view").forEach((view) => view.classList.add("hidden"));
-    const target = document.getElementById(`view-${name}`);
+    const target = document.getElementById(`view-${name === "workspace" ? "projects" : name}`);
     if (target) target.classList.remove("hidden");
     if (els.dock) {
       els.dock.classList.toggle("is-visible", name === "overview" || name === "board");
@@ -1014,7 +1016,7 @@
 
   function wireEvents() {
     document.querySelectorAll(".nav-link[data-view]").forEach((link) => {
-      link.addEventListener("click", (event) => switchView(link.dataset.view || "overview", event));
+      link.addEventListener("click", (event) => { event.preventDefault(); if (window.navigateSwarm) window.navigateSwarm(link.dataset.view); else switchView(link.dataset.view || "overview"); });
     });
 
     els.sidebarToggle?.addEventListener("click", () => {

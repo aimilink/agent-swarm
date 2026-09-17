@@ -1,0 +1,73 @@
+/* Production design system from agentswarm-ui. Business views keep their API bindings. */
+body { --swarm-border:#e5e7eb; --swarm-muted:#6b7280; background:#fafafa!important; color:#212121!important; font-family:'Plus Jakarta Sans',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif!important; }
+body > header { left:232px!important; width:calc(100% - 232px)!important; height:64px!important; padding:0 24px!important; background:#fff!important; border-bottom:1px solid var(--swarm-border)!important; box-shadow:none!important; backdrop-filter:none!important; }
+#swarm-page-title { color:#212121; font-size:17px; font-weight:700; line-height:1.4; }
+#swarm-page-subtitle { color:var(--swarm-muted); font-size:12px; margin-top:2px; }
+#app-sidebar { width:232px!important; padding:0!important; background:#fff!important; border-right:1px solid var(--swarm-border)!important; backdrop-filter:none!important; z-index:60!important; }
+.swarm-logo { height:64px; flex-shrink:0; display:flex; align-items:center; gap:10px; padding:0 20px; border-bottom:1px solid #f3f4f6; }
+.swarm-logo-mark { width:32px; height:32px; display:grid; place-items:center; border-radius:9px; background:linear-gradient(135deg,#0053db,#7c3aed); color:white; font-weight:700; }
+.swarm-logo b { display:block; font-size:15px; }.swarm-logo small { font-size:10px; color:#9ca3af; letter-spacing:.08em; }
+#app-sidebar > ul { padding:10px 0; gap:0; overflow:auto; }
+#app-sidebar .nav-link { border-radius:0; border-left:3px solid transparent; padding:10px 20px; gap:11px; color:#4b5563; font-size:14px; line-height:22px; }
+#app-sidebar .nav-link:hover { background:#f9fafb; color:#0053db; }
+#app-sidebar .nav-link[aria-current=page] { background:#f0f6ff; color:#0053db; border-left-color:#0053db; font-weight:600; }
+#app-sidebar .nav-link svg { width:17px; height:17px; flex-shrink:0; }
+.swarm-sidebar-footer { padding:16px; border-top:1px solid #f3f4f6; font-size:12px; color:#6b7280; }
+.swarm-sidebar-footer button { width:100%; padding:9px; border-radius:8px; background:#f0f6ff; color:#0053db; font-weight:600; }
+body > main { margin-left:232px!important; padding-top:64px!important; background:#fafafa!important; }
+main > .view { background:#fafafa; }
+main .bg-surface, main .bg-surface-container-lowest { background:#fff; }
+main .rounded-xl { border-radius:14px; }
+main .shadow-sm { box-shadow:none; }
+main [class*='border-outline-variant'] { border-color:var(--swarm-border); }
+main .p-md { padding:24px; } main .gap-md { gap:16px; }
+main .pb-0 { padding-bottom:0; }
+main .text-on-surface { color:#212121; } main .text-on-surface-variant { color:#6b7280; }
+main .bg-primary, main .bg-primary-container { background:#0053db; color:white; }
+main button, main input, main textarea, main select { font-family:inherit; }
+button { cursor:pointer; } button:disabled { cursor:not-allowed; opacity:.5; }
+:focus-visible { outline:2px solid #0053db; outline-offset:3px; }
+input:not([type=checkbox]):not([type=radio]),select,textarea { border-radius:9px; }
+.swarm-avatar { width:32px; height:32px; display:grid; place-items:center; border-radius:50%; background:#eff6ff; color:#0053db; font-weight:700; }
+.chat-layout { margin:24px; border:1px solid var(--swarm-border); border-radius:14px; background:white; overflow:hidden; }
+.chat-sidebar { background:#fff; border-color:var(--swarm-border); }
+.chat-main { background:#fff; }
+.project-layout { padding:24px; gap:20px; }
+.project-layout > aside { background:#fff; padding:18px; border:1px solid var(--swarm-border); border-radius:14px; }
+.project-layout section { border-color:var(--swarm-border); border-radius:14px; }
+.project-layout button[type=submit] { background:#0053db; }
+.swarm-project-toolbar { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.swarm-project-toolbar button { padding:8px 14px; border:1px solid var(--swarm-border); background:white; border-radius:9px; }
+.swarm-project-toolbar [aria-pressed=true] { color:#0053db; background:#eff6ff; border-color:#0053db; }
+body[data-view=workspace] #project-detail > :not(.project-title-row):not(.project-workspace-panel):not(.swarm-project-toolbar) { display:none; }
+body[data-view=workspace] .project-layout > aside > details,body[data-view=workspace] .project-portfolio-title,body[data-view=workspace] #project-team-portfolio { display:none; }
+body[data-view=workspace] .project-workspace-browser { min-height:55vh; }
+#swarm-help { max-width:600px; width:calc(100% - 32px); padding:28px; border:1px solid var(--swarm-border); border-radius:14px; color:#212121; }
+#swarm-help::backdrop { background:rgba(17,24,39,.4); }
+#swarm-help h2 { font-size:20px; font-weight:700; margin-bottom:16px; }
+#swarm-help p { margin:12px 0; line-height:1.8; }
+#swarm-help button { padding:8px 18px; border-radius:9px; background:#0053db; color:white; }
+@media(max-width:1024px) { #overview-team-health { grid-template-columns:1fr; } }
+@media(max-width:767px) {
+ body > header { left:0!important; width:100%!important; padding:0 16px!important; }
+ body > main { margin-left:0!important; }
+ #app-sidebar { z-index:80!important; }
+ .mobile-sidebar-backdrop { z-index:70!important; }
+ #swarm-page-subtitle,.swarm-avatar { display:none; }
+ #swarm-page-title { font-size:15px; }
+ main .p-md,.project-layout { padding:16px; }
+ .chat-layout { margin:12px; }
+ #view-overview > .grid { display:block; }
+ #view-overview > .grid > div { margin-bottom:16px; }
+ .project-layout > aside { max-height:260px; overflow:auto; }
+ #kanban-task-form { max-height:40vh; overflow:auto; }
+}
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; } }
+:root { --ui-header-height:64px; --ui-sidebar-width:232px; } #overview-activity-feed:not(.swarm-activity-expanded) > div:nth-child(n+5) { display:none; }
+
+/* Let dashboard cards size to their contents rather than clipping the health grid. */
+#view-overview > .grid { grid-auto-rows:min-content; align-content:start; }
+#overview-system-health { min-height:min-content; }
+body :is(.font-body-md,.font-body-lg,.font-label-md,.font-label-sm,.font-title-lg,.font-headline-md,.font-headline-sm,.font-display-lg) { font-family:inherit; }
+body > header button { border-radius:9px; }
+main button.rounded-xl { border-radius:9px; }

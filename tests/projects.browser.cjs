@@ -174,6 +174,16 @@ assert.equal(rendered.status,0,rendered.stderr);
   await page.waitForFunction(()=>document.querySelectorAll('#project-artifacts article').length===1);
   assert.ok(await page.locator('#overview-projects').innerText().then(t=>t.includes('工程团队')));
 
+  await page.locator('.nav-link[data-view="workspace"]').click();
+  await page.waitForFunction(()=>document.body.dataset.view==='workspace');
+  assert.equal(new URL(page.url()).hash, '#workspace');
+  await page.locator('.project-workspace-panel').waitFor({state:'visible'});
+  assert.equal(await page.locator('#project-tasks').isVisible(),false);
+  await page.reload();
+  await page.waitForFunction(()=>document.body.dataset.view==='workspace' && document.querySelector('#project-title').textContent==='协作项目');
+  assert.equal(await page.locator('.nav-link[aria-current="page"]').getAttribute('data-view'),'workspace');
+  await page.locator('[data-project-mode="projects"]').click();
+  await page.locator('#project-tasks').waitFor({state:'visible'});
   if(process.env.PROJECT_SCREENSHOT)await page.screenshot({path:process.env.PROJECT_SCREENSHOT});
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.locator('#view-projects').evaluate(el=>el.scrollWidth<=el.clientWidth+1));

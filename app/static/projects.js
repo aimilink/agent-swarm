@@ -423,8 +423,8 @@
     }
   }
 
-  window.openProjects = async function () {
-    window.switchView("projects");
+  window.openProjects = async function (view = "projects") {
+    window.switchView(view === "workspace" ? "workspace" : "projects");
     try {
       const items = await refreshList();
       const selected = items.find(item => item.project_id === current) || items[0];
@@ -447,7 +447,7 @@
     rememberProject(button.dataset.overviewProject);
     window.openProjects();
   });
-  $("project-refresh").addEventListener("click", () => window.openProjects());
+  $("project-refresh").addEventListener("click", () => window.openProjects(document.body.dataset.view));
 
   async function submit(form, work) {
     const button = form.querySelector("[type=submit]");

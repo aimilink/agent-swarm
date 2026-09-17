@@ -54,3 +54,12 @@ PYTHON="$PWD/.venv/bin/python" BROWSER_CHANNEL=msedge node tests/team_ux.browser
 ## 验证边界
 
 真实 Hermes 进程启动、模型生成、跨团队执行回流尚未在浏览器中联调。本次浏览器验证覆盖 Edge；其他浏览器与真实移动设备仍需验收。统计页异步加载、全局鉴权输入体验和完整键盘焦点约束不在本轮修复范围内。
+
+
+## agentswarm-ui 接入（2026-09-17）
+
+主入口沿用现有 Flask 模板与业务接口，按 `agentswarm-ui` 原型接入 232px 侧栏、64px 页头、SVG 导航、白色卡片和蓝色主操作样式。设计源文件保留在 `agentswarm-ui/`；生产样式和公共交互位于 `app/static/ui/agentswarm.css`、`agentswarm.js`。
+
+十项导航支持 URL hash、刷新恢复与前进后退。工作空间与项目管理共用项目选择及真实文件 API；工作空间视图集中展示文件树、预览、下载和 Agent 终端。帮助使用原生对话框，支持 Escape 和焦点返回。静态原型中的升级、退出登录占位入口未作为业务功能展示。
+
+新增回归覆盖导航选中状态、浏览器返回、帮助对话框、工作空间视图切换及刷新恢复。浏览器测试使用模拟 API，真实 Hermes 与模型调用仍需运行环境联调。

@@ -186,12 +186,13 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='ui/compact.css') }}?v={{ asset_version('ui/compact.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='projects.css') }}?v={{ asset_version('projects.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='board.css') }}?v={{ asset_version('board.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='ui/agentswarm.css') }}?v={{ asset_version('ui/agentswarm.css') }}">
 </head>
 <body class="bg-background text-on-background font-body-md h-screen flex flex-col overflow-hidden">
 <!-- Top Navigation (JSON) -->
 <header class="bg-surface/70 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-white/20 shadow-sm flex justify-between items-center px-margin-desktop py-4 h-16">
 <div class="flex items-center gap-4">
-<h1 class="font-headline-sm text-headline-sm font-bold text-primary">AgentSwarm · 多 Agent 协作工作台</h1>
+<div><h1 id="swarm-page-title">团队概览</h1><p id="swarm-page-subtitle">多 Agent 协作系统运行总览</p></div>
 </div>
 <div class="flex items-center gap-4">
 <button id="open-create-agent" type="button" class="bg-primary-container text-on-primary-container px-4 py-2 rounded-lg font-label-md hover:opacity-90 transition-opacity">+ 新员工</button>
@@ -200,36 +201,23 @@
 <button id="open-teams-page" type="button" class="p-2 hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95 transition-transform" aria-label="团队管理" title="团队管理"><span class="material-symbols-outlined msr" aria-hidden="true">groups</span></button>
 <button id="open-team-settings" type="button" class="p-2 hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95 transition-transform" aria-label="团队配置" title="团队配置"><span class="material-symbols-outlined msr" aria-hidden="true">settings</span></button>
 </div>
-<img class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A highly detailed close-up of a professional corporate headshot of a smiling professional in a modern, light-filled office. The lighting is soft and bright, emphasizing a clean, modern aesthetic with a primary blue tie or accent. High quality, photorealistic." src="{{ url_for('static', filename='ui/img/img_0.png') }}"/>
+<span class="swarm-avatar" aria-label="本地工作台">A</span>
 </div>
 </header>
 <!-- Side Navigation (JSON) -->
 <nav id="app-sidebar" class="bg-surface/70 backdrop-blur-xl fixed left-0 top-0 h-full w-[260px] z-40 border-r border-white/20 shadow-none flex flex-col pt-24 p-md transition-transform duration-300 md:translate-x-0 -translate-x-full">
-<div class="mb-8">
-<div class="flex items-center gap-3 px-4 py-2">
-<div class="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center font-bold">A</div>
-<div>
-<h2 class="font-title-lg text-title-lg font-black text-primary">AgentSwarm</h2>
-<p class="font-label-sm text-label-sm text-on-surface-variant">POWERED BY HERMES</p>
-</div>
-</div>
-</div>
-<ul class="flex flex-col gap-1 flex-1 font-body-md text-body-md">
-<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="projects" onclick="event.preventDefault(); openProjects()"><span class="material-symbols-outlined" aria-hidden="true">folder</span>项目工作区</a></li>
-<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="overview" onclick="switchView('overview', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>团队概览</a></li>
-<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="board" onclick="switchView('board', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>任务板</a></li>
-<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="chat" onclick="event.preventDefault(); openAgentChat()"><span class="material-symbols-outlined" aria-hidden="true">chat</span>Agent 对话</a></li>
-<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="a2a" onclick="event.preventDefault(); openA2AChat()"><span class="material-symbols-outlined" aria-hidden="true">forum</span>A2A 对话</a></li>
-<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="members" onclick="switchView('members', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>成员列表</a></li>
-<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="stats" onclick="switchView('stats', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>效能统计</a></li>
-<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="teams" onclick="switchView('teams', event)"><span class="material-symbols-outlined msr" aria-hidden="true">groups</span>团队管理</a></li>
-<li><a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all" data-view="settings" onclick="switchView('settings', event)"><span class="material-symbols-outlined msr" aria-hidden="true"></span>设置</a></li>
-</ul>
-<div class="mt-auto pt-4 border-t border-outline-variant/30 flex flex-col gap-2">
-<button class="w-full bg-surface-container text-primary font-label-md py-2 rounded-lg hover:bg-surface-container-high transition-colors">升级方案</button>
-<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-on-surface text-sm" href="#"><span class="material-symbols-outlined text-[20px]" aria-hidden="true"></span>帮助中心</a>
-<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-on-surface text-sm" href="#"><span class="material-symbols-outlined text-[20px]" aria-hidden="true"></span>退出登录</a>
-</div>
+<div class="swarm-logo"><div class="swarm-logo-mark">A</div><div><b>AgentSwarm</b><small>POWERED BY HERMES</small></div></div>
+<ul class="flex flex-col flex-1"><li><a href="#projects" class="nav-link flex items-center" data-view="projects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>项目管理</a></li>
+<li><a href="#workspace" class="nav-link flex items-center" data-view="workspace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>工作空间</a></li>
+<li><a href="#overview" class="nav-link flex items-center" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>团队概览</a></li>
+<li><a href="#board" class="nav-link flex items-center" data-view="board"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v9"/></svg>任务板</a></li>
+<li><a href="#chat" class="nav-link flex items-center" data-view="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Agent 对话</a></li>
+<li><a href="#a2a" class="nav-link flex items-center" data-view="a2a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 12h8M8 8h8M8 16h5"/><circle cx="12" cy="12" r="10"/></svg>A2A 对话</a></li>
+<li><a href="#members" class="nav-link flex items-center" data-view="members"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>成员列表</a></li>
+<li><a href="#stats" class="nav-link flex items-center" data-view="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>效能统计</a></li>
+<li><a href="#teams" class="nav-link flex items-center" data-view="teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>团队管理</a></li>
+<li><a href="#settings" class="nav-link flex items-center" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>设置</a></li></ul>
+<div class="swarm-sidebar-footer"><button id="swarm-open-help" type="button">帮助与快捷键</button><p class="mt-3">本地工作台 · Hermes Agent</p></div>
 </nav>
 <button id="sidebar-backdrop" class="mobile-sidebar-backdrop" type="button" aria-label="关闭导航" hidden></button>
 <!-- Main Workspace -->
@@ -261,20 +249,20 @@
 </div>
 <button id="overview-system-health-refresh" type="button" class="px-3 py-2 rounded-lg border border-outline-variant/50 text-primary font-label-md hover:bg-primary-container/20 disabled:opacity-50">重新检测</button>
 </div>
-<div id="overview-system-health-notice" class="hidden mx-4 mt-3 px-3 py-2 rounded-lg bg-tertiary-container/30 text-on-tertiary-container font-label-md"></div>
+<div id="overview-system-health-notice" hidden class="mx-4 mt-3 px-3 py-2 rounded-lg bg-tertiary-container/30 text-on-tertiary-container font-label-md"></div>
 <div id="overview-system-health-components" class="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
 </div>
 <div class="col-span-3 flex flex-col gap-md">
 <div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm">
 <div class="p-4 border-b border-outline-variant/30 flex justify-between items-center">
 <h3 class="font-title-lg text-title-lg text-on-surface">团队健康度</h3>
-<span class="font-label-sm text-secondary flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>全部运行中</span>
+<span class="font-label-sm text-secondary flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>实时状态</span>
 </div>
 <div id="overview-team-health" class="p-4 grid grid-cols-3 gap-3"></div></div>
 <div class="bg-surface rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
 <div class="p-4 border-b border-outline-variant/30 flex justify-between items-center">
 <h3 class="font-title-lg text-title-lg text-on-surface">最新动态</h3>
-<button class="font-label-sm text-primary flex items-center gap-1">查看全部 </button>
+<button type="button" id="swarm-show-activity" class="font-label-sm text-primary">展开动态</button>
 </div>
 <div class="px-4 divide-y divide-outline-variant/10">
 <div id="overview-activity-feed" class="px-4 divide-y divide-outline-variant/10"></div></div>
@@ -500,10 +488,10 @@
 </div></section>
 <section id="view-projects" class="view hidden flex-1 flex flex-col overflow-hidden">
 <p id="project-error" role="alert"></p>
-<div class="project-layout"><aside><h2>项目工作区</h2><button id="project-refresh" type="button">刷新项目</button><div id="project-list"></div>
+<div class="project-layout"><aside><h2>项目管理</h2><button id="project-refresh" type="button">刷新项目</button><div id="project-list"></div>
 <h3 class="project-portfolio-title">团队参与项目</h3><div id="project-team-portfolio"></div>
 <details><summary>＋ 新建项目</summary><form id="project-create"><label>项目名称<input name="name" maxlength="200" required></label><label>目标、交付清单与验收标准<textarea name="description" rows="4" maxlength="20000"></textarea></label><fieldset><legend>参与团队（可多选）</legend><div id="project-create-teams" class="project-team-options"></div></fieldset><button type="submit">创建项目</button></form></details></aside>
-<section id="project-detail" hidden><div class="project-title-row"><div><h2 id="project-title"></h2><div id="project-iteration" class="project-iteration"></div></div><div id="project-team-badges" class="project-team-badges"></div></div><p id="project-description"></p><p>统一工作目录：<span id="project-workspace"></span></p>
+<section id="project-detail" hidden><div class="project-title-row"><div><h2 id="project-title"></h2><div id="project-iteration" class="project-iteration"></div></div><div id="project-team-badges" class="project-team-badges"></div></div><div class="swarm-project-toolbar" role="group" aria-label="项目视图"><button type="button" data-project-mode="projects">项目管理</button><button type="button" data-project-mode="workspace">工作空间</button></div><p id="project-description"></p><p>统一工作目录：<span id="project-workspace"></span></p>
 <details class="project-team-editor"><summary>管理参与团队</summary><form id="project-team-form"><p>一个项目可由多个团队协作，同一团队也可参与多个项目。</p><div id="project-edit-teams" class="project-team-options"></div><button type="submit">保存参与团队</button></form></details>
 <section class="project-workspace-panel" aria-labelledby="project-workspace-heading">
 <div class="project-workspace-heading"><div><h3 id="project-workspace-heading">工作空间</h3><p>实时查看项目资料和任务产物内容</p></div><span id="project-workspace-status" role="status" aria-live="polite">准备加载…</span></div>
@@ -1023,4 +1011,6 @@
     <script src="{{ url_for('static', filename='agent-chat.js') }}?v={{ asset_version('agent-chat.js') }}"></script>
     <script src="{{ url_for('static', filename='a2a-chat.js') }}?v={{ asset_version('a2a-chat.js') }}"></script>
 <script src="{{ url_for('static', filename='projects.js') }}?v={{ asset_version('projects.js') }}"></script>
-  </body></html>
+  <dialog id="swarm-help" aria-labelledby="swarm-help-title"><h2 id="swarm-help-title">使用 AgentSwarm</h2><p>先在团队管理创建团队，在成员列表接入 Hermes Profile。为项目关联团队后，可提交迭代任务并在任务板跟踪进度。</p><p>工作空间支持项目与任务文件浏览、在线预览和下载。选择运行中的 Agent 可打开终端。</p><p>对话：Enter 发送，Shift+Enter 换行。工作空间：/ 搜索文件，Ctrl+` 打开终端。Esc 关闭弹窗或移动导航。</p><form method="dialog"><button>知道了</button></form></dialog>
+<script src="{{ url_for('static', filename='ui/agentswarm.js') }}?v={{ asset_version('ui/agentswarm.js') }}"></script>
+</body></html>

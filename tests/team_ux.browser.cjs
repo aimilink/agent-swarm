@@ -246,6 +246,23 @@ assert.equal(rendered.status,0,rendered.stderr);
     assert.match(await usagePanel.innerText(),/0\s+0 次调用/);
     assert.doesNotMatch(await usagePanel.innerText(),/暂无用量数据/);
     await page.locator('[data-view="board"]').click();
+    assert.equal(await page.locator('.nav-link[aria-current="page"]').getAttribute('data-view'), 'board');
+    assert.equal(new URL(page.url()).hash, '#board');
+    await page.locator('[data-view="members"]').click();
+    await page.goBack();
+    await page.waitForFunction(()=>document.body.dataset.view==='board');
+    assert.equal(await page.locator('#swarm-page-title').innerText(), '任务板');
+    await page.locator('#swarm-open-help').click();
+    assert.ok(await page.locator('#swarm-help').isVisible());
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#swarm-help').isVisible(),false);
+    if(process.env.SWARM_SCREENSHOT) {
+      await page.locator('[data-view="overview"]').click();
+      await page.waitForTimeout(200);
+      assert.ok(await page.locator('#overview-system-health').evaluate(el=>el.scrollHeight<=el.clientHeight+2), 'health components must not be clipped');
+      await page.screenshot({path:process.env.SWARM_SCREENSHOT});
+      await page.locator('[data-view="board"]').click();
+    }
     await page.setViewportSize({width:390,height:844});
     await page.locator('#kanban-task-form button[type="submit"]').scrollIntoViewIfNeeded();
     const submitRect=await page.locator('#kanban-task-form button[type="submit"]').boundingBox();
