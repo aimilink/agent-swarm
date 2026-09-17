@@ -2,11 +2,13 @@
   const byId = id => document.getElementById(id);
   const agentSelect = byId('chat-agent');
   const agentList = byId('chat-agent-list');
+  const agentSearch = byId('chat-agent-search');
   const history = byId('chat-history');
   const messages = byId('chat-messages');
   const input = byId('chat-input');
   const status = byId('chat-status');
   let agentId = '', selected = null, generation = 0, sending = false;
+  let availableAgents = [], agentQuery = '';
   const esc = value => window.__HERMES_APP__.escapeHtml(String(value ?? ''));
   const path = () => `/api/agents/${encodeURIComponent(agentId)}/chats`;
   async function api(url, body) {
@@ -42,6 +44,17 @@
     agentList?.querySelectorAll('[data-chat-agent]').forEach(button => button.classList.toggle('is-selected', button.dataset.chatAgent === agentId));
     messages.scrollTop = messages.scrollHeight;
   }
+  function renderAgentList() {
+    if (!agentList) return;
+    const query = agentQuery.trim().toLocaleLowerCase();
+    const visible = query
+      ? availableAgents.filter(agent => [agent.name, agent.profile_name, agent.role].some(value => String(value || "").toLocaleLowerCase().includes(query)))
+      : availableAgents;
+    agentList.innerHTML = visible.length
+      ? visible.map((agent, index) => `<button type="button" data-chat-agent="${esc(agent.agent_id)}"><span class="swarm-member-avatar swarm-member-avatar--${index % 6}">${esc((agent.name || '?').slice(0, 1))}</span><span><b>${esc(agent.name)}</b><small>${esc(agent.role)} · @${esc(agent.profile_name)}</small></span><em>${(agent.runtime_status || 'stopped') === 'running' ? '运行中' : '空闲'}</em></button>`).join('')
+      : '<p class="chat-agent-empty">没有匹配的 Agent</p>';
+    agentList.querySelectorAll('[data-chat-agent]').forEach(button => button.classList.toggle('is-selected', button.dataset.chatAgent === agentId));
+  }
   async function loadHistory() {
     const token = generation, url = path();
     if (!agentId) { history.innerHTML = ''; return; }
@@ -65,17 +78,19 @@
   window.openAgentChat = async function (id) {
     window.switchView('chat');
     const agents = window.__BOOTSTRAP__.agents || [];
+    availableAgents = agents;
     agentSelect.innerHTML = '<option value="">选择 Agent</option>' + agents.map(a =>
       `<option value="${esc(a.agent_id)}">${esc(a.name)} · ${esc(a.profile_name)}</option>`).join('');
-    if (agentList) agentList.innerHTML = agents.map((a, index) => `<button type="button" data-chat-agent="${esc(a.agent_id)}"><span class="swarm-member-avatar swarm-member-avatar--${index % 6}">${esc((a.name || '?').slice(0, 1))}</span><span><b>${esc(a.name)}</b><small>${esc(a.role)} · @${esc(a.profile_name)}</small></span><em>${(a.runtime_status || 'stopped') === 'running' ? '运行中' : '空闲'}</em></button>`).join('');
     const next = id || agentId || agents[0]?.agent_id || '';
     agentSelect.value = next;
     if (next !== agentId) { ++generation; agentId = next; selected = null; input.value = ''; }
+    renderAgentList();
     byId('chat-new').disabled = !agentId;
     render();
     try { await loadHistory(); } catch (error) { report(error); }
   };
   agentSelect.addEventListener('change', () => window.openAgentChat(agentSelect.value));
+  agentSearch?.addEventListener('input', () => { agentQuery = agentSearch.value; renderAgentList(); });
   agentList?.addEventListener('click', event => { const button = event.target.closest('[data-chat-agent]'); if (button) window.openAgentChat(button.dataset.chatAgent); });
   byId('chat-new').addEventListener('click', async () => {
     const token = ++generation;

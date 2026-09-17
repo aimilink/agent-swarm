@@ -56,6 +56,8 @@ const createTeamForm = document.getElementById("create-team-form");
 const createTeamError = document.getElementById("create-team-error");
 const teamsManageList = document.getElementById("teams-manage-list");
 const teamsManageDetail = document.getElementById("teams-manage-detail");
+const teamsManageFormPane = document.getElementById("teams-manage-form-pane");
+const teamsManageTitle = document.getElementById("teams-manage-title");
 const openCreateAgent = document.getElementById("open-create-agent");
 const openTeamSettings = document.getElementById("open-team-settings");
 const modal = document.getElementById("create-agent-modal");
@@ -4612,7 +4614,13 @@ async function openTeamManager(slug = "", edit = false) {
   const requestId = ++teamModalRequest;
   resetTeamForm();
   teamsManageSelected = slug;
-  createTeamForm.hidden = !!slug && !edit;
+  const mode = slug ? (edit ? "edit" : "detail") : "create";
+  teamsManageModal.dataset.mode = mode;
+  teamsManageTitle.textContent = mode === "create" ? "创建团队" : mode === "edit" ? "编辑团队" : "团队详情";
+  teamsManageFormPane.hidden = mode === "detail";
+  createTeamForm.hidden = mode === "detail";
+  teamsManageDetail.hidden = mode !== "detail";
+  teamsManageList.hidden = true;
   const submitBtn = createTeamForm.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   teamsManageDetail.innerHTML = '<p class="form-hint" role="status">正在加载团队…</p>';
@@ -4674,8 +4682,9 @@ createTeamForm?.addEventListener("submit", async (event) => {
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.ok) throw new Error(data.error || "创建失败");
     createTeamError.hidden = true;
-    resetTeamForm();
     teamsManageSelected = data.team?.slug || teamsManageSelected;
+    resetTeamForm();
+    closeAnimatedLayer(teamsManageModal);
     await refreshTeamsManage();
     window.__HERMES_UI__?.refreshTeams?.();
   } catch (e) {

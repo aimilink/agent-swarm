@@ -94,3 +94,25 @@ body[data-view=workspace] .project-layout{grid-template-columns:250px minmax(0,1
 
 body[data-view=projects] .project-workspace-panel{display:none} body[data-view=projects] .project-create-details{display:block} body[data-view=projects] .project-create-details>summary{font-weight:600;color:#0053db;margin-bottom:12px}
 .swarm-account{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid #f3f4f6}.swarm-account>span{overflow:hidden;color:#374151;font-weight:600;text-overflow:ellipsis}.swarm-account a,.swarm-account form button{width:auto!important;padding:3px!important;border:0!important;background:transparent!important;color:#0053db!important;font-size:11px!important;font-weight:600}.swarm-account form{margin:0}
+
+#view-chat .chat-agent-search { position: relative; display: block; margin: 12px 12px 8px; }
+#view-chat .chat-agent-search .material-symbols-outlined { position: absolute; left: 10px; top: 50%; z-index: 1; color: #94a3b8; font-size: 18px; transform: translateY(-50%); pointer-events: none; }
+#view-chat #chat-agent-search { width: 100%; min-width: 0; padding: 9px 10px 9px 34px; border: 1px solid #d7dce5; border-radius: 9px; background: #f8fafc; color: #172033; font-size: 12.5px; }
+#view-chat #chat-agent-search:focus { border-color: #0053db; background: #fff; box-shadow: 0 0 0 3px rgba(0,83,219,.08); outline: 0; }
+.chat-agent-empty { padding: 28px 14px; color: #94a3b8; font-size: 12px; text-align: center; }
+
+/* Keep team creation/editing shallow: the page owns the list, the dialog owns one action. */
+.teams-manage__panel { width: min(720px, 92vw); min-height: 430px; background: #fff; color: #172033; }
+#teams-manage-modal[data-mode="create"] .teams-manage__layout,#teams-manage-modal[data-mode="edit"] .teams-manage__layout { grid-template-columns: 1fr; min-height: 0; }
+#teams-manage-modal[data-mode="detail"] .teams-manage__layout { grid-template-columns: 1fr; }
+#teams-manage-modal [hidden] { display: none !important; }
+#teams-manage-modal .teams-manage__left { width: 100%; }
+#teams-manage-modal .teams-manage__create { padding: 0; border: 0; background: transparent; }
+#teams-manage-modal .teams-manage__right { padding-left: 0; border-left: 0; }
+#teams-manage-modal .team-member-row { border-color: #e2e8f0; }
+#teams-manage-modal .team-item { border-color: #e2e8f0; }
+#teams-content > .swarm-team-list-card { width: 100%; }
+#teams-content .swarm-card-head { align-items: center; }
+
+#teams-manage-modal[data-mode="create"] .teams-manage__panel,#teams-manage-modal[data-mode="edit"] .teams-manage__panel { width: min(620px, 92vw); min-height: 0; }
+#teams-manage-modal[data-mode="detail"] .teams-manage__panel { width: min(720px, 92vw); }

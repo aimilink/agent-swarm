@@ -383,7 +383,7 @@
               <p class="font-label-md">暂无任务</p>
             </div>`;
         return `
-        <div class="board-column flex flex-col bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/20">
+        <div class="board-column flex flex-col bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/20" data-board-status="${column.key}">
           <div class="h-2 ${column.bar}"></div>
           <div class="board-column__header p-3 font-title-lg text-title-lg text-on-surface flex justify-between items-center gap-2">
             <div class="flex items-center gap-2 min-w-0">
@@ -862,16 +862,10 @@
         </article>`;
       }).join("");
       els.teamsContent.innerHTML = `
-        <div class="swarm-teams-layout">
-          <section class="swarm-card swarm-team-create-card">
-            <div class="swarm-card-head"><div><b>创建团队</b><small>创建团队后可添加已有 Agent</small></div></div>
-            <div class="swarm-card-body"><p>设置团队标识、显示名称与职责说明，并在创建后管理成员。</p><button type="button" id="btn-create-team" class="swarm-button swarm-button--primary">＋ 创建团队</button></div>
-          </section>
-          <section class="swarm-card swarm-team-list-card">
-            <div class="swarm-card-head"><div><b>现有团队</b><small>${teams.length} 个团队 · ${agents.length} 名成员</small></div></div>
-            <div class="swarm-team-manage-list">${teamsGrid}</div>
-          </section>
-        </div>
+        <section class="swarm-card swarm-team-list-card">
+          <div class="swarm-card-head"><div><b>团队列表</b><small>${teams.length} 个团队 · ${agents.length} 名成员</small></div><button type="button" id="btn-create-team" class="swarm-button swarm-button--primary">＋ 创建团队</button></div>
+          <div class="swarm-team-manage-list">${teamsGrid}</div>
+        </section>
         <div class="swarm-toolbar swarm-team-transfer"><button type="button" id="teams-export-visible" class="swarm-button swarm-button--outline">导出团队配置</button><button type="button" id="teams-import-visible" class="swarm-button swarm-button--outline">导入团队配置</button></div>`;
       document.getElementById("btn-create-team")?.addEventListener("click", () => {
         openTeamCreateModal();

@@ -88,3 +88,25 @@
     min-width: max-content;
   }
 }
+
+/* Status-specific swimlane headers and taller task composer. */
+.board-toolbar { align-items: center; }
+.board-heading { min-width: 220px; margin-right: 10px; }
+.board-heading h2 { margin: 0; color: #172033; font-size: 20px; font-weight: 750; }
+.board-heading p { margin: 3px 0 0; color: #64748b; font-size: 12px; }
+.board-column[data-board-status] { border-width: 1px; }
+.board-column[data-board-status] .board-column__header { border-bottom: 1px solid transparent; }
+.board-column[data-board-status="ready"] .board-column__header { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; box-shadow: inset 4px 0 #3b82f6; }
+.board-column[data-board-status="running"] .board-column__header { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; box-shadow: inset 4px 0 #8b5cf6; }
+.board-column[data-board-status="blocked"] .board-column__header { background: #fff7ed; border-color: #fed7aa; color: #c2410c; box-shadow: inset 4px 0 #f97316; }
+.board-column[data-board-status="done"] .board-column__header { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; box-shadow: inset 4px 0 #22c55e; }
+.board-column[data-board-status="ready"] .board-column__header span:last-child { background: #dbeafe; color: #1d4ed8; }
+.board-column[data-board-status="running"] .board-column__header span:last-child { background: #ede9fe; color: #6d28d9; }
+.board-column[data-board-status="blocked"] .board-column__header span:last-child { background: #ffedd5; color: #c2410c; }
+.board-column[data-board-status="done"] .board-column__header span:last-child { background: #dcfce7; color: #15803d; }
+#kanban-task-form { min-height: 112px; align-items: flex-end; padding-top: 14px; padding-bottom: 14px; }
+.task-compose-field { position: relative; flex: 1 1 360px; min-width: 280px; }
+.task-compose-icon { position: absolute; z-index: 1; left: 14px; top: 15px; width: 22px; color: #94a3b8; pointer-events: none; }
+#kanban-task-input { display: block; width: 100%; min-height: 68px; max-height: 150px; padding: 13px 14px 13px 48px; resize: vertical; border: 1px solid #d7dce5; border-radius: 12px; background: #f8fafc; color: #172033; font: inherit; line-height: 1.5; }
+#kanban-task-input:focus { border-color: #0053db; box-shadow: 0 0 0 3px rgba(0,83,219,.1); outline: 0; }
+@media (max-width: 900px) { .board-heading { width: 100%; } #kanban-task-form { align-items: stretch; } }

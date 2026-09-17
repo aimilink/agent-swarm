@@ -20,6 +20,9 @@
   let workspaceFilter = "";
   let workspaceTreeSignature = "";
   const collapsedDirectories = new Set();
+  const detailDrawer = $("project-detail-drawer");
+  const createModal = $("project-create-modal");
+  let layerCycle = 0;
 
   try {
     current = window.localStorage.getItem(storageKey) || "";
@@ -51,6 +54,43 @@
     }
   }
 
+  function openLayer(element, focusTarget) {
+    if (!element) return;
+    const cycle = ++layerCycle;
+    element.hidden = false;
+    requestAnimationFrame(() => {
+      if (cycle !== layerCycle) return;
+      element.classList.add("is-open");
+      focusTarget?.focus();
+    });
+  }
+
+  function closeLayer(element) {
+    if (!element || element.hidden) return;
+    layerCycle += 1;
+    element.classList.remove("is-open");
+    window.setTimeout(() => {
+      if (!element.classList.contains("is-open")) element.hidden = true;
+    }, 220);
+  }
+
+  function openCreateModal() {
+    $("project-create").reset();
+    renderTeamOptions("project-create-teams");
+    openLayer(createModal, $("project-create").elements.namedItem("name"));
+  }
+
+  function openDetailDrawer() {
+    const workspace = document.body.dataset.view === "workspace";
+    $("project-drawer-kicker").textContent = workspace ? "工作空间详情" : "项目详情";
+    detailDrawer.classList.toggle("is-workspace", workspace);
+    openLayer(detailDrawer, detailDrawer.querySelector("button[data-close-project-detail]"));
+  }
+
+  function closeDetailDrawer() {
+    closeLayer(detailDrawer);
+    renderProjectSummary(projectItems);
+  }
   function projectUrl() {
     return `/api/projects/${encodeURIComponent(current)}`;
   }
@@ -151,15 +191,22 @@
   async function refreshList() {
     const data = await api("/api/projects");
     projectItems = data.projects || [];
-    renderProjectSummary(projectItems, document.body.dataset.view === "workspace" ? currentDetail : null);
+    const workspaceView = document.body.dataset.view === "workspace";
+    renderProjectSummary(projectItems);
+    $("project-page-title").textContent = workspaceView ? "工作空间" : "项目管理";
+    $("project-page-subtitle").textContent = workspaceView ? "选择项目，在右侧抽屉查看文件、预览与终端" : "集中查看项目、参与团队与迭代进度";
+    $("project-list-title").textContent = workspaceView ? "项目工作空间" : "项目列表";
+    $("project-list-count").textContent = `${data.projects.length} 个项目`;
+    $("project-open-create").hidden = workspaceView;
     $("project-list").innerHTML = data.projects.length
       ? data.projects.map(project => `
           <button type="button" data-project="${esc(project.project_id)}" aria-pressed="${project.project_id === current}">
             <span class="project-list-title">${esc(project.name)}</span>
             <span class="project-team-badges">${teamBadges(project)}</span>
             <small title="${esc(project.workspace_path)}">${esc(project.workspace_path)}</small>
+            <span class="project-list-action">${workspaceView ? "打开工作空间" : "查看项目详情"} →</span>
           </button>`).join("")
-      : "<p>暂无项目，请先创建。</p>";
+      : `<div class="project-list-empty"><strong>暂无项目</strong><p>${workspaceView ? "请先在项目管理中创建项目。" : "创建第一个项目并关联参与团队。"}</p></div>`;
     renderOverview(data.projects);
     renderTeamPortfolio(data.projects);
     renderTeamOptions("project-create-teams");
@@ -215,12 +262,14 @@
     $("project-next-iteration").textContent = `即将创建第 ${data.next_iteration} 次迭代任务。任务会继续使用同一项目工作目录。`;
     $("project-description").textContent = project.description || "尚未填写目标";
     $("project-workspace").textContent = project.workspace_path;
+    $("project-drawer-title").textContent = project.name;
     renderTasks(data.tasks);
     configureWorkspaceTasks(data.tasks);
     $("artifact-task").innerHTML = '<option value="">选择关联任务</option>' +
       data.tasks.map(task => `<option value="${esc(task.kanban_task_id)}">${esc(taskTitle(task))}</option>`).join("");
     renderArtifacts(data.artifacts);
     updateTerminalTarget();
+    openDetailDrawer();
   }
 
   function fileSize(value) {
@@ -578,12 +627,17 @@
   }
 
   window.openProjects = async function (view = "projects") {
+    const keepDrawerOpen = detailDrawer?.classList.contains("is-open") && Boolean(current);
     window.switchView(view === "workspace" ? "workspace" : "projects");
     try {
       const items = await refreshList();
-      const selected = items.find(item => item.project_id === current) || items[0];
-      if (selected) await selectProject(selected.project_id);
-      else $("project-detail").hidden = true;
+      const selected = items.find(item => item.project_id === current);
+      if (keepDrawerOpen && selected) await selectProject(selected.project_id);
+      else if (!selected) {
+        currentDetail = null;
+        $("project-detail").hidden = true;
+        closeDetailDrawer();
+      }
     } catch (error) {
       report(error);
     }
@@ -595,13 +649,18 @@
   }
   $("project-list").addEventListener("click", selectProjectFromClick);
   $("project-team-portfolio").addEventListener("click", selectProjectFromClick);
-  $("overview-projects")?.addEventListener("click", event => {
+  $("overview-projects")?.addEventListener("click", async event => {
     const button = event.target.closest("[data-overview-project]");
     if (!button) return;
-    rememberProject(button.dataset.overviewProject);
-    window.openProjects();
+    const projectId = button.dataset.overviewProject;
+    rememberProject(projectId);
+    await window.openProjects();
+    await selectProject(projectId);
   });
   $("project-refresh").addEventListener("click", () => window.openProjects(document.body.dataset.view));
+  $("project-open-create").addEventListener("click", openCreateModal);
+  document.querySelectorAll("[data-close-project-create]").forEach(element => element.addEventListener("click", () => closeLayer(createModal)));
+  document.querySelectorAll("[data-close-project-detail]").forEach(element => element.addEventListener("click", closeDetailDrawer));
 
   async function submit(form, work) {
     const button = form.querySelector("[type=submit]");
@@ -626,6 +685,7 @@
         team_ids: values.getAll("team_ids"),
       });
       event.target.reset();
+      closeLayer(createModal);
       await selectProject(data.project.project_id);
     });
   });
@@ -752,6 +812,12 @@
   });
 
   document.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      const terminalDrawer = $("workspace-terminal-drawer");
+      if (terminalDrawer && !terminalDrawer.hidden) return;
+      if (!createModal.hidden) { closeLayer(createModal); return; }
+      if (!detailDrawer.hidden) { closeDetailDrawer(); return; }
+    }
     if ($("view-projects").classList.contains("hidden")) return;
     const editing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement;
     if (event.key === "/" && !editing) {
@@ -771,7 +837,7 @@
   function scheduleWorkspaceRefresh() {
     window.clearTimeout(workspaceTimer);
     workspaceTimer = window.setTimeout(async () => {
-      const visible = current && !document.hidden && !$("view-projects").classList.contains("hidden");
+      const visible = current && document.body.dataset.view === "workspace" && !detailDrawer.hidden && !document.hidden && !$("view-projects").classList.contains("hidden");
       if (visible) await refreshWorkspace({silent: true});
       scheduleWorkspaceRefresh();
     }, refreshInterval);

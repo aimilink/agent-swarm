@@ -9,7 +9,7 @@ const {chromium} = require('playwright');
   let chats=[], count=0;
   await page.route('http://chat.test/**', async route=>{
    const url=new URL(route.request().url());
-   if(url.pathname==='/') return route.fulfill({contentType:'text/html',body:`<section id="view-chat"><select id="chat-agent"></select><div id="chat-agent-list"></div><button id="chat-new">新建</button><div id="chat-history"></div><h2 id="chat-title"></h2><div id="chat-messages"></div><p id="chat-status"></p><form id="chat-form"><textarea id="chat-input"></textarea><button id="chat-send">发送</button></form></section>`});
+   if(url.pathname==='/') return route.fulfill({contentType:'text/html',body:`<section id="view-chat"><select id="chat-agent"></select><input id="chat-agent-search"><div id="chat-agent-list"></div><button id="chat-new">新建</button><div id="chat-history"></div><h2 id="chat-title"></h2><div id="chat-messages"></div><p id="chat-status"></p><form id="chat-form"><textarea id="chat-input"></textarea><button id="chat-send">发送</button></form></section>`});
    const parts=url.pathname.split('/'); const agent=parts[3]; const id=parts[5];
    let chat=chats.find(c=>c.chat_id===id);
    if(agent==='c') return route.fulfill({status:404,contentType:'text/html',body:'<html><h1>Not Found</h1></html>'});
@@ -28,6 +28,11 @@ const {chromium} = require('playwright');
   await page.addScriptTag({content:fs.readFileSync('app/static/agent-chat.js','utf8')});
   await page.evaluate(()=>openAgentChat('a'));
   assert.equal(await page.locator('[data-chat-agent]').count(),3);
+  await page.fill('#chat-agent-search','Agent B');
+  assert.equal(await page.locator('[data-chat-agent]').count(),1);
+  assert.equal(await page.locator('[data-chat-agent]').getAttribute('data-chat-agent'),'b');
+  await page.fill('#chat-agent-search','');
+  assert.equal(await page.locator('[data-chat-agent]').count(),3);
   assert.equal(await page.locator('[data-chat-agent="a"]').getAttribute('class'),'is-selected');
   await page.click('#chat-new'); await page.waitForFunction(()=>!document.getElementById('chat-input').disabled);
   await page.fill('#chat-input','第一条消息'); await page.press('#chat-input','Enter');
@@ -45,6 +50,6 @@ const {chromium} = require('playwright');
   await page.waitForFunction(()=>document.querySelector('#chat-status').textContent.includes('服务器返回HTML'));
   assert.doesNotMatch(await page.locator('#chat-status').innerText(),/Unexpected token/);
   assert.deepEqual(errors,[]);
-  console.log('PASS: new chat, send, history, agent isolation, HTML escaping');
+  console.log('PASS: agent name search, new chat, send, history, agent isolation, HTML escaping');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
