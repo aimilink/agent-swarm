@@ -340,17 +340,56 @@
     return html;
   }
 
+  function splitMarkdownTableRow(value) {
+    const cells = [];
+    let cell = "";
+    let inlineCode = false;
+    const source = String(value || "").trim();
+    for (let index = 0; index < source.length; index += 1) {
+      const character = source[index];
+      if (character === "\\" && source[index + 1] === "|") {
+        cell += "|";
+        index += 1;
+        continue;
+      }
+      if (character.charCodeAt(0) === 96) {
+        inlineCode = !inlineCode;
+        cell += character;
+        continue;
+      }
+      if (character === "|" && !inlineCode) {
+        cells.push(cell.trim());
+        cell = "";
+        continue;
+      }
+      cell += character;
+    }
+    cells.push(cell.trim());
+    if (cells[0] === "") cells.shift();
+    if (cells.at(-1) === "") cells.pop();
+    return cells;
+  }
+
+  function markdownTableAlignment(value) {
+    const marker = String(value || "").replace(/\s/g, "");
+    if (marker.startsWith(":") && marker.endsWith(":")) return "center";
+    if (marker.endsWith(":")) return "right";
+    if (marker.startsWith(":")) return "left";
+    return "";
+  }
+
   function renderMarkdown(content, sourcePath) {
     const lines = String(content || "").split(/\r?\n/);
     const output = [];
     let code = null;
     let list = "";
-    const closeList = () => { if (list) output.push(`</${list}>`); list = ""; };
-    for (const line of lines) {
-      const fence = line.match(/^\s*```(.*)$/);
+    const closeList = () => { if (list) output.push("</" + list + ">"); list = ""; };
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      const fence = line.match(new RegExp("^\\s*\\x60{3}(.*)$"));
       if (fence) {
         if (code) {
-          output.push(`<pre><code>${esc(code.lines.join("\n"))}</code></pre>`);
+          output.push("<pre><code>" + esc(code.lines.join("\n")) + "</code></pre>");
           code = null;
         } else {
           closeList();
@@ -359,11 +398,41 @@
         continue;
       }
       if (code) { code.lines.push(line); continue; }
+
+      const headerCells = line.includes("|") ? splitMarkdownTableRow(line) : [];
+      const separatorLine = lines[index + 1] || "";
+      const separatorCells = separatorLine.includes("|") ? splitMarkdownTableRow(separatorLine) : [];
+      const tableStart = headerCells.length > 1 &&
+        separatorCells.length === headerCells.length &&
+        separatorCells.every(cell => /^:?-{3,}:?$/.test(cell.replace(/\s/g, "")));
+      if (tableStart) {
+        closeList();
+        const alignments = separatorCells.map(markdownTableAlignment);
+        const cellClass = alignment => alignment ? ' class="project-markdown-cell--' + alignment + '"' : "";
+        const headerHtml = headerCells.map((cell, cellIndex) =>
+          "<th scope=\"col\"" + cellClass(alignments[cellIndex]) + ">" + renderMarkdownInline(cell, sourcePath) + "</th>"
+        ).join("");
+        const rows = [];
+        let rowIndex = index + 2;
+        while (rowIndex < lines.length && lines[rowIndex].trim() && lines[rowIndex].includes("|")) {
+          const cells = splitMarkdownTableRow(lines[rowIndex]);
+          const rowHtml = headerCells.map((_, cellIndex) =>
+            "<td" + cellClass(alignments[cellIndex]) + ">" + renderMarkdownInline(cells[cellIndex] || "", sourcePath) + "</td>"
+          ).join("");
+          rows.push("<tr>" + rowHtml + "</tr>");
+          rowIndex += 1;
+        }
+        output.push('<div class="project-markdown-table"><table><thead><tr>' + headerHtml +
+          "</tr></thead><tbody>" + rows.join("") + "</tbody></table></div>");
+        index = rowIndex - 1;
+        continue;
+      }
+
       const heading = line.match(/^(#{1,6})\s+(.+)$/);
       if (heading) {
         closeList();
         const level = heading[1].length;
-        output.push(`<h${level}>${renderMarkdownInline(heading[2], sourcePath)}</h${level}>`);
+        output.push("<h" + level + ">" + renderMarkdownInline(heading[2], sourcePath) + "</h" + level + ">");
         continue;
       }
       if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) { closeList(); output.push("<hr>"); continue; }
@@ -371,17 +440,17 @@
       const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
       if (unordered || ordered) {
         const nextList = ordered ? "ol" : "ul";
-        if (list !== nextList) { closeList(); list = nextList; output.push(`<${list}>`); }
-        output.push(`<li>${renderMarkdownInline((unordered || ordered)[1], sourcePath)}</li>`);
+        if (list !== nextList) { closeList(); list = nextList; output.push("<" + list + ">"); }
+        output.push("<li>" + renderMarkdownInline((unordered || ordered)[1], sourcePath) + "</li>");
         continue;
       }
       closeList();
       const quote = line.match(/^>\s?(.*)$/);
-      if (quote) { output.push(`<blockquote>${renderMarkdownInline(quote[1], sourcePath)}</blockquote>`); continue; }
+      if (quote) { output.push("<blockquote>" + renderMarkdownInline(quote[1], sourcePath) + "</blockquote>"); continue; }
       if (!line.trim()) { output.push(""); continue; }
-      output.push(`<p>${renderMarkdownInline(line, sourcePath)}</p>`);
+      output.push("<p>" + renderMarkdownInline(line, sourcePath) + "</p>");
     }
-    if (code) output.push(`<pre><code>${esc(code.lines.join("\n"))}</code></pre>`);
+    if (code) output.push("<pre><code>" + esc(code.lines.join("\n")) + "</code></pre>");
     closeList();
     const article = document.createElement("article");
     article.className = "project-markdown";

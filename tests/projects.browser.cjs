@@ -79,7 +79,7 @@ assert.equal(rendered.status,0,rendered.stderr);
     }
     if(parts[4]==='preview'){
       const requested=url.searchParams.get('path');
-      if(requested==='PROJECT.md')return route.fulfill({json:{ok:true,path:requested,preview_type:'text',mime_type:'text/markdown',size:8000,modified_ns:1,encoding:'utf-8',content:'# 项目说明\n\n**重点内容**\n\n'+Array.from({length:100},(_,i)=>`第 ${i+1} 行工作说明`).join('\n\n')}});
+      if(requested==='PROJECT.md')return route.fulfill({json:{ok:true,path:requested,preview_type:'text',mime_type:'text/markdown',size:8000,modified_ns:1,encoding:'utf-8',content:'# 项目说明\n\n**重点内容**\n\n| 功能 | 状态 | 负责人 |\n| :--- | :---: | ---: |\n| 文件预览 | **已完成** | Hermes |\n| 转义内容 | `a\\|b` | C:\\work |\n\n'+Array.from({length:100},(_,i)=>`第 ${i+1} 行工作说明`).join('\n\n')}});
       if(requested==='docs/demo.html')return route.fulfill({json:{ok:true,path:requested,preview_type:'text',mime_type:'text/html',size:80,modified_ns:1,encoding:'utf-8',content:'<h1>HTML 页面</h1><p>安全预览</p>'}});
       if(requested==='docs/pixel.png')return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=','base64')});
       designPreviewReads+=1;
@@ -141,7 +141,15 @@ assert.equal(rendered.status,0,rendered.stderr);
   assert.equal(await page.locator('.project-workspace-tools').isVisible(),true);
   await page.locator('[data-workspace-open="PROJECT.md"]').click();
   await page.locator('#project-preview-content .project-markdown h1').waitFor();
-  assert.equal(await page.locator('#project-preview-content .project-markdown strong').innerText(),'重点内容');
+  assert.equal(await page.locator('#project-preview-content .project-markdown > strong, #project-preview-content .project-markdown > p > strong').first().innerText(),'重点内容');
+  assert.equal(await page.locator('#project-preview-content .project-markdown table').count(),1,'GFM table renders as a table');
+  assert.deepEqual(await page.locator('#project-preview-content .project-markdown thead th').allInnerTexts(),['功能','状态','负责人']);
+  assert.equal(await page.locator('#project-preview-content .project-markdown tbody tr').count(),2);
+  assert.equal(await page.locator('#project-preview-content .project-markdown tbody strong').innerText(),'已完成');
+  assert.equal(await page.locator('#project-preview-content .project-markdown tbody code').innerText(),'a|b');
+  assert.equal(await page.locator('#project-preview-content .project-markdown tbody tr').nth(1).locator('td').nth(2).innerText(),'C:\\work');
+  assert.match(await page.locator('#project-preview-content .project-markdown thead th').nth(1).getAttribute('class'),/center/);
+  assert.match(await page.locator('#project-preview-content .project-markdown thead th').nth(2).getAttribute('class'),/right/);
   const previewScroll=await page.locator('#project-preview-content').evaluate(element=>({scrollHeight:element.scrollHeight,clientHeight:element.clientHeight}));
   assert.ok(previewScroll.scrollHeight>previewScroll.clientHeight,'rendered markdown preview scrolls vertically');
   await page.locator('#project-preview-content').evaluate(element=>{element.scrollTop=element.scrollHeight;});

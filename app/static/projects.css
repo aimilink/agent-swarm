@@ -311,6 +311,17 @@
 .project-markdown pre code { padding: 0; background: transparent; color: inherit; }
 .project-markdown a { color: #0053db; text-decoration: underline; text-underline-offset: 2px; }
 .project-markdown hr { margin: 24px 0; border: 0; border-top: 1px solid #e5e7eb; }
+.project-markdown-table { max-width: 100%; margin: 0 0 1.25em; overflow-x: auto; border: 1px solid #dce2ec; border-radius: 8px; }
+.project-markdown table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; line-height: 1.5; }
+.project-markdown th,.project-markdown td { min-width: 90px; padding: 9px 12px; border-right: 1px solid #e5eaf1; border-bottom: 1px solid #e5eaf1; text-align: left; vertical-align: top; }
+.project-markdown th:last-child,.project-markdown td:last-child { border-right: 0; }
+.project-markdown tbody tr:last-child td { border-bottom: 0; }
+.project-markdown th { color: #334155; background: #f5f7fa; font-weight: 700; white-space: nowrap; }
+.project-markdown tbody tr:nth-child(even) { background: #fafbfc; }
+.project-markdown tbody tr:hover { background: #f0f6ff; }
+.project-markdown .project-markdown-cell--center { text-align: center; }
+.project-markdown .project-markdown-cell--right { text-align: right; }
+.project-markdown .project-markdown-cell--left { text-align: left; }
 .project-markdown-image { display: block; max-width: 100%; height: auto; margin: 18px auto; padding: 0 !important; border-radius: 8px; }
 .terminal-drawer { z-index: 130; }
 .workspace-terminal-drawer .terminal-drawer__panel { width: min(1180px, calc(100vw - 28px)); }
