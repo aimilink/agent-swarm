@@ -10,6 +10,7 @@ function getStoredApiToken() {
 
 function ensureApiToken() {
   let token = getStoredApiToken();
+  if (window.__AUTHENTICATED__) return token;
   if (!token) {
     token = (window.prompt("请输入 API Token（AGENT_TEAM_API_TOKEN）") || "").trim();
     if (token) {

@@ -318,6 +318,6 @@ Hermes Kanban = 持久化任务队列 + 派工系统 + 日志系统
 AgentSwarm = 多 Agent 控制台 + Profile/Skill/MCP/模型管理 + Kanban 可视化层
 ```
 
-本项目侧重本地可信环境，不提供租户隔离和企业级权限模型。可选
-`AGENT_TEAM_API_TOKEN` 只覆盖 Flask API 与 SSE；终端 WebSocket、MCP 和整站访问
-仍需由监听地址、防火墙、VPN 或反向代理保护。详见 [部署教程](deployment.md)。
+本项目侧重本地可信环境，不提供租户隔离和企业级权限模型。浏览器整站、Flask API、
+SSE 与终端 WebSocket 使用登录会话保护；`AGENT_TEAM_API_TOKEN` 继续支持外部 API 和
+WebSocket 集成。MCP 仍需由监听地址、防火墙、VPN 或反向代理保护。详见 [部署教程](deployment.md)。

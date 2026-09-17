@@ -11,6 +11,9 @@
   let selectedFile = "";
   let selectedSignature = "";
   let previewObjectUrl = "";
+  let previewMode = "preview";
+  let previewPayload = null;
+  let previewFile = null;
   let workspaceTimer = 0;
   let workspaceFiles = [];
   let projectItems = [];
@@ -236,12 +239,136 @@
     previewObjectUrl = "";
   }
 
+  function rawFileUrl(path) {
+    const encoded = String(path || "").split("/").map(encodeURIComponent).join("/");
+    return `${projectUrl()}/raw/${encoded}`;
+  }
+
+  function resolveMarkdownTarget(sourcePath, target) {
+    const value = String(target || "").trim().replace(/^<|>$/g, "");
+    if (/^https?:\/\//i.test(value)) return value;
+    if (!value || /^(?:data:|javascript:|\/|#)/i.test(value)) return "";
+    const parts = sourcePath.split("/").slice(0, -1).concat(value.split("/"));
+    const normalized = [];
+    for (const part of parts) {
+      if (!part || part === ".") continue;
+      if (part === "..") {
+        if (!normalized.length) return "";
+        normalized.pop();
+      } else normalized.push(part);
+    }
+    return rawFileUrl(normalized.join("/"));
+  }
+
+  function renderMarkdownInline(value, sourcePath) {
+    const tokens = [];
+    const token = html => {
+      const key = `\u0000MD${tokens.length}\u0000`;
+      tokens.push(html);
+      return key;
+    };
+    let source = String(value || "");
+    source = source.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_, alt, target) => {
+      const url = resolveMarkdownTarget(sourcePath, target);
+      return url ? token(`<img class="project-markdown-image" src="${esc(url)}" alt="${esc(alt)}" loading="lazy">`) : esc(alt);
+    });
+    source = source.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_, label, target) => {
+      const url = resolveMarkdownTarget(sourcePath, target);
+      return url ? token(`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`) : label;
+    });
+    let html = esc(source)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/__([^_]+)__/g, "<strong>$1</strong>")
+      .replace(/(^|\s)\*([^*]+)\*/g, "$1<em>$2</em>")
+      .replace(/(^|\s)_([^_]+)_/g, "$1<em>$2</em>");
+    tokens.forEach((htmlToken, index) => { html = html.replace(`\u0000MD${index}\u0000`, htmlToken); });
+    return html;
+  }
+
+  function renderMarkdown(content, sourcePath) {
+    const lines = String(content || "").split(/\r?\n/);
+    const output = [];
+    let code = null;
+    let list = "";
+    const closeList = () => { if (list) output.push(`</${list}>`); list = ""; };
+    for (const line of lines) {
+      const fence = line.match(/^\s*```(.*)$/);
+      if (fence) {
+        if (code) {
+          output.push(`<pre><code>${esc(code.lines.join("\n"))}</code></pre>`);
+          code = null;
+        } else {
+          closeList();
+          code = {language: fence[1].trim(), lines: []};
+        }
+        continue;
+      }
+      if (code) { code.lines.push(line); continue; }
+      const heading = line.match(/^(#{1,6})\s+(.+)$/);
+      if (heading) {
+        closeList();
+        const level = heading[1].length;
+        output.push(`<h${level}>${renderMarkdownInline(heading[2], sourcePath)}</h${level}>`);
+        continue;
+      }
+      if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) { closeList(); output.push("<hr>"); continue; }
+      const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
+      const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
+      if (unordered || ordered) {
+        const nextList = ordered ? "ol" : "ul";
+        if (list !== nextList) { closeList(); list = nextList; output.push(`<${list}>`); }
+        output.push(`<li>${renderMarkdownInline((unordered || ordered)[1], sourcePath)}</li>`);
+        continue;
+      }
+      closeList();
+      const quote = line.match(/^>\s?(.*)$/);
+      if (quote) { output.push(`<blockquote>${renderMarkdownInline(quote[1], sourcePath)}</blockquote>`); continue; }
+      if (!line.trim()) { output.push(""); continue; }
+      output.push(`<p>${renderMarkdownInline(line, sourcePath)}</p>`);
+    }
+    if (code) output.push(`<pre><code>${esc(code.lines.join("\n"))}</code></pre>`);
+    closeList();
+    const article = document.createElement("article");
+    article.className = "project-markdown";
+    article.innerHTML = output.join("\n");
+    return article;
+  }
+
+  function setPreviewMode(mode) {
+    previewMode = mode === "source" ? "source" : "preview";
+    document.querySelectorAll("[data-preview-mode]").forEach(button => {
+      button.setAttribute("aria-pressed", String(button.dataset.previewMode === previewMode));
+    });
+    if (!previewPayload || !previewFile) return;
+    const target = $("project-preview-content");
+    const suffix = previewFile.path.split(".").pop().toLowerCase();
+    if (previewMode === "source") {
+      const pre = document.createElement("pre");
+      pre.textContent = previewPayload.content || "";
+      target.replaceChildren(pre);
+    } else if (["md", "markdown"].includes(suffix)) {
+      target.replaceChildren(renderMarkdown(previewPayload.content, previewFile.path));
+    } else if (["html", "htm"].includes(suffix)) {
+      const frame = document.createElement("iframe");
+      frame.title = `${previewFile.name || previewFile.path} HTML 预览`;
+      frame.setAttribute("sandbox", "allow-same-origin");
+      frame.src = `${rawFileUrl(previewFile.path)}?v=${encodeURIComponent(previewFile.modified_ns || "")}`;
+      target.replaceChildren(frame);
+    }
+    target.scrollTop = 0;
+  }
+
   function emptyPreview(message = "选择文件在线查看内容。") {
     releasePreviewUrl();
     selectedFile = "";
     selectedSignature = "";
+    previewPayload = null;
+    previewFile = null;
+    previewMode = "preview";
+    $("project-preview-modes").hidden = true;
     $("project-preview-title").textContent = "选择文件在线查看";
-    $("project-preview-meta").textContent = "支持文本、代码、图片和 PDF";
+    $("project-preview-meta").textContent = "支持 Markdown、图片、HTML、代码和 PDF";
     $("project-preview-download").hidden = true;
     $("project-preview-content").innerHTML = `<p>${esc(message)}</p>`;
   }
@@ -250,8 +377,12 @@
     if (!file || !current) return;
     const signature = fileSignature(file);
     if (!force && selectedFile === file.path && selectedSignature === signature) return;
+    if (selectedFile !== file.path) previewMode = "preview";
     selectedFile = file.path;
     selectedSignature = signature;
+    previewFile = file;
+    previewPayload = null;
+    $("project-preview-modes").hidden = true;
     document.querySelectorAll("#project-files [data-workspace-open]").forEach(button => {
       button.setAttribute("aria-pressed", String(button.dataset.workspaceOpen === file.path));
     });
@@ -275,9 +406,12 @@
       if (file.preview_type === "text") {
         const data = await response.json();
         if (projectId !== current || selectedFile !== file.path || selectedSignature !== signature) return;
-        const pre = document.createElement("pre");
-        pre.textContent = data.content || "";
-        $("project-preview-content").replaceChildren(pre);
+        previewPayload = data;
+        const suffix = file.path.split(".").pop().toLowerCase();
+        const formatted = ["md", "markdown", "html", "htm"].includes(suffix);
+        $("project-preview-modes").hidden = !formatted;
+        $("project-preview-meta").textContent = `${fileSize(file.size)} · ${file.mime_type || "文本"} · ${data.encoding || "utf-8"}`;
+        setPreviewMode(formatted ? previewMode : "source");
       } else {
         const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
@@ -304,7 +438,6 @@
       }
     }
   }
-
   function renderFileTree(files) {
     const root = {directories: new Map(), files: []};
     files.forEach(file => {
@@ -565,44 +698,33 @@
     });
   });
 
-  function workspaceTerminalAgent() {
-    const task = workspaceScope === "task"
-      ? currentDetail?.tasks?.find(item => item.kanban_task_id === workspaceTask)
-      : null;
-    const requestedAgent = task
-      ? agents().find(agent => agent.profile_name === task.assignee_profile || agent.agent_id === task.metadata?.assignee_agent_id)
-      : null;
-    if (requestedAgent && (requestedAgent.readiness_status || "ready") === "ready") return requestedAgent;
-    const teamIds = currentDetail?.project?.team_ids || [];
-    return agents().find(agent =>
-      (!teamIds.length || teamIds.includes(agent.team_id)) &&
-      (agent.readiness_status || "ready") === "ready" &&
-      agent.runtime_status === "running"
-    );
-  }
-
   function updateTerminalTarget() {
     const button = $("project-open-terminal");
-    const agent = workspaceTerminalAgent();
-    const label = agent
-      ? `打开 ${agent.name || agent.agent_id} 的 Hermes 终端`
-      : "当前工作空间没有可用 Agent";
+    const project = currentDetail?.project;
+    const label = project ? `打开 ${project.name} 的 Linux 终端` : "请先选择项目";
     button.title = label;
     button.setAttribute("aria-label", label);
-    button.disabled = !agent;
+    button.disabled = !project;
   }
 
   function openWorkspaceTerminal() {
-    const agent = workspaceTerminalAgent();
-    if (!agent) {
-      report(new Error("当前工作空间没有可用的运行中 Agent，启动 Agent 后再打开终端。"));
+    const project = currentDetail?.project;
+    if (!project) {
+      report(new Error("请先选择项目。"));
       return;
     }
-    const opened = window.__HERMES_APP__.openAgentTerminal?.(agent.agent_id, agent.name);
-    if (!opened) report(new Error(`${agent.name || agent.agent_id} 尚未就绪，无法打开终端。`));
+    const opened = window.__WORKSPACE_TERMINAL__?.open({
+      projectId: project.project_id,
+      projectName: project.name,
+      workspacePath: project.workspace_path,
+    });
+    if (!opened) report(new Error("Linux 终端组件尚未就绪。"));
   }
   $("project-open-terminal").addEventListener("click", openWorkspaceTerminal);
-
+  $("project-preview-modes").addEventListener("click", event => {
+    const button = event.target.closest("[data-preview-mode]");
+    if (button) setPreviewMode(button.dataset.previewMode);
+  });
   $("project-detail").addEventListener("click", async event => {
     const workspaceButton = event.target.closest("[data-project-task-workspace]");
     if (workspaceButton) {

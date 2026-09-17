@@ -89,6 +89,16 @@ def test_project_parent_worker_review_and_artifacts(env, monkeypatch):
     assert preview.status_code == 200
     assert preview.json['content'] == '设计'
     assert preview.json['preview_type'] == 'text'
+    (root / 'docs' / 'index.html').write_text('<h1>Demo</h1><script>alert(1)</script>', encoding='utf-8')
+    html_preview = client.get(f'/api/projects/{pid}/raw/docs/index.html')
+    assert html_preview.status_code == 200
+    assert html_preview.mimetype == 'text/html'
+    assert "script-src 'none'" in html_preview.headers['Content-Security-Policy']
+    assert html_preview.headers['X-Content-Type-Options'] == 'nosniff'
+    (root / 'docs' / 'pixel.png').write_bytes(b'\x89PNG\r\n\x1a\n')
+    image_preview = client.get(f'/api/projects/{pid}/raw/docs/pixel.png')
+    assert image_preview.status_code == 200
+    assert image_preview.mimetype == 'image/png'
     assert client.get(f'/api/projects/{pid}/workspace?task_id=missing').status_code == 400
     (root / 'deliverables' / 'archive.zip').write_bytes(b'PK\x03\x04')
     unsupported = client.get(f'/api/projects/{pid}/preview?path=deliverables/archive.zip')

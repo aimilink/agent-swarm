@@ -289,3 +289,35 @@
   .project-preview { grid-row: 3; }
   .project-file-row > button:last-child { opacity: 1; }
 }
+/* Scrollable rendered workspace previews. */
+.project-workspace-browser { height: clamp(430px, 68vh, 760px); max-height: none; overflow: hidden; }
+.project-preview-content { height: 100%; max-height: 100%; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.project-preview-content iframe { height: 100%; min-height: 100%; }
+.project-preview-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.project-preview-modes { display: flex; padding: 2px; border: 1px solid #dce2ec; border-radius: 8px; background: #f8fafc; }
+.project-preview-modes[hidden] { display: none; }
+.project-preview-modes button { padding: 5px 9px; border: 0; border-radius: 6px; background: transparent; color: #64748b; font-size: 11px; text-align: center; }
+.project-preview-modes button[aria-pressed=true] { background: #fff; color: #245bbd; box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
+.project-markdown { max-width: 920px; margin: 0 auto; padding: 28px 34px 64px; color: #263244; font-size: 14px; line-height: 1.75; }
+.project-markdown h1,.project-markdown h2,.project-markdown h3,.project-markdown h4,.project-markdown h5,.project-markdown h6 { margin: 1.45em 0 .6em; color: #172033; line-height: 1.3; }
+.project-markdown h1 { margin-top: 0; padding-bottom: .35em; border-bottom: 1px solid #e5e7eb; font-size: 2em; }
+.project-markdown h2 { padding-bottom: .3em; border-bottom: 1px solid #eef0f4; font-size: 1.55em; }
+.project-markdown h3 { font-size: 1.25em; }
+.project-markdown p,.project-markdown ul,.project-markdown ol,.project-markdown blockquote,.project-markdown pre { margin: 0 0 1em; }
+.project-markdown ul,.project-markdown ol { padding-left: 1.6em; }
+.project-markdown blockquote { padding: 8px 14px; border-left: 4px solid #93b4ec; background: #f7faff; color: #52647c; }
+.project-markdown code { padding: .12em .35em; border-radius: 5px; background: #eef2f7; color: #be123c; font: .9em Consolas, "SFMono-Regular", monospace; }
+.project-markdown pre { overflow: auto; padding: 16px; border-radius: 10px; background: #111827; color: #e5e7eb; }
+.project-markdown pre code { padding: 0; background: transparent; color: inherit; }
+.project-markdown a { color: #0053db; text-decoration: underline; text-underline-offset: 2px; }
+.project-markdown hr { margin: 24px 0; border: 0; border-top: 1px solid #e5e7eb; }
+.project-markdown-image { display: block; max-width: 100%; height: auto; margin: 18px auto; padding: 0 !important; border-radius: 8px; }
+.workspace-terminal-drawer .terminal-drawer__panel { width: min(1180px, calc(100vw - 28px)); }
+.workspace-terminal-drawer .terminal-shell,.workspace-terminal-drawer .terminal-viewport { min-height: 0; height: 100%; }
+@media (max-width:767px) {
+  .project-workspace-browser { height: auto; min-height: 0; overflow: visible; }
+  .project-preview { height: min(68vh, 620px); }
+  .project-markdown { padding: 20px 18px 48px; }
+  .project-preview-head { align-items: flex-start; }
+  .project-preview-actions { align-items: flex-end; flex-direction: column; }
+}

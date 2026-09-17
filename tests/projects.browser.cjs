@@ -31,7 +31,7 @@ assert.equal(rendered.status,0,rendered.stderr);
   const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>localStorage.setItem('agentTeamApiToken','fixture'));
-  let projects=[],tasks=[],artifacts=[],fail=true,workspaceReads=0,previewReads=0;
+  let projects=[],tasks=[],artifacts=[],fail=true,workspaceReads=0,designPreviewReads=0;
   const enrich = project => ({
     ...project,
     team_ids: project.team_ids || [],
@@ -64,15 +64,26 @@ assert.equal(rendered.status,0,rendered.stderr);
       workspaceReads+=1;
       const taskId=url.searchParams.get('task_id') || '';
       const allFiles=[
-        {path:'PROJECT.md',name:'PROJECT.md',size:80,modified_ns:1,preview_type:'text',mime_type:'text/markdown',is_artifact:false,artifact:null},
-        {path:'docs/design.md',name:'design.md',size:16,modified_ns:previewReads?2:1,preview_type:'text',mime_type:'text/markdown',is_artifact:artifacts.length>0,artifact:artifacts[0] || null},
+        {path:'PROJECT.md',name:'PROJECT.md',size:8000,modified_ns:1,preview_type:'text',mime_type:'text/markdown',is_artifact:false,artifact:null},
+        {path:'docs/design.md',name:'design.md',size:16,modified_ns:designPreviewReads?2:1,preview_type:'text',mime_type:'text/markdown',is_artifact:artifacts.length>0,artifact:artifacts[0] || null},
+        {path:'docs/demo.html',name:'demo.html',size:80,modified_ns:1,preview_type:'text',mime_type:'text/html',is_artifact:false,artifact:null},
+        {path:'docs/pixel.png',name:'pixel.png',size:68,modified_ns:1,preview_type:'image',mime_type:'image/png',is_artifact:false,artifact:null},
       ];
       const files=taskId ? allFiles.filter(file=>file.path==='docs/design.md' && artifacts.some(item=>item.task_id===taskId)) : allFiles;
       return route.fulfill({json:{ok:true,project:enrich(projects.find(p=>p.project_id===pid)),scope:taskId?'task':'project',task:tasks.find(item=>item.kanban_task_id===taskId) || null,files,artifacts:taskId?artifacts.filter(item=>item.task_id===taskId):artifacts,all_artifacts:artifacts,truncated:false}});
     }
+    if(parts[4]==='raw'){
+      const rawPath=parts.slice(5).join('/');
+      if(rawPath==='docs/demo.html')return route.fulfill({contentType:'text/html',body:'<h1>HTML 页面</h1><p>安全预览</p>'});
+      if(rawPath==='docs/pixel.png')return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=','base64')});
+    }
     if(parts[4]==='preview'){
-      previewReads+=1;
-      return route.fulfill({json:{ok:true,path:url.searchParams.get('path'),preview_type:'text',mime_type:'text/markdown',size:16,modified_ns:previewReads>1?2:1,encoding:'utf-8',content:previewReads>1?'设计内容 v2':'设计内容 v1'}});
+      const requested=url.searchParams.get('path');
+      if(requested==='PROJECT.md')return route.fulfill({json:{ok:true,path:requested,preview_type:'text',mime_type:'text/markdown',size:8000,modified_ns:1,encoding:'utf-8',content:'# 项目说明\n\n**重点内容**\n\n'+Array.from({length:100},(_,i)=>`第 ${i+1} 行工作说明`).join('\n\n')}});
+      if(requested==='docs/demo.html')return route.fulfill({json:{ok:true,path:requested,preview_type:'text',mime_type:'text/html',size:80,modified_ns:1,encoding:'utf-8',content:'<h1>HTML 页面</h1><p>安全预览</p>'}});
+      if(requested==='docs/pixel.png')return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=','base64')});
+      designPreviewReads+=1;
+      return route.fulfill({json:{ok:true,path:requested,preview_type:'text',mime_type:'text/markdown',size:16,modified_ns:designPreviewReads>1?2:1,encoding:'utf-8',content:designPreviewReads>1?'设计内容 v2':'设计内容 v1'}});
     }
     if(parts[4]==='teams' && req.method()==='PUT'){
       projects.find(item=>item.project_id===pid).team_ids=req.postDataJSON().team_ids;
@@ -105,23 +116,36 @@ assert.equal(rendered.status,0,rendered.stderr);
   await page.waitForFunction(()=>document.querySelector('#project-title').textContent==='协作项目');
   await page.locator('[data-project-mode="workspace"]').click();
   await page.waitForFunction(()=>document.body.dataset.view==='workspace');
-  await page.waitForFunction(()=>document.querySelectorAll('#project-files [data-workspace-open]').length===2);
+  await page.waitForFunction(()=>document.querySelectorAll('#project-files [data-workspace-open]').length===4);
   assert.match(await page.locator('#project-files .project-tree-root-label').innerText(),/workspace/);
   const docsDirectory=page.locator('#project-files .project-tree-directory').filter({hasText:'docs'});
   assert.equal(await docsDirectory.count(),1);
-  assert.equal(await page.locator('#project-file-count').innerText(),'2');
+  assert.equal(await page.locator('#project-file-count').innerText(),'4');
   await docsDirectory.locator('summary').click();
   assert.equal(await docsDirectory.getAttribute('open'),null);
   await page.waitForTimeout(3200);
   assert.equal(await docsDirectory.getAttribute('open'),null,'polling preserves collapsed directories');
   await page.locator('#project-file-filter').fill('PROJECT');
   assert.equal(await page.locator('#project-files [data-workspace-open]').count(),1);
-  assert.equal(await page.locator('#project-file-count').innerText(),'1/2');
+  assert.equal(await page.locator('#project-file-count').innerText(),'1/4');
   await page.locator('#project-file-filter').fill('');
   await page.locator('#project-files-expand').click();
   assert.notEqual(await docsDirectory.getAttribute('open'),null);
   assert.equal(await page.locator('.project-workspace-tools').isVisible(),true);
-  assert.deepEqual(projects[0].team_ids,['team-eng','team-design']);
+  await page.locator('[data-workspace-open="PROJECT.md"]').click();
+  await page.locator('#project-preview-content .project-markdown h1').waitFor();
+  assert.equal(await page.locator('#project-preview-content .project-markdown strong').innerText(),'重点内容');
+  const previewScroll=await page.locator('#project-preview-content').evaluate(element=>({scrollHeight:element.scrollHeight,clientHeight:element.clientHeight}));
+  assert.ok(previewScroll.scrollHeight>previewScroll.clientHeight,'rendered markdown preview scrolls vertically');
+  await page.locator('#project-preview-content').evaluate(element=>{element.scrollTop=element.scrollHeight;});
+  assert.ok(await page.locator('#project-preview-content').evaluate(element=>element.scrollTop>0));
+  await page.locator('[data-workspace-open="docs/demo.html"]').click();
+  await page.locator('#project-preview-content iframe').waitFor();
+  assert.equal(await page.locator('[data-preview-mode="preview"]').getAttribute('aria-pressed'),'true');
+  await page.locator('[data-preview-mode="source"]').click();
+  assert.match(await page.locator('#project-preview-content pre').innerText(),/HTML 页面/);
+  await page.locator('[data-workspace-open="docs/pixel.png"]').click();
+  await page.locator('#project-preview-content img').waitFor();  assert.deepEqual(projects[0].team_ids,['team-eng','team-design']);
   assert.match(await page.locator('#project-team-badges').innerText(),/工程团队/);
   assert.match(await page.locator('#project-team-badges').innerText(),/设计团队/);
   assert.equal(await page.locator('#project-agent option').count(),3);
@@ -163,12 +187,12 @@ assert.equal(rendered.status,0,rendered.stderr);
   await page.waitForFunction(()=>document.querySelector('#project-workspace-status').textContent.includes('任务工作空间'));
   assert.equal(await page.locator('#project-files [data-workspace-open]').count(),1);
   assert.equal(await page.locator('#project-files [data-workspace-open]').getAttribute('title'),'docs/design.md');
-  assert.match(await page.locator('#project-open-terminal').getAttribute('title'),/工程负责人/);
+  assert.match(await page.locator('#project-open-terminal').getAttribute('title'),/协作项目.*Linux 终端/);
   await page.locator('#project-open-terminal').click();
-  await page.locator('#terminal-drawer').waitFor({state:'visible'});
-  assert.match(await page.locator('#terminal-title').innerText(),/工程负责人 · Hermes Terminal/);
+  await page.locator('#workspace-terminal-drawer').waitFor({state:'visible'});
+  assert.match(await page.locator('#workspace-terminal-title').innerText(),/协作项目 · Linux Terminal/);
   await page.keyboard.press('Escape');
-  await page.locator('#terminal-drawer').waitFor({state:'hidden'});
+  await page.locator('#workspace-terminal-drawer').waitFor({state:'hidden'});
 
   await page.locator('[data-project-mode="projects"]').click();
   await page.locator('#project-create [name=name]').fill('第二项目');
@@ -197,6 +221,6 @@ assert.equal(rendered.status,0,rendered.stderr);
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.locator('#view-projects').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
   assert.deepEqual(errors,[]);
-  console.log('PASS: project/team many-to-many UI, agent filtering, iterations, stateful searchable file tree, right-side targeted Agent terminal, live project/task workspaces, online artifact preview, project isolation, mobile layout');
+  console.log('PASS: project/team many-to-many UI, agent filtering, iterations, stateful searchable file tree, interactive project Linux terminal, live project/task workspaces, online artifact preview, project isolation, mobile layout');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

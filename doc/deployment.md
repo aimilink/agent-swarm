@@ -152,10 +152,16 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 AGENT_TEAM_API_TOKEN=替换为生成的随机值
 ```
 
-页面首次访问会显示 Token 输入框：启用时输入对应值，未启用时可取消。输入值会
-保存到浏览器 localStorage。该 Token 覆盖 `/api/*` REST 与 SSE 请求，但不能
-替代整站反向代理鉴权。终端
-WebSocket 与 `/mcp/` 仍应通过本机监听、防火墙、VPN 或反向代理限制访问。
+页面访问会进入登录页。首次默认账号为 `admin`、密码为 `agentswarm`，页面会明确
+提示默认密码，并在首次登录后强制修改。可在首次启动前通过
+`AGENT_TEAM_DEFAULT_USERNAME` 与 `AGENT_TEAM_DEFAULT_PASSWORD` 覆盖默认值；初始化后
+密码哈希保存在 SQLite `settings` 表。`AGENT_TEAM_SESSION_SECRET` 可显式设置 Cookie
+签名密钥，未设置时程序会生成 `data/.session-secret`。
+
+`AGENT_TEAM_API_TOKEN` 保留给脚本和外部 API 集成，浏览器登录会话不再需要输入
+Token。REST、SSE、Agent 终端 WebSocket 与项目 Linux 终端 WebSocket 均接受登录
+会话；`/mcp/` 仍应通过本机监听、防火墙、VPN 或反向代理限制访问。项目终端默认
+在项目工作目录启动 `/bin/bash -l`，可用 `AGENT_TEAM_WORKSPACE_SHELL` 覆盖。
 
 ### 5.5 Hermes Kanban
 

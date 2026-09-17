@@ -79,6 +79,20 @@ def download_file(project_id):
     return send_file(path, as_attachment=True)
 
 
+@bp.get("/<project_id>/raw/<path:value>")
+def raw_workspace_file(project_id, value):
+    project = projects.get_project(project_id)
+    path, _ = projects.artifact_path(project, value)
+    response = send_file(path, as_attachment=False, conditional=True, max_age=0)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    if path.suffix.lower() in {".html", ".htm", ".svg"}:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self' data: blob:; script-src 'none'; object-src 'none'; "
+            "base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+        )
+    return response
+
+
 @bp.get("/<project_id>/files")
 def files(project_id):
     return jsonify(ok=True, **projects.list_files(project_id))

@@ -177,8 +177,8 @@ RuntimeStore、终端订阅、进程句柄和高频终端事件只在进程内�
 ## 8. 当前边界与安全说明
 
 - 这是本地/可信内网工具，不是多租户 SaaS；没有租户级权限隔离。
-- `AGENT_TEAM_API_TOKEN` 只保护 Flask `/api/*`；整站、终端 WebSocket
-  和 MCP 仍需网络层保护。
+- 整站、Flask `/api/*` 和终端 WebSocket 使用登录会话保护；外部 API 与 WebSocket
+  可继续使用 `AGENT_TEAM_API_TOKEN`。MCP 仍需网络层保护。
 - SQLite 部署只支持单控制台写进程，不建议多 worker 横向扩容。
 - 控制台运行端推荐 POSIX 环境；原生 Windows 请改用 WSL2。
 - 导入会替换控制台注册、工作区和运行历史；共享 Hermes Profile 不因普通成员移除

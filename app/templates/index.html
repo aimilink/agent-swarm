@@ -217,7 +217,7 @@
 <li><a href="#stats" class="nav-link flex items-center" data-view="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>效能统计</a></li>
 <li><a href="#teams" class="nav-link flex items-center" data-view="teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>团队管理</a></li>
 <li><a href="#settings" class="nav-link flex items-center" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>设置</a></li></ul>
-<div class="swarm-sidebar-footer"><button id="swarm-open-help" type="button">帮助与快捷键</button><p class="mt-3">本地工作台 · Hermes Agent</p></div>
+<div class="swarm-sidebar-footer"><button id="swarm-open-help" type="button">帮助与快捷键</button><div class="swarm-account"><span>{{ auth_username }}</span><a href="/change-password">修改密码</a><form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ auth_csrf_token }}"><button type="submit">退出</button></form></div><p class="mt-3">本地工作台 · Hermes Agent</p></div>
 </nav>
 <button id="sidebar-backdrop" class="mobile-sidebar-backdrop" type="button" aria-label="关闭导航" hidden></button>
 <!-- Main Workspace -->
@@ -491,8 +491,8 @@
 <div class="project-workspace-toolbar"><div class="project-workspace-scopes" role="group" aria-label="工作空间范围"><button type="button" data-workspace-scope="project" aria-pressed="true">项目工作空间</button><button type="button" data-workspace-scope="task" aria-pressed="false">任务工作空间</button></div><label id="project-workspace-task-wrap" hidden>选择任务<select id="project-workspace-task"></select></label></div>
 <div class="project-workspace-browser">
 <div class="project-file-pane"><div class="project-file-head"><strong>文件树 <small id="project-file-count"></small></strong><div><button id="project-files-expand" type="button" title="全部展开" aria-label="全部展开">＋</button><button id="project-files-collapse" type="button" title="全部折叠" aria-label="全部折叠">−</button><button id="project-files-refresh" type="button" title="刷新文件树" aria-label="刷新文件树">↻</button></div></div><label class="project-file-search"><span aria-hidden="true">⌕</span><input id="project-file-filter" type="search" placeholder="筛选文件" aria-label="筛选工作空间文件"><kbd>/</kbd></label><nav id="project-files" aria-label="工作空间文件" tabindex="-1"></nav></div>
-<section class="project-preview" id="project-preview"><div class="project-preview-head"><div><strong id="project-preview-title">选择文件在线查看</strong><small id="project-preview-meta">支持文本、代码、图片和 PDF</small></div><button id="project-preview-download" type="button" hidden>下载</button></div><div id="project-preview-content" class="project-preview-content"><p>文件更新后，预览内容会自动刷新。</p></div></section>
-<aside class="project-workspace-tools" aria-label="工作空间工具"><button id="project-files-tool" type="button" class="is-active" title="文件浏览器" aria-label="文件浏览器"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button id="project-open-terminal" type="button" title="打开当前工作空间 Agent 终端" aria-label="打开当前工作空间 Agent 终端"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m7 9 3 3-3 3m5 0h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></aside>
+<section class="project-preview" id="project-preview"><div class="project-preview-head"><div><strong id="project-preview-title">选择文件在线查看</strong><small id="project-preview-meta">支持 Markdown、图片、HTML、代码和 PDF</small></div><div class="project-preview-actions"><div id="project-preview-modes" class="project-preview-modes" role="group" aria-label="预览模式" hidden><button type="button" data-preview-mode="preview" aria-pressed="true">预览</button><button type="button" data-preview-mode="source" aria-pressed="false">源码</button></div><button id="project-preview-download" type="button" hidden>下载</button></div></div><div id="project-preview-content" class="project-preview-content"><p>文件更新后，预览内容会自动刷新。</p></div></section>
+<aside class="project-workspace-tools" aria-label="工作空间工具"><button id="project-files-tool" type="button" class="is-active" title="文件浏览器" aria-label="文件浏览器"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button id="project-open-terminal" type="button" title="打开项目 Linux 终端" aria-label="打开项目 Linux 终端"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m7 9 3 3-3 3m5 0h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></aside>
 </div>
 </section>
 <h3>项目任务</h3><div id="project-tasks"></div>
@@ -554,6 +554,13 @@
       </aside>
     </div>
 
+<div class="terminal-drawer workspace-terminal-drawer" id="workspace-terminal-drawer" hidden>
+  <div class="terminal-drawer__backdrop" data-close-workspace-terminal></div>
+  <aside class="terminal-drawer__panel panel" role="dialog" aria-modal="true" aria-labelledby="workspace-terminal-heading">
+    <div class="terminal-drawer__head"><div><h2 id="workspace-terminal-heading">工作空间终端</h2><p id="workspace-terminal-path">Linux Shell</p></div><button class="modal__close" type="button" data-close-workspace-terminal aria-label="关闭工作空间终端">×</button></div>
+    <div class="terminal-shell terminal-shell--drawer"><div class="terminal-toolbar"><span class="terminal-dot"></span><span id="workspace-terminal-title">Hermes Workspace Terminal</span></div><div class="terminal-viewport" id="workspace-terminal-viewport"></div></div>
+  </aside>
+</div>
     <div class="history-drawer" id="history-drawer" hidden>
       <div class="history-drawer__backdrop" data-close-history></div>
       <aside
@@ -994,12 +1001,14 @@
 
 
     <script>
+      window.__AUTHENTICATED__ = true;
       window.__BOOTSTRAP__ = {{ {"agents": agents, "teams": teams or [], "events": events, "kanban_task_links": kanban_task_links, "stats": stats}|tojson }};
     </script>
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
     <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version('app.js') }}"></script>
+    <script src="{{ url_for('static', filename='workspace-terminal.js') }}?v={{ asset_version('workspace-terminal.js') }}"></script>
     <script src="{{ url_for('static', filename='ui-app.js') }}?v={{ asset_version('ui-app.js') }}"></script>
     <script src="{{ url_for('static', filename='agent-chat.js') }}?v={{ asset_version('agent-chat.js') }}"></script>
     <script src="{{ url_for('static', filename='a2a-chat.js') }}?v={{ asset_version('a2a-chat.js') }}"></script>

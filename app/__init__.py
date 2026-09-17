@@ -2,7 +2,7 @@ from flask import Flask
 from pathlib import Path
 
 from .controllers import register_blueprints
-from .controllers.auth import register_api_auth
+from .controllers.auth import register_api_auth, register_login_auth
 from .db import init_database
 from .mcp_server import start_session_manager
 from .models.store import store
@@ -40,6 +40,7 @@ def create_app() -> Flask:
     store.load_persisted_state()
     registry.bootstrap(store)
     a2a.recover_interrupted_deliveries()
+    register_login_auth(app)
     register_api_auth(app)
     register_blueprints(app)
     start_ready_agents_on_boot()
