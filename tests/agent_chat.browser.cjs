@@ -12,6 +12,7 @@ const {chromium} = require('playwright');
    if(url.pathname==='/') return route.fulfill({contentType:'text/html',body:`<section id="view-chat"><select id="chat-agent"></select><div id="chat-agent-list"></div><button id="chat-new">新建</button><div id="chat-history"></div><h2 id="chat-title"></h2><div id="chat-messages"></div><p id="chat-status"></p><form id="chat-form"><textarea id="chat-input"></textarea><button id="chat-send">发送</button></form></section>`});
    const parts=url.pathname.split('/'); const agent=parts[3]; const id=parts[5];
    let chat=chats.find(c=>c.chat_id===id);
+   if(agent==='c') return route.fulfill({status:404,contentType:'text/html',body:'<html><h1>Not Found</h1></html>'});
    if(route.request().method()==='POST') {
     if(!id){ chat={chat_id:String(++count),agent_id:agent,title:'新聊天',messages:[],busy:false,updated_at:new Date().toISOString()};chats.push(chat); }
     else { const content=route.request().postDataJSON().content;chat.title=content;chat.messages.push({role:'user',content,created_at:chat.updated_at},{role:'assistant',content:'回复 <script>安全</script>',created_at:chat.updated_at}); }
@@ -21,12 +22,12 @@ const {chromium} = require('playwright');
   await page.goto('http://chat.test/');
   await page.evaluate(()=>{
    window.switchView=()=>{};
-   window.__BOOTSTRAP__={agents:[{agent_id:'a',name:'Agent A',profile_name:'a'},{agent_id:'b',name:'Agent B',profile_name:'b'}]};
+   window.__BOOTSTRAP__={agents:[{agent_id:'a',name:'Agent A',profile_name:'a'},{agent_id:'b',name:'Agent B',profile_name:'b'},{agent_id:'c',name:'Agent C',profile_name:'c'}]};
    window.__HERMES_APP__={escapeHtml: value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))};
   });
   await page.addScriptTag({content:fs.readFileSync('app/static/agent-chat.js','utf8')});
   await page.evaluate(()=>openAgentChat('a'));
-  assert.equal(await page.locator('[data-chat-agent]').count(),2);
+  assert.equal(await page.locator('[data-chat-agent]').count(),3);
   assert.equal(await page.locator('[data-chat-agent="a"]').getAttribute('class'),'is-selected');
   await page.click('#chat-new'); await page.waitForFunction(()=>!document.getElementById('chat-input').disabled);
   await page.fill('#chat-input','第一条消息'); await page.press('#chat-input','Enter');
@@ -40,6 +41,9 @@ const {chromium} = require('playwright');
   assert.equal(await page.locator('#chat-agent').inputValue(),'b');
   await page.waitForFunction(()=>document.querySelectorAll('#chat-history button').length===0);
   assert.equal(await page.locator('.chat-message').count(),0);
+  await page.click('[data-chat-agent="c"]');
+  await page.waitForFunction(()=>document.querySelector('#chat-status').textContent.includes('服务器返回HTML'));
+  assert.doesNotMatch(await page.locator('#chat-status').innerText(),/Unexpected token/);
   assert.deepEqual(errors,[]);
   console.log('PASS: new chat, send, history, agent isolation, HTML escaping');
  } finally {await browser.close();}

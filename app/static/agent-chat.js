@@ -10,10 +10,22 @@
   const esc = value => window.__HERMES_APP__.escapeHtml(String(value ?? ''));
   const path = () => `/api/agents/${encodeURIComponent(agentId)}/chats`;
   async function api(url, body) {
-    const response = await fetch(url, body === undefined ? {} : {
-      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
-    });
-    const data = await response.json();
+    const options = {headers: {Accept: 'application/json'}};
+    if (body !== undefined) {
+      options.method = 'POST';
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(body);
+    }
+    const response = await fetch(url, options);
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    if (!contentType.includes('application/json')) {
+      await response.text();
+      const kind = contentType.includes('text/html') ? 'HTML' : '非 JSON 内容';
+      throw new Error(`Agent 对话接口不可用（HTTP ${response.status}，服务器返回${kind}）。请确认后端已更新并重启。`);
+    }
+    let data;
+    try { data = await response.json(); }
+    catch (_) { throw new Error(`Agent 对话接口返回了无效 JSON（HTTP ${response.status}）。`); }
     if (!response.ok || !data.ok) throw new Error(data.error || '请求失败');
     return data;
   }
