@@ -302,7 +302,9 @@ class SQLitePersistence:
             kanban_task_links = [
                 self._kanban_task_link_to_dict(record)
                 for record in session.scalars(
-                    select(KanbanTaskLinkRecord).order_by(KanbanTaskLinkRecord.id)
+                    select(KanbanTaskLinkRecord)
+                    .where(KanbanTaskLinkRecord.deleted_at.is_(None))
+                    .order_by(KanbanTaskLinkRecord.id)
                 )
             ]
         return {
