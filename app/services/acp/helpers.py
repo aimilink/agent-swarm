@@ -65,6 +65,57 @@ def _strip_ansi(text: str) -> str:
     return re.sub(r"\x1b.", "", text)
 
 
+class _AnsiStreamSanitizer:
+    """Strip ANSI controls while preserving parser state across PTY chunks."""
+
+    def __init__(self) -> None:
+        self._state = "text"
+
+    def feed(self, text: str) -> str:
+        output: list[str] = []
+        for char in text:
+            if self._state == "text":
+                if char == "\x1b":
+                    self._state = "escape"
+                else:
+                    output.append(char)
+                continue
+
+            if self._state == "escape":
+                if char == "[":
+                    self._state = "csi"
+                elif char in "]PX^_":
+                    self._state = "string"
+                elif char in "()#":
+                    self._state = "escape_one"
+                else:
+                    self._state = "text"
+                continue
+
+            if self._state == "csi":
+                if "@" <= char <= "~":
+                    self._state = "text"
+                continue
+
+            if self._state == "escape_one":
+                self._state = "text"
+                continue
+
+            if self._state == "string":
+                if char == "\x07":
+                    self._state = "text"
+                elif char == "\x1b":
+                    self._state = "string_escape"
+                continue
+
+            if self._state == "string_escape":
+                if char == "\\":
+                    self._state = "text"
+                elif char != "\x1b":
+                    self._state = "string"
+        return "".join(output)
+
+
 def _is_non_interaction_text(text: str) -> bool:
     clean = _strip_ansi(text).replace("\r", "\n")
     return any(pattern.search(clean) for pattern in NON_INTERACTION_PATTERNS)
@@ -253,7 +304,8 @@ def _log_terminal_debug(event: str, agent_id: str, text: str, **fields: Any) -> 
         **fields,
     }
     details = " ".join(f"{key}={value!r}" for key, value in payload.items())
-    logger.warning("[terminal-debug] %s agent=%s %s", event, agent_id, details)
+    log = logger.debug if event == "chunk_sample" else logger.warning
+    log("[terminal-debug] %s agent=%s %s", event, agent_id, details)
 
 
 def _is_substantive_output(text: str) -> bool:

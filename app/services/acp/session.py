@@ -26,7 +26,6 @@ from .helpers import (
     APPROVAL_PATTERNS,
     INPUT_PATTERNS,
     MAX_RAW_OUTPUT_CHARS,
-    MAX_TERMINAL_BUFFER_CHARS,
     MAX_TERMINAL_SUBSCRIBER_QUEUE,
     READ_CHUNK_SIZE,
     READ_LOOP_INTERVAL,
@@ -34,6 +33,7 @@ from .helpers import (
     TERMINAL_COLUMNS,
     TERMINAL_LINES,
     TERMINAL_QUEUE_CLOSE_SENTINEL,
+    _AnsiStreamSanitizer,
     _clean_agent_reply,
     _compact_screen_text,
     _extract_selection,
@@ -65,6 +65,7 @@ class HermesSession:
         self._queue: deque[dict[str, Any]] = deque()
         self._counter = count(1)
         self._raw_output = ""
+        self._ansi_cleaner = _AnsiStreamSanitizer()
         self._terminal_screen = pyte.Screen(TERMINAL_COLUMNS, TERMINAL_LINES)
         self._terminal_stream = pyte.Stream(self._terminal_screen)
         self._last_terminal_snapshot = ""
@@ -91,8 +92,6 @@ class HermesSession:
         self._terminal_rows = TERMINAL_LINES
         self._terminal_columns = TERMINAL_COLUMNS
         self._terminal_subscribers: set[queue.Queue[dict[str, Any]]] = set()
-        self._terminal_buffer: deque[str] = deque()
-        self._terminal_buffer_chars = 0
         self._terminal_debug_chunk_samples = 0
         self._last_terminal_warning_at = 0.0
 
@@ -113,15 +112,6 @@ class HermesSession:
         with self._lock:
             return self._raw_output[-limit:]
 
-    def _remember_terminal_chunk_locked(self, chunk: str) -> None:
-        if not chunk:
-            return
-        self._terminal_buffer.append(chunk)
-        self._terminal_buffer_chars += len(chunk)
-        while self._terminal_buffer and self._terminal_buffer_chars > MAX_TERMINAL_BUFFER_CHARS:
-            removed = self._terminal_buffer.popleft()
-            self._terminal_buffer_chars -= len(removed)
-
     def _broadcast_terminal_message(self, message: dict[str, Any]) -> None:
         with self._lock:
             subscribers = list(self._terminal_subscribers)
@@ -140,7 +130,6 @@ class HermesSession:
     def _write_terminal_notice(self, text: str) -> None:
         chunk = f"\r\n\x1b[33m[Hermes]\x1b[0m {text}\r\n"
         with self._lock:
-            self._remember_terminal_chunk_locked(chunk)
             self._terminal_stream.feed(chunk)
             self._last_terminal_snapshot = _compact_screen_text(self._terminal_screen)
         self._broadcast_terminal_message({"type": "output", "data": chunk})
@@ -168,12 +157,13 @@ class HermesSession:
             if self._closed or not self.proc.isalive():
                 raise RuntimeError("agent session is not running; start it first")
             self._terminal_subscribers.add(subscriber)
-            raw_snapshot = "".join(self._terminal_buffer)
             state = {
                 "rows": self._terminal_rows,
                 "cols": self._terminal_columns,
                 "snapshot_text": self._last_terminal_snapshot,
-                "snapshot_ansi": raw_snapshot or _screen_to_ansi(self._terminal_screen),
+                # Serialize the parsed screen instead of replaying a truncated
+                # raw stream that may begin halfway through an ANSI sequence.
+                "snapshot_ansi": _screen_to_ansi(self._terminal_screen),
             }
         return subscriber, state
 
@@ -789,7 +779,7 @@ class HermesSession:
 
     def _handle_chunk(self, chunk: str) -> None:
         terminal_chunk = chunk.replace("\r\n", "\n")
-        clean = _strip_ansi(chunk.replace("\r", ""))
+        clean = self._ansi_cleaner.feed(chunk.replace("\r", ""))
         now = time.monotonic()
         with self._lock:
             should_log_sample = self._terminal_debug_chunk_samples < 5
@@ -799,7 +789,6 @@ class HermesSession:
                 self._terminal_debug_chunk_samples += 1
             if should_log_warning:
                 self._last_terminal_warning_at = now
-            self._remember_terminal_chunk_locked(terminal_chunk)
             running = self._current_message is not None
             self._terminal_stream.feed(terminal_chunk)
             terminal_snapshot = _compact_screen_text(self._terminal_screen)
