@@ -199,6 +199,13 @@ async def workspace_terminal_ws(websocket: WebSocket) -> None:
 def create_asgi_app() -> Starlette:
     flask_app = create_app()
 
+    # Feishu webhook notifier: forward user_task lifecycle events (completed /
+    # blocked / interaction required) to a Feishu custom bot. No-op unless
+    # AGENTSWARM_FEISHU_WEBHOOK is set; failures never affect the pipeline.
+    from .services.feishu_notifier import FeishuNotifier
+
+    FeishuNotifier(store)
+
     async def protected_agent_terminal(websocket: WebSocket) -> None:
         if not websocket_authenticated(websocket, flask_app):
             await websocket.close(code=4401)
