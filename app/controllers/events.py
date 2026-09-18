@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import queue
+
 from flask import Blueprint, Response, stream_with_context
 
 from ..models.store import store
@@ -17,7 +19,10 @@ def event_stream():
         try:
             yield ": connected\n\n"
             while True:
-                yield subscriber.get()
+                try:
+                    yield subscriber.get(timeout=15)
+                except queue.Empty:
+                    yield ": keep-alive\n\n"
         finally:
             store.unsubscribe(subscriber)
 

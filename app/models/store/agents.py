@@ -36,6 +36,14 @@ class AgentsMixin:
         with self._lock:
             return next((a for a in self.agents if a["agent_id"] == agent_id), None)
 
+    def find_agent_by_profile(self, profile_name: str) -> dict | None:
+        with self._lock:
+            agent = next(
+                (a for a in self.agents if a.get("profile_name") == profile_name),
+                None,
+            )
+            return dict(agent) if agent else None
+
     def update_agent(self, agent_id: str, **patch) -> dict | None:
         with self._lock:
             agent = next((a for a in self.agents if a["agent_id"] == agent_id), None)

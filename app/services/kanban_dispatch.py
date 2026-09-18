@@ -6,7 +6,7 @@ import time
 from typing import Any
 
 from ..models.store import RuntimeStore, store as default_store
-from .agent_status import agent_dispatch_block_reason, find_agent_by_profile, is_agent_dispatchable
+from .agent_status import agent_dispatch_block_reason, is_agent_dispatchable
 from .kanban import KanbanError, KanbanService, kanban_service
 from .kanban_sync import sync_worker
 from .settings import settings_service
@@ -91,10 +91,14 @@ class KanbanDispatchWorker:
             logger.info("[kanban-dispatch] skip reason=locked")
             return {"skipped": True, "released_count": 0, "result": None}
         try:
-            released_count = self._release_one_pending_dispatch_task()
-            self._sync_ready_links()
-            dispatchable = self._dispatchable_tasks()
-            self._refresh_wait_interval(dispatchable)
+            links = self.store.list_kanban_task_links()
+            released_count = self._release_one_pending_dispatch_task(links)
+            if released_count:
+                links = self.store.list_kanban_task_links()
+            self._sync_ready_links(links)
+            links = self.store.list_kanban_task_links()
+            dispatchable = self._dispatchable_tasks(links)
+            self._refresh_wait_interval(dispatchable, links)
             if not dispatchable:
                 logger.debug("[kanban-dispatch] skip reason=no_dispatchable released=%s", released_count)
                 return {"skipped": True, "released_count": 0, "result": None}
@@ -174,11 +178,13 @@ class KanbanDispatchWorker:
             return kanban_service_for_board(board)
         return self.service
 
-    def _dispatchable_tasks(self) -> list[dict]:
+    def _dispatchable_tasks(self, links: list[dict] | None = None) -> list[dict]:
         now = time.time()
         return [
             link
-            for link in self.store.snapshot().get("kanban_task_links", []) or []
+            for link in (
+                links if links is not None else self.store.list_kanban_task_links()
+            )
             if (link.get("kanban_status") or "").lower() in {"ready", "todo", "triage"}
             and bool(link.get("assignee_profile"))
             and bool(link.get("kanban_task_id"))
@@ -186,17 +192,23 @@ class KanbanDispatchWorker:
             and self._link_is_dispatchable(link)
         ]
 
-    def _has_pending_dispatch(self) -> bool:
+    def _has_pending_dispatch(self, links: list[dict] | None = None) -> bool:
         return any(
             (link.get("kanban_status") or "").lower() == "pending_dispatch"
-            for link in self.store.snapshot().get("kanban_task_links", []) or []
+            for link in (
+                links if links is not None else self.store.list_kanban_task_links()
+            )
         )
 
-    def _refresh_wait_interval(self, dispatchable: list[dict]) -> None:
+    def _refresh_wait_interval(
+        self,
+        dispatchable: list[dict],
+        links: list[dict] | None = None,
+    ) -> None:
         self._wait_interval = dispatch_wait_interval(
             self.interval,
             has_dispatchable=bool(dispatchable),
-            has_pending_dispatch=self._has_pending_dispatch(),
+            has_pending_dispatch=self._has_pending_dispatch(links),
             idle_interval=self.idle_interval,
         )
 
@@ -207,7 +219,7 @@ class KanbanDispatchWorker:
             agent = self.store.find_agent(agent_id)
             if agent:
                 return agent
-        return find_agent_by_profile(self.store.snapshot().get("agents", []) or [], link.get("assignee_profile") or "")
+        return self.store.find_agent_by_profile(link.get("assignee_profile") or "")
 
     def _link_is_dispatchable(self, link: dict) -> bool:
         agent = self._link_agent(link)
@@ -288,8 +300,8 @@ class KanbanDispatchWorker:
         metadata.pop("dispatch_started_at", None)
         self.store.update_kanban_task_link(task_id, kanban_status=status, metadata=metadata)
 
-    def _sync_ready_links(self) -> None:
-        for link in self.store.snapshot().get("kanban_task_links", []) or []:
+    def _sync_ready_links(self, links: list[dict] | None = None) -> None:
+        for link in (links if links is not None else self.store.list_kanban_task_links()):
             if (link.get("kanban_status") or "").lower() not in {"ready", "todo", "triage", "running"}:
                 continue
             if not link.get("kanban_task_id"):
@@ -323,8 +335,8 @@ class KanbanDispatchWorker:
                 )
                 self.store.update_kanban_task_link(task_id, kanban_status=status, metadata=metadata)
 
-    def _release_one_pending_dispatch_task(self) -> int:
-        for link in self.store.snapshot().get("kanban_task_links", []) or []:
+    def _release_one_pending_dispatch_task(self, links: list[dict] | None = None) -> int:
+        for link in (links if links is not None else self.store.list_kanban_task_links()):
             if (link.get("kanban_status") or "").lower() != "pending_dispatch":
                 continue
             if (link.get("kanban_status") or "").lower() == "archived":

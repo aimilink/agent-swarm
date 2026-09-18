@@ -88,11 +88,14 @@ class RuntimeStoreBase:
             self._delegation_ids = state["delegation_ids"]
             self._assignment_ids = state["assignment_ids"]
 
-    def _sorted_agents(self) -> list[dict]:
+    def _sorted_agent_rows(self, agents: list[dict]) -> list[dict]:
         return sorted(
-            [self._agent_snapshot(agent) for agent in self.agents],
+            [self._agent_snapshot(agent) for agent in agents],
             key=lambda agent: agent.get("role") != "leader",
         )
+
+    def _sorted_agents(self) -> list[dict]:
+        return self._sorted_agent_rows([dict(agent) for agent in self.agents])
 
     def _agent_snapshot(self, agent: dict) -> dict:
         snapshot = dict(agent)
@@ -107,8 +110,8 @@ class RuntimeStoreBase:
     # ------------------------------------------------------------------ snapshot
     def snapshot(self) -> dict:
         with self._lock:
-            return {
-                "agents": self._sorted_agents(),
+            agent_rows = [dict(agent) for agent in self.agents]
+            result = {
                 "teams": list(self.teams),
                 "user_tasks": list(self.user_tasks),
                 "tasks": list(self.tasks),
@@ -118,6 +121,29 @@ class RuntimeStoreBase:
                 "events": list(self.events),
                 "stats": self._build_stats(),
             }
+        # Profile config I/O and YAML parsing must never hold the global state
+        # lock. The model summary cache keeps repeated snapshots memory-only.
+        result["agents"] = self._sorted_agent_rows(agent_rows)
+        return result
+
+    def list_agents(self, *, include_model_summary: bool = False) -> list[dict]:
+        with self._lock:
+            rows = [dict(agent) for agent in self.agents]
+        if include_model_summary:
+            return self._sorted_agent_rows(rows)
+        return sorted(rows, key=lambda agent: agent.get("role") != "leader")
+
+    def list_kanban_task_links(self) -> list[dict]:
+        with self._lock:
+            return [dict(link) for link in self.kanban_task_links]
+
+    def list_delegations(self) -> list[dict]:
+        with self._lock:
+            return [dict(delegation) for delegation in self.delegations]
+
+    def list_user_tasks(self) -> list[dict]:
+        with self._lock:
+            return [dict(task) for task in self.user_tasks]
 
     def _build_stats(self) -> list[dict]:
         online = sum(

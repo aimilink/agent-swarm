@@ -62,7 +62,7 @@ class KanbanSyncWorker:
 
     def sync_once(self) -> None:
         self._adopt_orphan_kanban_children()
-        links = list(self.store.snapshot().get("kanban_task_links") or [])
+        links = list(self.store.list_kanban_task_links())
         for link in links:
             self._sync_link(link)
         self._create_ready_review_tasks()
@@ -95,7 +95,7 @@ class KanbanSyncWorker:
             return
         targets = [
             link
-            for link in (self.store.snapshot().get("kanban_task_links") or [])
+            for link in (self.store.list_kanban_task_links())
             if link.get("assignee_profile") == profile
             and (link.get("kanban_status") or "").lower() not in {"done", "archived", "pending_dispatch"}
         ]
@@ -255,7 +255,7 @@ class KanbanSyncWorker:
         # 所有同任务委派都完成才推进
         siblings = [
             l
-            for l in self.store.snapshot().get("kanban_task_links", [])
+            for l in self.store.list_kanban_task_links()
             if (l.get("metadata") or {}).get("kind") == "cross_team_delegation"
             and (l.get("metadata") or {}).get("user_task_id") == user_task_id
             and (l.get("kanban_status") or "").lower() not in TERMINAL_STATUSES
@@ -330,9 +330,9 @@ class KanbanSyncWorker:
         has_next_round = any(
             delegation.get("user_task_id") == user_task_id
             and int(delegation.get("round") or 1) == round_number + 1
-            for delegation in self.store.snapshot().get("delegations", [])
+            for delegation in self.store.list_delegations()
         )
-        for delegation in self.store.snapshot().get("delegations", []):
+        for delegation in self.store.list_delegations():
             if (
                 delegation.get("user_task_id") == user_task_id
                 and int(delegation.get("round") or 1) == round_number
@@ -357,10 +357,9 @@ class KanbanSyncWorker:
         )
 
     def _adopt_orphan_kanban_children(self) -> None:
-        snapshot = self.store.snapshot()
         known_links = {
             link.get("kanban_task_id"): link
-            for link in snapshot.get("kanban_task_links", [])
+            for link in self.store.list_kanban_task_links()
             if link.get("kanban_task_id")
         }
         roots = [
@@ -481,7 +480,11 @@ class KanbanSyncWorker:
         return link
 
     def _create_ready_review_tasks(self) -> None:
-        snapshot = self.store.snapshot()
+        snapshot = {
+            "user_tasks": self.store.list_user_tasks(),
+            "delegations": self.store.list_delegations(),
+            "kanban_task_links": self.store.list_kanban_task_links(),
+        }
         for user_task in snapshot["user_tasks"]:
             if user_task.get("status") not in {"ready_to_review", "ready_to_summarize", "waiting_workers", "interrupted"}:
                 continue
@@ -618,9 +621,8 @@ class KanbanSyncWorker:
         )
 
     def _sync_agent_kanban_state(self) -> None:
-        snapshot = self.store.snapshot()
         active_by_profile: dict[str, list[dict]] = {}
-        for link in snapshot.get("kanban_task_links", []):
+        for link in self.store.list_kanban_task_links():
             status = (link.get("kanban_status") or "").lower()
             if status in {"done", "archived", "blocked", "failed", "crashed", "timed_out", "gave_up"}:
                 continue
@@ -631,7 +633,7 @@ class KanbanSyncWorker:
                 continue
             active_by_profile.setdefault(profile, []).append(link)
 
-        for agent in snapshot["agents"]:
+        for agent in self.store.list_agents():
             profile = agent.get("profile_name") or ""
             links = active_by_profile.get(profile, [])
             running = [item for item in links if (item.get("kanban_status") or "").lower() == "running"]
@@ -767,7 +769,7 @@ def _crashed_task_summary(task: dict[str, Any]) -> str:
 
 def _agent_for_link(runtime_store: RuntimeStore, link: dict) -> str:
     assignee = link.get("assignee_profile") or ""
-    for agent in runtime_store.snapshot()["agents"]:
+    for agent in runtime_store.list_agents():
         if agent.get("profile_name") == assignee:
             return agent["agent_id"]
     return ""
@@ -777,7 +779,7 @@ def _agent_for_assignee(runtime_store: RuntimeStore, assignee: str) -> dict | No
     normalized = (assignee or "").strip()
     if not normalized:
         return None
-    for agent in runtime_store.snapshot()["agents"]:
+    for agent in runtime_store.list_agents():
         if agent.get("profile_name") == normalized or agent.get("agent_id") == normalized:
             return agent
     return None

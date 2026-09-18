@@ -11,7 +11,9 @@ from .base import NON_PERSISTED_EVENT_TYPES
 
 class EventsMixin:
     def subscribe(self) -> queue.Queue[str]:
-        q: queue.Queue[str] = queue.Queue()
+        # Bound per-client buffers so a slow or disconnected browser cannot
+        # retain an unlimited number of high-frequency runtime events.
+        q: queue.Queue[str] = queue.Queue(maxsize=256)
         with self._lock:
             self._subscribers.append(q)
         return q
@@ -22,8 +24,20 @@ class EventsMixin:
                 self._subscribers.remove(q)
 
     def _broadcast(self, payload: str) -> None:
-        for subscriber in list(self._subscribers):
-            subscriber.put(payload)
+        with self._lock:
+            subscribers = list(self._subscribers)
+        for subscriber in subscribers:
+            try:
+                subscriber.put_nowait(payload)
+            except queue.Full:
+                try:
+                    subscriber.get_nowait()
+                except queue.Empty:
+                    pass
+                try:
+                    subscriber.put_nowait(payload)
+                except queue.Full:
+                    pass
 
     def push_event(
         self, event_type: str, agent_id: str, task_id: str | None, data: dict
@@ -39,16 +53,19 @@ class EventsMixin:
         payload = f"event: event\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
         with self._lock:
             self.events.appendleft(event)
-            self._broadcast(payload)
+        self._broadcast(payload)
         if event_type not in NON_PERSISTED_EVENT_TYPES:
             self._persist("insert_event", event)
         return event
 
     def push_agents_changed(self) -> None:
         with self._lock:
-            body = {"agents": self._sorted_agents(), "teams": list(self.teams), "stats": self._build_stats()}
-            payload = f"event: agents\ndata: {json.dumps(body, ensure_ascii=False)}\n\n"
-            self._broadcast(payload)
+            agent_rows = [dict(agent) for agent in self.agents]
+            teams = list(self.teams)
+            stats = self._build_stats()
+        body = {"agents": self._sorted_agent_rows(agent_rows), "teams": teams, "stats": stats}
+        payload = f"event: agents\ndata: {json.dumps(body, ensure_ascii=False)}\n\n"
+        self._broadcast(payload)
 
 
 # Re-export for callers that historically imported `count` from the module.

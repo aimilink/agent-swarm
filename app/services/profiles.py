@@ -22,6 +22,9 @@ class ProfileError(RuntimeError):
 
 _PROFILE_LOCKS: dict[str, threading.RLock] = {}
 _PROFILE_LOCKS_GUARD = threading.Lock()
+_MODEL_SUMMARY_CACHE: dict[str, tuple[float, int, int, dict]] = {}
+_MODEL_SUMMARY_CACHE_LOCK = threading.Lock()
+_MODEL_SUMMARY_CACHE_TTL_SECONDS = 2.0
 
 
 def _profile_lock(profile_name: str) -> threading.RLock:
@@ -211,6 +214,7 @@ def write_profile_config(profile_name: str, data: dict) -> None:
             for attempt in range(6):
                 try:
                     os.replace(tmp_path, cfg_path)
+                    _invalidate_model_summary_cache(profile_name)
                     break
                 except PermissionError:
                     if attempt == 5:
@@ -225,15 +229,54 @@ def write_profile_config(profile_name: str, data: dict) -> None:
 
 
 def read_model_summary(profile_name: str) -> dict:
-    data = read_profile_config(profile_name)
-    model = data.get("model")
-    if not isinstance(model, dict):
-        model = {}
-    return {
-        "default": str(model.get("default") or ""),
-        "provider": str(model.get("provider") or ""),
-        "base_url": str(model.get("base_url") or ""),
-    }
+    cfg_path = _profile_config_path(profile_name)
+    cache_key = os.path.normcase(os.path.abspath(cfg_path))
+    now = time.monotonic()
+    with _MODEL_SUMMARY_CACHE_LOCK:
+        cached = _MODEL_SUMMARY_CACHE.get(cache_key)
+        if cached and cached[0] > now:
+            return dict(cached[3])
+
+    stat = cfg_path.stat()
+    with _MODEL_SUMMARY_CACHE_LOCK:
+        cached = _MODEL_SUMMARY_CACHE.get(cache_key)
+        if cached and cached[1:3] == (stat.st_mtime_ns, stat.st_size):
+            _MODEL_SUMMARY_CACHE[cache_key] = (
+                now + _MODEL_SUMMARY_CACHE_TTL_SECONDS,
+                cached[1],
+                cached[2],
+                cached[3],
+            )
+            return dict(cached[3])
+
+    # Serialize a cache-miss read with config writes. Otherwise a replace
+    # between reading YAML and statting the file could cache old data under
+    # the new file signature.
+    with _profile_lock(profile_name):
+        data = read_profile_config(profile_name)
+        model = data.get("model")
+        if not isinstance(model, dict):
+            model = {}
+        summary = {
+            "default": str(model.get("default") or ""),
+            "provider": str(model.get("provider") or ""),
+            "base_url": str(model.get("base_url") or ""),
+        }
+        stat = cfg_path.stat()
+    with _MODEL_SUMMARY_CACHE_LOCK:
+        _MODEL_SUMMARY_CACHE[cache_key] = (
+            now + _MODEL_SUMMARY_CACHE_TTL_SECONDS,
+            stat.st_mtime_ns,
+            stat.st_size,
+            summary,
+        )
+    return dict(summary)
+
+
+def _invalidate_model_summary_cache(profile_name: str) -> None:
+    cache_key = os.path.normcase(os.path.abspath(_profile_config_path(profile_name)))
+    with _MODEL_SUMMARY_CACHE_LOCK:
+        _MODEL_SUMMARY_CACHE.pop(cache_key, None)
 
 
 def apply_model_config(profile_name: str, model_config: dict) -> dict:

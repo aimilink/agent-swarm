@@ -4761,6 +4761,30 @@ createTeamForm?.addEventListener("submit", async (event) => {
   });
 }
 
+let pendingAgentStatePayload = null;
+let agentStateRenderScheduled = false;
+let lastAgentStateSignature = "";
+
+function scheduleAgentStateRender(payload) {
+  pendingAgentStatePayload = payload;
+  if (agentStateRenderScheduled) return;
+  agentStateRenderScheduled = true;
+  requestAnimationFrame(() => {
+    agentStateRenderScheduled = false;
+    const latest = pendingAgentStatePayload || {};
+    pendingAgentStatePayload = null;
+    const signature = JSON.stringify([
+      latest.agents || [],
+      latest.stats || [],
+      latest.teams || [],
+    ]);
+    if (signature === lastAgentStateSignature) return;
+    lastAgentStateSignature = signature;
+    if (window.__BOOTSTRAP__ && latest.teams) window.__BOOTSTRAP__.teams = latest.teams;
+    renderAgents(latest.agents || [], latest.stats || []);
+  });
+}
+
 const _sseToken = getStoredApiToken();
 const stream = new EventSource(
   _sseToken ? `/api/events/stream?token=${encodeURIComponent(_sseToken)}` : "/api/events/stream"
@@ -4772,8 +4796,7 @@ stream.addEventListener("event", (event) => {
 stream.addEventListener("agents", (event) => {
   const payload = JSON.parse(event.data);
   debugLog("sse-agents", payload);
-  if (window.__BOOTSTRAP__ && payload.teams) window.__BOOTSTRAP__.teams = payload.teams;
-  renderAgents(payload.agents || [], payload.stats || []);
+  scheduleAgentStateRender(payload);
 });
 stream.onmessage = (event) => {
   try {
