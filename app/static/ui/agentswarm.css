@@ -1,4 +1,4 @@
-/* Production design system from agentswarm-ui. Business views keep their API bindings. */
+/* AgentSwarm production design system. Business views keep their API bindings. */
 body { --swarm-border:#e5e7eb; --swarm-muted:#6b7280; background:#fafafa!important; color:#212121!important; font-family:'Plus Jakarta Sans',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif!important; }
 body > header { left:232px!important; width:calc(100% - 232px)!important; height:64px!important; padding:0 24px!important; background:#fff!important; border-bottom:1px solid var(--swarm-border)!important; box-shadow:none!important; backdrop-filter:none!important; }
 #swarm-page-title { color:#212121; font-size:17px; font-weight:700; line-height:1.4; }
@@ -73,7 +73,7 @@ body :is(.font-body-md,.font-body-lg,.font-label-md,.font-label-sm,.font-title-l
 body > header button { border-radius:9px; }
 main button.rounded-xl { border-radius:9px; }
 
-/* Page-level agentswarm-ui implementation */
+/* Page-level AgentSwarm implementation */
 .swarm-card,.swarm-stat,.swarm-quick,.swarm-member-list,.swarm-teams-layout>section,.chat-history-sidebar{background:#fff;border:1px solid var(--swarm-border);border-radius:14px}
 .swarm-card-head{padding:16px 20px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;gap:12px}.swarm-card-head b{display:block;font-size:15px}.swarm-card-head small{display:block;color:#9ca3af;font-size:12.5px;margin-top:2px}.swarm-card-body{padding:20px}.swarm-card-body p{color:#6b7280;font-size:13px;line-height:1.7;margin-bottom:18px}
 .swarm-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.swarm-toolbar__spacer{flex:1}.swarm-muted{font-size:13px;color:#6b7280}.swarm-search{width:220px;padding:9px 12px;border:1px solid #d7dce5;background:#fff}.swarm-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600}.swarm-button--primary{background:#0053db;color:#fff}.swarm-button--outline{border:1px solid #d7dce5;background:#fff;color:#374151}.swarm-button--outline:hover{border-color:#0053db;color:#0053db}

@@ -12,7 +12,7 @@
   -> HTTPS / 反向代理（可选）
   -> AgentSwarm :5050
        -> ~/.hermes/profiles/*       # SOUL、Skill、记忆、模型、MCP
-       -> data/hermes_agent_team.db  # 团队、成员、任务、消息、编排状态
+       -> data/agent-swarm.db        # 团队、成员、任务、消息、编排状态
        -> workspace/*                # 团队任务工作区
        -> Hermes CLI / ACP / Kanban
 ```
@@ -253,8 +253,7 @@ journalctl --user -u agentswarm -f
 ```
 
 安装用户服务后，`agentswarm start|stop|status|restart` 会自动转交给
-`systemctl --user`，无需维护另一份 PID。升级前的 `agentweave.service`
-仍可被新命令识别，可在维护窗口再迁移单元名称。
+`systemctl --user`，无需维护另一份 PID。
 
 如需退出登录后仍保持运行，可由管理员执行：
 
@@ -292,7 +291,7 @@ location / {
 
 升级前至少备份：
 
-- `data/hermes_agent_team.db`：团队、成员、消息和任务关系。
+- `data/agent-swarm.db`：团队、成员、消息和任务关系。
 - `~/.hermes/profiles/`：共享 Profile 的 SOUL、Skill、记忆和配置。
 - `workspace/` 或自定义 `AGENT_TEAM_WORKSPACE_ROOT`：任务产物。
 - `.env`：部署参数和 Token；备份文件必须限制权限。
@@ -302,7 +301,7 @@ location / {
 ```bash
 stamp=$(date +%Y%m%d-%H%M%S)
 mkdir -p "$HOME/backups/agentswarm-$stamp"
-cp data/hermes_agent_team.db "$HOME/backups/agentswarm-$stamp/"
+cp data/agent-swarm.db "$HOME/backups/agentswarm-$stamp/"
 cp .env "$HOME/backups/agentswarm-$stamp/env"
 tar -czf "$HOME/backups/agentswarm-$stamp/profiles.tar.gz" -C "$HOME/.hermes" profiles
 ```

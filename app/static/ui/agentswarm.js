@@ -1,4 +1,4 @@
-/* Shared navigation and interactions for agentswarm-ui. */
+/* Shared AgentSwarm navigation and interactions. */
 (() => {
   const pages = {
     projects: ['项目管理', '以项目组织团队、迭代任务与交付产物'],

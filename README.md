@@ -104,14 +104,14 @@ python -m pip install -r requirements.txt
 | `HERMES_CLI` | `hermes` | Hermes CLI 可执行文件名或绝对路径 |
 | `HERMES_HOME` | `~/.hermes` | Hermes profiles 根目录 |
 | `AGENT_TEAM_WORKSPACE_ROOT` | `~/agent_team` | Agent 工作区根目录 |
-| `DATABASE_URL` | `sqlite:///data/hermes_agent_team.db` | 数据库连接串 |
+| `DATABASE_URL` | `sqlite:///data/agent-swarm.db` | 数据库连接串 |
 | `HERMES_AGENTS_MCP_URL` | `http://127.0.0.1:5050/mcp/` | MCP Bus 地址 |
 | `HOST` | `127.0.0.1` | HTTP 监听地址 |
 | `PORT` | `5050` | HTTP 服务端口 |
 | `AGENT_TEAM_API_TOKEN` | 空 | `/api/*` Bearer Token；留空时不鉴权 |
 | `FLASK_DEBUG` | `0` | 调试日志开关 |
 | `AUTO_START_AGENTS` | `1` | 项目启动时自动启动所有已就绪 Agent；设为 `0` 可关闭 |
-| `KANBAN_BOARD` | `hermes-agents-team` | Hermes Kanban board 名称（兼容现有任务） |
+| `KANBAN_BOARD` | `agent-swarm` | Hermes Kanban board 名称 |
 | `KANBAN_POLL_INTERVAL` | `2` | Kanban 状态同步轮询间隔（秒） |
 | `KANBAN_DEFAULT_WORKSPACE` | `scratch` | Kanban 任务默认 workspace |
 | `KANBAN_AUTO_DISPATCH` | `0` | 首次无持久化设置时，自动 Dispatch 开关的默认值 |
@@ -158,8 +158,7 @@ agentswarm stop
 
 未创建全局链接时使用 `./agentswarm <command>`。命令自动读取项目根目录的
 `.env`；普通进程的 PID 和日志保存在 `.run/`。检测到
-`agentswarm.service` 用户服务时，命令会自动转交给 systemd。升级前安装的
-`agentweave` 命令仍可使用，但会提示并转发到 `agentswarm`。当
+`agentswarm.service` 用户服务时，命令会自动转交给 systemd。当
 `HOST=0.0.0.0` 时，`status` 会列出本机和局域网访问地址。
 
 启动后访问 [http://127.0.0.1:5050](http://127.0.0.1:5050)。生产环境、

@@ -81,7 +81,7 @@ Kanban task 角色：
 默认 board：
 
 ```text
-KANBAN_BOARD=hermes-agents-team
+KANBAN_BOARD=agent-swarm
 ```
 
 默认 workspace：
@@ -178,7 +178,7 @@ UI 列映射：
 
 | 配置 | 默认值 | 功能 |
 | --- | --- | --- |
-| `KANBAN_BOARD` | `hermes-agents-team` | 当前项目使用的兼容 board slug |
+| `KANBAN_BOARD` | `agent-swarm` | 当前项目使用的 board slug |
 | `KANBAN_POLL_INTERVAL` | `2` | 同步轮询间隔，单位秒 |
 | `KANBAN_DEFAULT_WORKSPACE` | `scratch` | 创建 Kanban task 的默认 workspace |
 | `KANBAN_AUTO_DISPATCH` | `0` | 初始自动派发开关 |

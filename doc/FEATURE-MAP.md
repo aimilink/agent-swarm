@@ -97,7 +97,7 @@ Hermes CLI 单 Agent ─┐
 
 ### 5.2 控制台数据库
 
-默认 `data/hermes_agent_team.db`：
+默认 `data/agent-swarm.db`：
 
 - `teams`：团队、slug、独立 board、设置。
 - `agents`：Profile 与运行时映射、`team_id`。

@@ -9,8 +9,7 @@ agentswarm status
 agentswarm restart
 ```
 
-未安装全局命令时，可以在项目根目录执行 `./agentswarm <command>`。原
-`agentweave` 命令作为兼容入口保留，会提示更名并转发全部参数。
+未安装全局命令时，可以在项目根目录执行 `./agentswarm <command>`。
 
 ## 1. 安装命令
 
@@ -67,7 +66,7 @@ tail -f .run/agentswarm.log
 ## 4. systemd 模式
 
 如果 `systemctl --user cat agentswarm.service` 成功，管理命令会自动转交给用户级
-systemd。若新单元不存在但检测到旧 `agentweave.service`，也会继续管理旧单元：
+systemd：
 
 ```text
 agentswarm start    -> systemctl --user start agentswarm.service
@@ -95,10 +94,6 @@ journalctl --user -u agentswarm -f
 | `AGENTSWARM_HOME` | 命令文件所在项目目录 | 显式指定项目根目录。 |
 | `AGENTSWARM_RUN_DIR` | `<项目>/.run` | 修改 PID 和锁目录。 |
 | `AGENTSWARM_LOG_FILE` | `<运行目录>/agentswarm.log` | 修改普通进程日志路径。 |
-
-升级时仍兼容 `AGENTWEAVE_HOME`、`AGENTWEAVE_RUN_DIR` 和
-`AGENTWEAVE_LOG_FILE`；同名的新变量优先。检测到旧
-`.run/agentweave.pid` 时会自动迁移并继续管理该进程。
 
 ## 6. 常见问题
 

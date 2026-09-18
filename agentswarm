@@ -26,23 +26,16 @@ resolve_script_dir() {
   cd -P -- "$(dirname -- "$source_path")" && pwd
 }
 
-service_home="${AGENTSWARM_HOME:-${AGENTWEAVE_HOME:-}}"
+service_home="${AGENTSWARM_HOME:-}"
 if [[ -n "$service_home" ]]; then
   APP="$(cd -P -- "$service_home" && pwd)"
 else
   APP="$(resolve_script_dir)"
 fi
-RUN_DIR="${AGENTSWARM_RUN_DIR:-${AGENTWEAVE_RUN_DIR:-$APP/.run}}"
+RUN_DIR="${AGENTSWARM_RUN_DIR:-$APP/.run}"
 PID_FILE="$RUN_DIR/agentswarm.pid"
-LEGACY_PID_FILE="$RUN_DIR/agentweave.pid"
-LOG_FILE="${AGENTSWARM_LOG_FILE:-${AGENTWEAVE_LOG_FILE:-$RUN_DIR/agentswarm.log}}"
+LOG_FILE="${AGENTSWARM_LOG_FILE:-$RUN_DIR/agentswarm.log}"
 LOCK_DIR="$RUN_DIR/control.lock"
-
-if [[ ! -e "$PID_FILE" && -f "$LEGACY_PID_FILE" ]]; then
-  if ! mv "$LEGACY_PID_FILE" "$PID_FILE" 2>/dev/null; then
-    PID_FILE="$LEGACY_PID_FILE"
-  fi
-fi
 
 usage() {
   echo "Usage: agentswarm {start|stop|status|restart}"
@@ -224,8 +217,6 @@ systemd_unit=""
 if command -v systemctl >/dev/null 2>&1; then
   if systemctl --user cat agentswarm.service >/dev/null 2>&1; then
     systemd_unit="agentswarm.service"
-  elif systemctl --user cat agentweave.service >/dev/null 2>&1; then
-    systemd_unit="agentweave.service"
   fi
 fi
 if [[ -n "$systemd_unit" ]]; then

@@ -297,14 +297,14 @@ SQLite 表由 `app/db/models.py` 定义，启动时通过 `Base.metadata.create_
 | `HERMES_CLI` | `hermes` | Hermes CLI 名称或绝对路径。 |
 | `HERMES_HOME` | `~/.hermes` | Hermes profiles 根目录。 |
 | `AGENT_TEAM_WORKSPACE_ROOT` | `~/agent_team` | Agent 工作区根目录。 |
-| `DATABASE_URL` | `sqlite:///data/hermes_agent_team.db` | 数据库连接串。 |
+| `DATABASE_URL` | `sqlite:///data/agent-swarm.db` | 数据库连接串。 |
 | `HERMES_AGENTS_MCP_URL` | `http://127.0.0.1:5050/mcp/` | 写入 Leader profile 的团队 MCP 地址。 |
 | `HOST` | `127.0.0.1` | HTTP 监听地址。 |
 | `PORT` | `5050` | Web 服务端口。 |
 | `AGENT_TEAM_API_TOKEN` | 空 | 可选 Bearer Token，保护 Flask `/api/*`。 |
 | `FLASK_DEBUG` | `0` | 日志级别开关，不启用 reload。 |
 | `AUTO_START_AGENTS` | `1` | 启动项目时自动启动 ready Agent。 |
-| `KANBAN_BOARD` | `hermes-agents-team` | 使用的 Hermes Kanban board（保留历史兼容标识）。 |
+| `KANBAN_BOARD` | `agent-swarm` | 使用的 Hermes Kanban board。 |
 | `KANBAN_POLL_INTERVAL` | `2` | Kanban 同步轮询间隔。 |
 | `KANBAN_DEFAULT_WORKSPACE` | `scratch` | 默认 Kanban workspace。 |
 | `KANBAN_AUTO_DISPATCH` | `0` | 默认是否开启项目内自动 dispatch。 |

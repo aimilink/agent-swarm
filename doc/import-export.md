@@ -22,7 +22,7 @@
 
 | 位置 | 内容 | 是否导出 |
 |---|---|---|
-| SQLite `data/hermes_agent_team.db` | `agents` / `agent_skill_installs` / `agent_mcp_servers` 行 | ✅ 仅该 agent 相关行 |
+| SQLite `data/agent-swarm.db` | `agents` / `agent_skill_installs` / `agent_mcp_servers` 行 | ✅ 仅该 agent 相关行 |
 | `~/.hermes/profiles/<profile_name>/` | `SOUL.md`、`team-meta.json`、`config.yaml`、`skills/`、`memories/` | ✅ 白名单子集 |
 | `~/.hermes/profiles/<profile_name>/` | `state.db*`、`sessions/`、`logs/`、`sandboxes/`、`cron/`、`plans/`、`bin/`、`home/` | ❌ 运行时/机器相关 |
 | `~/agent_team/<profile_name>/` | Workspace | ❌ 默认不导（可选开关） |
